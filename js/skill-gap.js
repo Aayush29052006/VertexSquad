@@ -34,7 +34,7 @@ function renderSkillGap(pageBody, item, gap) {
       ${gap.priority.map((p) => `
         <div class="priority-item">
           <div>
-            <span class="badge ${p.priority === 'HIGH' ? 'badge-danger' : 'badge-warning'}">${p.priority}</span>
+            <span class="badge ${p.priority === 'HIGH' ? 'badge-danger' : 'badge-warning'}">${escapeHtml(p.priority)}</span>
             <strong style="margin-left:10px;">${escapeHtml(p.skill)}</strong>
           </div>
           <span class="text-caption">Why this matters: core requirement for this role</span>
@@ -45,8 +45,8 @@ function renderSkillGap(pageBody, item, gap) {
     ` : `<div class="card mb-5">${emptyState('🎉', 'No skill gaps found!', 'You meet all required skills for this internship.')}</div>`}
 
     <div class="flex gap-3">
-      <a href="internship-details.html?id=${item.id}" class="btn btn-secondary">Back to Internship</a>
-      <a href="what-if.html?id=${item.id}" class="btn btn-primary">Run What-If Analysis</a>
+      <a href="internship-details.html?id=${encodeURIComponent(item.id)}" class="btn btn-secondary">Back to Internship</a>
+      <a href="what-if.html?id=${encodeURIComponent(item.id)}" class="btn btn-primary">Run What-If Analysis</a>
     </div>
   `;
 }

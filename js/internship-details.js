@@ -9,18 +9,22 @@ function getIdFromUrl() {
 }
 
 function renderBreakdown(breakdown, overall) {
-  const rows = Object.entries(breakdown).map(([label, value]) => `
+  const rows = Object.entries(breakdown).map(([label, value]) => {
+    const pct = Math.max(0, Math.min(100, Number(value) || 0));
+    return `
     <div class="breakdown-row">
-      <div class="breakdown-top"><span>${escapeHtml(label)}</span><span>${value}%</span></div>
-      <div class="progress-track"><div class="progress-fill" style="width:${value}%;"></div></div>
+      <div class="breakdown-top"><span>${escapeHtml(label)}</span><span>${pct}%</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
     </div>
-  `).join('');
+  `;
+  }).join('');
+  const overallPct = Math.max(0, Math.min(100, Number(overall) || 0));
   return `
     ${rows}
     <div class="divider"></div>
     <div class="breakdown-row">
-      <div class="breakdown-top"><strong>Overall Match</strong><strong>${overall}%</strong></div>
-      <div class="progress-track"><div class="progress-fill fill-success" style="width:${overall}%;"></div></div>
+      <div class="breakdown-top"><strong>Overall Match</strong><strong>${overallPct}%</strong></div>
+      <div class="progress-track"><div class="progress-fill fill-success" style="width:${overallPct}%;"></div></div>
     </div>
   `;
 }
@@ -63,7 +67,7 @@ function renderDetails(pageBody, item) {
           <h2 class="text-section-heading mb-2">Skill Gap</h2>
           <p class="text-body mb-3">You should improve:</p>
           <div class="chip-row">${item.missing_skills.map((s) => skillChip(s, 'missing')).join('')}</div>
-          <a href="skill-gap.html?id=${item.id}" class="btn btn-secondary mt-4">View Full Skill Gap Analysis</a>
+          <a href="skill-gap.html?id=${encodeURIComponent(item.id)}" class="btn btn-secondary mt-4">View Full Skill Gap Analysis</a>
         </div>` : ''}
 
         <div class="card mb-5">

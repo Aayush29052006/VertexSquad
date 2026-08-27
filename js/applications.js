@@ -44,16 +44,21 @@ const STATUS_LABELS = {
             </tr>
           </thead>
           <tbody>
-            ${applications.map((app) => `
+            ${applications.map((app) => {
+              const knownStatus = Object.prototype.hasOwnProperty.call(STATUS_LABELS, app.status);
+              const statusClass = knownStatus ? app.status : 'neutral';
+              const statusLabel = knownStatus ? STATUS_LABELS[app.status] : app.status;
+              return `
               <tr>
                 <td style="font-weight:600;">${escapeHtml(app.title)}</td>
                 <td>${escapeHtml(app.company)}</td>
                 <td>${formatDate(app.applied_on)}</td>
-                <td>${app.match_score}%</td>
-                <td><span class="badge status-${app.status}">${STATUS_LABELS[app.status] || app.status}</span></td>
-                <td><a class="btn btn-ghost btn-sm" href="internship-details.html?id=${app.internship_id}">View</a></td>
+                <td>${Number(app.match_score) || 0}%</td>
+                <td><span class="badge status-${statusClass}">${escapeHtml(statusLabel)}</span></td>
+                <td><a class="btn btn-ghost btn-sm" href="internship-details.html?id=${encodeURIComponent(app.internship_id)}">View</a></td>
               </tr>
-            `).join('')}
+            `;
+            }).join('')}
           </tbody>
         </table>
       </div>

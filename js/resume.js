@@ -29,7 +29,7 @@ function renderResumeIdle(pageBody, resume) {
       <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload resume">
         <div class="upload-icon">📄</div>
         <h3 class="text-card-heading">Upload Your Resume</h3>
-        <p class="text-caption mt-2">Drag & Drop PDF / DOCX, or</p>
+        <p class="text-caption mt-2">Drag & Drop PDF / DOCX (Max 5MB), or</p>
         <button class="btn btn-primary mt-3" id="chooseFileBtn" type="button">Choose File</button>
         <input type="file" id="fileInput" accept=".pdf,.doc,.docx" hidden />
       </div>
@@ -63,11 +63,20 @@ function renderResumeIdle(pageBody, resume) {
   document.getElementById('reviewAgainBtn')?.addEventListener('click', runExtraction);
 }
 
+const RESUME_MAX_BYTES = 5 * 1024 * 1024; // 5MB — UX guard only; the backend must enforce this too
+
 async function handleFileUpload(file) {
   const validTypes = ['.pdf', '.doc', '.docx'];
+  // Extension check is a UX convenience, not a security control — the real
+  // type/content validation has to happen server-side, since a client can
+  // always lie about a file's name or MIME type.
   const isValid = validTypes.some((ext) => file.name.toLowerCase().endsWith(ext));
   if (!isValid) {
     showToast('Please upload a PDF or DOCX file.', 'error');
+    return;
+  }
+  if (file.size > RESUME_MAX_BYTES) {
+    showToast('File is too large. Please upload a resume under 5MB.', 'error');
     return;
   }
 
@@ -131,7 +140,7 @@ function renderExtraction(container) {
       ${extractionData.technical_skills.map((s) => `
         <div class="confidence-row">
           <span>✓ ${escapeHtml(s.name)}</span>
-          ${s.confidence ? `<span class="badge ${s.confidence === 'High' ? 'badge-success' : 'badge-warning'}">${s.confidence} Confidence</span>` : ''}
+          ${s.confidence ? `<span class="badge ${s.confidence === 'High' ? 'badge-success' : 'badge-warning'}">${escapeHtml(s.confidence)} Confidence</span>` : ''}
         </div>
       `).join('')}
 

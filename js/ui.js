@@ -68,8 +68,8 @@ function renderAppShell(activeHref, studentName) {
         <div></div>
         <div class="flex items-center gap-3">
           ${themeToggleHtml()}
-          <span class="text-body" style="color:var(--text-primary);font-weight:600;">${studentName || 'Student'}</span>
-          <div class="avatar" aria-hidden="true">${initials}</div>
+          <span class="text-body" style="color:var(--text-primary);font-weight:600;">${escapeHtml(studentName || 'Student')}</span>
+          <div class="avatar" aria-hidden="true">${escapeHtml(initials)}</div>
         </div>
       </header>
       <main class="page-body" id="pageBody"></main>
@@ -119,10 +119,11 @@ function showToast(message, type = 'info') {
 
 /* ---------- Match score ring ---------- */
 function matchRingSvg(score, size = 84) {
-  const { tier } = getMatchTier(score);
+  const pct = Math.max(0, Math.min(100, Number(score) || 0));
+  const { tier } = getMatchTier(pct);
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - score / 100);
+  const offset = circumference * (1 - pct / 100);
   return `
     <div class="match-ring match-${tier}" style="width:${size}px;height:${size}px;">
       <svg viewBox="0 0 ${size} ${size}">
@@ -130,7 +131,7 @@ function matchRingSvg(score, size = 84) {
         <circle class="ring-fg" cx="${size / 2}" cy="${size / 2}" r="${radius}"
           stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"></circle>
       </svg>
-      <div class="ring-value">${score}%</div>
+      <div class="ring-value">${pct}%</div>
     </div>
   `;
 }
@@ -144,12 +145,12 @@ function matchBadge(score) {
 function skillChip(name, variant = 'default') {
   const cls = variant === 'missing' ? 'skill-chip chip-missing' : 'skill-chip';
   const icon = variant === 'missing' ? '○' : '✓';
-  return `<span class="${cls}">${icon} ${name}</span>`;
+  return `<span class="${cls}">${icon} ${escapeHtml(name)}</span>`;
 }
 
 /* ---------- State builders ---------- */
 function loadingState(message = 'Loading...') {
-  return `<div class="loading-state"><div class="spinner spinner-lg"></div><p>${message}</p></div>`;
+  return `<div class="loading-state"><div class="spinner spinner-lg"></div><p>${escapeHtml(message)}</p></div>`;
 }
 
 function errorState(message, retryFnName) {
@@ -157,7 +158,7 @@ function errorState(message, retryFnName) {
     <div class="state-block">
       <div class="state-icon">⚠️</div>
       <div class="state-title">Something went wrong</div>
-      <p class="state-text">${message}</p>
+      <p class="state-text">${escapeHtml(message)}</p>
       ${retryFnName ? `<button class="btn btn-primary" onclick="${retryFnName}()">Try Again</button>` : ''}
     </div>
   `;
@@ -166,9 +167,9 @@ function errorState(message, retryFnName) {
 function emptyState(icon, title, text, ctaHtml = '') {
   return `
     <div class="state-block">
-      <div class="state-icon">${icon}</div>
-      <div class="state-title">${title}</div>
-      <p class="state-text">${text}</p>
+      <div class="state-icon">${escapeHtml(icon)}</div>
+      <div class="state-title">${escapeHtml(title)}</div>
+      <p class="state-text">${escapeHtml(text)}</p>
       ${ctaHtml}
     </div>
   `;
@@ -186,7 +187,8 @@ function escapeHtml(str) {
 
 /* ---------- Internship card ---------- */
 function internshipCardHtml(item) {
-  const { tier } = getMatchTier(item.match_score);
+  const pct = Math.max(0, Math.min(100, Number(item.match_score) || 0));
+  const { tier } = getMatchTier(pct);
   const matchedChips = item.matched_skills.map((s) => skillChip(s)).join('');
   const missingChips = item.missing_skills.length
     ? `<div class="mt-2"><p class="text-label mb-1">Missing</p><div class="internship-chips">${item.missing_skills.map((s) => skillChip(s, 'missing')).join('')}</div></div>`
@@ -201,9 +203,9 @@ function internshipCardHtml(item) {
         <div class="match-ring match-${tier}" style="width:56px;height:56px;flex-shrink:0;">
           <svg viewBox="0 0 56 56">
             <circle class="ring-bg" cx="28" cy="28" r="24"></circle>
-            <circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="${2 * Math.PI * 24}" stroke-dashoffset="${2 * Math.PI * 24 * (1 - item.match_score / 100)}"></circle>
+            <circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="${2 * Math.PI * 24}" stroke-dashoffset="${2 * Math.PI * 24 * (1 - pct / 100)}"></circle>
           </svg>
-          <div class="ring-value" style="font-size:0.85rem;">${item.match_score}%</div>
+          <div class="ring-value" style="font-size:0.85rem;">${pct}%</div>
         </div>
       </div>
       <div class="internship-meta">
@@ -215,7 +217,7 @@ function internshipCardHtml(item) {
       ${missingChips}
       <div class="internship-footer">
         <span class="text-caption">Deadline: ${formatDate(item.deadline)}</span>
-        <a class="btn btn-primary btn-sm" href="internship-details.html?id=${item.id}">View Details</a>
+        <a class="btn btn-primary btn-sm" href="internship-details.html?id=${encodeURIComponent(item.id)}">View Details</a>
       </div>
     </article>
   `;
@@ -223,6 +225,6 @@ function internshipCardHtml(item) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return dateStr;
+  if (Number.isNaN(d.getTime())) return escapeHtml(dateStr);
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }

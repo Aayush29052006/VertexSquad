@@ -1,0 +1,228 @@
+/**
+ * CareerNexus — Shared UI components & helpers
+ * Sidebar/navbar rendering, toasts, match-score ring, skill chips,
+ * loading/empty/error state builders. Loaded on every authenticated page.
+ */
+
+const NAV_ITEMS = [
+  { href: 'dashboard.html', icon: '📊', label: 'Dashboard' },
+  { href: 'profile.html', icon: '👤', label: 'My Profile' },
+  { href: 'resume.html', icon: '📄', label: 'Resume' },
+  { href: 'internships.html', icon: '💼', label: 'Internships' },
+  { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap' },
+  { href: 'applications.html', icon: '📋', label: 'Applications' },
+  { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis' },
+];
+
+function themeToggleHtml() {
+  return `
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme" aria-pressed="true">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+    </button>`;
+}
+
+function currentPageName() {
+  const parts = window.location.pathname.split('/');
+  return parts[parts.length - 1] || 'dashboard.html';
+}
+
+function renderAppShell(activeHref, studentName) {
+  const page = currentPageName();
+  const initials = (studentName || 'S')
+    .split(' ')
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const links = NAV_ITEMS.map(
+    (item) => `
+      <a class="sidebar-link${item.href === (activeHref || page) ? ' active' : ''}" href="${item.href}">
+        <span class="icon" aria-hidden="true">${item.icon}</span>
+        <span>${item.label}</span>
+      </a>`
+  ).join('');
+
+  return `
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+      <div class="sidebar-brand">
+        <a class="brand" href="dashboard.html">
+          <img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" />
+          <span class="brand-name">CareerNexus</span>
+        </a>
+      </div>
+      <nav class="sidebar-nav">
+        ${links}
+      </nav>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-footer">
+        <a class="sidebar-link${page === 'settings.html' ? ' active' : ''}" href="settings.html"><span class="icon" aria-hidden="true">⚙️</span><span>Settings</span></a>
+        <a class="sidebar-link" href="#" id="logoutBtn"><span class="icon" aria-hidden="true">🚪</span><span>Logout</span></a>
+      </div>
+    </aside>
+    <div class="main-content">
+      <header class="topbar">
+        <button class="mobile-menu-btn btn btn-ghost btn-icon" id="menuToggle" aria-label="Open menu">☰</button>
+        <div></div>
+        <div class="flex items-center gap-3">
+          ${themeToggleHtml()}
+          <span class="text-body" style="color:var(--text-primary);font-weight:600;">${studentName || 'Student'}</span>
+          <div class="avatar" aria-hidden="true">${initials}</div>
+        </div>
+      </header>
+      <main class="page-body" id="pageBody"></main>
+    </div>
+  `;
+}
+
+function mountAppShell(activeHref, studentName) {
+  const shellRoot = document.getElementById('appShell') || document.body;
+  shellRoot.innerHTML = renderAppShell(activeHref, studentName);
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  const toggle = document.getElementById('menuToggle');
+  const closeMenu = () => { sidebar.classList.remove('open'); backdrop.classList.remove('open'); };
+  toggle?.addEventListener('click', () => { sidebar.classList.add('open'); backdrop.classList.add('open'); });
+  backdrop?.addEventListener('click', closeMenu);
+  document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    localStorage.removeItem('cn_token');
+    window.location.href = 'login.html';
+  });
+  return document.getElementById('pageBody');
+}
+
+function requireAuth() {
+  if (!localStorage.getItem('cn_token')) {
+    window.location.href = 'login.html';
+    return false;
+  }
+  return true;
+}
+
+/* ---------- Toasts ---------- */
+function showToast(message, type = 'info') {
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast${type === 'success' ? ' toast-success' : ''}${type === 'error' ? ' toast-error' : ''}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+/* ---------- Match score ring ---------- */
+function matchRingSvg(score, size = 84) {
+  const { tier } = getMatchTier(score);
+  const radius = (size - 8) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - score / 100);
+  return `
+    <div class="match-ring match-${tier}" style="width:${size}px;height:${size}px;">
+      <svg viewBox="0 0 ${size} ${size}">
+        <circle class="ring-bg" cx="${size / 2}" cy="${size / 2}" r="${radius}"></circle>
+        <circle class="ring-fg" cx="${size / 2}" cy="${size / 2}" r="${radius}"
+          stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"></circle>
+      </svg>
+      <div class="ring-value">${score}%</div>
+    </div>
+  `;
+}
+
+function matchBadge(score) {
+  const { tier, label } = getMatchTier(score);
+  return `<span class="badge badge-${tier === 'excellent' ? 'success' : tier === 'good' ? 'info' : tier === 'moderate' ? 'warning' : 'danger'}">${label}</span>`;
+}
+
+/* ---------- Skill chips ---------- */
+function skillChip(name, variant = 'default') {
+  const cls = variant === 'missing' ? 'skill-chip chip-missing' : 'skill-chip';
+  const icon = variant === 'missing' ? '○' : '✓';
+  return `<span class="${cls}">${icon} ${name}</span>`;
+}
+
+/* ---------- State builders ---------- */
+function loadingState(message = 'Loading...') {
+  return `<div class="loading-state"><div class="spinner spinner-lg"></div><p>${message}</p></div>`;
+}
+
+function errorState(message, retryFnName) {
+  return `
+    <div class="state-block">
+      <div class="state-icon">⚠️</div>
+      <div class="state-title">Something went wrong</div>
+      <p class="state-text">${message}</p>
+      ${retryFnName ? `<button class="btn btn-primary" onclick="${retryFnName}()">Try Again</button>` : ''}
+    </div>
+  `;
+}
+
+function emptyState(icon, title, text, ctaHtml = '') {
+  return `
+    <div class="state-block">
+      <div class="state-icon">${icon}</div>
+      <div class="state-title">${title}</div>
+      <p class="state-text">${text}</p>
+      ${ctaHtml}
+    </div>
+  `;
+}
+
+function skeletonCards(count = 3) {
+  return Array.from({ length: count }).map(() => '<div class="skeleton skeleton-card"></div>').join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+/* ---------- Internship card ---------- */
+function internshipCardHtml(item) {
+  const { tier } = getMatchTier(item.match_score);
+  const matchedChips = item.matched_skills.map((s) => skillChip(s)).join('');
+  const missingChips = item.missing_skills.length
+    ? `<div class="mt-2"><p class="text-label mb-1">Missing</p><div class="internship-chips">${item.missing_skills.map((s) => skillChip(s, 'missing')).join('')}</div></div>`
+    : '';
+  return `
+    <article class="card card-hover internship-card">
+      <div class="internship-card-head">
+        <div>
+          <h3 class="text-card-heading">${escapeHtml(item.title)}</h3>
+          <p class="company-name">${escapeHtml(item.company)}</p>
+        </div>
+        <div class="match-ring match-${tier}" style="width:56px;height:56px;flex-shrink:0;">
+          <svg viewBox="0 0 56 56">
+            <circle class="ring-bg" cx="28" cy="28" r="24"></circle>
+            <circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="${2 * Math.PI * 24}" stroke-dashoffset="${2 * Math.PI * 24 * (1 - item.match_score / 100)}"></circle>
+          </svg>
+          <div class="ring-value" style="font-size:0.85rem;">${item.match_score}%</div>
+        </div>
+      </div>
+      <div class="internship-meta">
+        <span>📍 ${escapeHtml(item.location)}</span>
+        <span>💻 ${escapeHtml(item.work_mode)}</span>
+        <span>💰 ${escapeHtml(item.stipend)}</span>
+      </div>
+      <div class="internship-chips">${matchedChips}</div>
+      ${missingChips}
+      <div class="internship-footer">
+        <span class="text-caption">Deadline: ${formatDate(item.deadline)}</span>
+        <a class="btn btn-primary btn-sm" href="internship-details.html?id=${item.id}">View Details</a>
+      </div>
+    </article>
+  `;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+}

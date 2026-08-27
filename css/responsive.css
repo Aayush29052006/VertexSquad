@@ -1,0 +1,62 @@
+/* =========================================================
+   CareerNexus — Responsive Rules
+   Desktop 1920/1440/1280 · Tablet 1024/768 · Mobile 480/390/375
+   ========================================================= */
+
+/* Large desktop refinement */
+@media (min-width: 1600px) {
+  .container { max-width: 1400px; }
+}
+
+/* Tablet landscape / small desktop */
+@media (max-width: 1024px) {
+  .sidebar { width: 220px; }
+  .page-body { padding: var(--space-5); }
+  .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Tablet portrait */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: block; }
+
+  .app-shell { flex-direction: column; }
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform var(--transition-base);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .mobile-menu-btn { display: inline-flex; }
+  .sidebar-backdrop {
+    display: none;
+    position: fixed; inset: 0; background: rgba(16,19,26,0.4); z-index: 199;
+  }
+  .sidebar-backdrop.open { display: block; }
+
+  .page-body { padding: var(--space-4); }
+  .grid-cols-4, .grid-cols-3, .grid-cols-2 { grid-template-columns: 1fr; }
+  .hero-grid { grid-template-columns: 1fr !important; }
+  .topbar { padding: 0 var(--space-4); }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .container { padding: 0 var(--space-4); }
+  .btn-lg { padding: 0.8rem 1.4rem; font-size: 0.95rem; }
+  .card { padding: var(--space-4); }
+  .modal { padding: var(--space-5); }
+  .form-row { flex-direction: column; gap: 0; }
+  .section { padding: var(--space-6) 0; }
+  .stat-tile .stat-value { font-size: 1.6rem; }
+  .nav-cta .btn-secondary { display: none; }
+}
+
+@media (max-width: 390px) {
+  .text-display { font-size: 2rem; }
+  .brand span.brand-name { display: none; }
+}

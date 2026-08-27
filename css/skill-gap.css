@@ -1,0 +1,22 @@
+/* =========================================================
+   CareerNexus — Skill Gap Page
+   ========================================================= */
+
+.gap-columns { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-5); }
+.gap-summary { text-align: center; padding: var(--space-6); }
+.gap-summary .gap-num { font-family: var(--font-display); font-size: 2.4rem; font-weight: 800; color: var(--warning); }
+
+.priority-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+.priority-item:last-child { margin-bottom: 0; }
+
+@media (max-width: 768px) {
+  .gap-columns { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,42 @@
+/* =========================================================
+   CareerNexus — Dashboard & inner app pages shared styles
+   ========================================================= */
+
+.greeting-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-5);
+}
+
+.internship-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.internship-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.internship-meta { display: flex; gap: var(--space-3); flex-wrap: wrap; color: var(--text-secondary); font-size: 0.88rem; }
+.internship-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.internship-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: var(--space-2); }
+.company-name { color: var(--text-secondary); font-weight: 500; }
+
+@media (max-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr; }
+}

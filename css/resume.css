@@ -1,0 +1,59 @@
+/* =========================================================
+   CareerNexus — Resume & AI Extraction
+   ========================================================= */
+
+.upload-zone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  background: var(--surface-alt);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  cursor: pointer;
+}
+.upload-zone.dragover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.upload-zone .upload-icon { font-size: 2.6rem; margin-bottom: var(--space-3); }
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.file-icon {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  background: var(--danger-bg); color: var(--danger);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
+}
+
+.analysis-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+}
+.analysis-stat {
+  text-align: center;
+  padding: var(--space-4);
+  background: var(--surface-alt);
+  border-radius: var(--radius-md);
+}
+.analysis-stat .num { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--primary); }
+
+.confidence-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.confidence-row:last-child { border-bottom: none; }
+
+.skill-confirm-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0.5rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--border-strong); margin: 4px; }
+.skill-confirm-chip.kept { background: var(--success-bg); border-color: transparent; color: var(--success); }
+.skill-confirm-chip.removed { background: var(--danger-bg); border-color: transparent; color: var(--danger); text-decoration: line-through; opacity: 0.7; }
+.skill-confirm-chip button { background: none; border: none; font-weight: 700; color: inherit; }
+
+@media (max-width: 768px) {
+  .analysis-summary { grid-template-columns: 1fr; }
+}

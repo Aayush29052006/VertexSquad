@@ -1,0 +1,327 @@
+/* =========================================================
+   CareerNexus — Landing Page Styles
+   Theme (light/dark) is global — see css/global.css and js/theme.js.
+   This file is layout/shape only.
+   ========================================================= */
+
+.text-gradient {
+  background: linear-gradient(90deg, var(--primary), #99f6e4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.3);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .badge-dot { animation: pulse-dot 2s ease infinite; }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.mobile-drawer {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.mobile-drawer a { padding: 0.5rem 0; font-weight: 500; }
+.mobile-drawer a[aria-disabled='true'] { color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .mobile-drawer:not([hidden]) { display: flex; }
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  padding-top: var(--space-9);
+  padding-bottom: var(--space-8);
+  overflow: hidden;
+  background: var(--background);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(45, 212, 191, 0.14), transparent 45%),
+    radial-gradient(circle at 8% 92%, rgba(99, 102, 241, 0.12), transparent 42%);
+  pointer-events: none;
+}
+.hero-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: var(--space-8);
+  align-items: center;
+}
+.hero-copy strong { font-family: var(--font-display); font-size: 1.4rem; }
+.hero-copy .badge-info { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; }
+
+/* ---------- Hero visual (decorative, CSS/SVG only) ---------- */
+.hero-visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+}
+.orbit-ring {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .orbit-ring { animation: spin 40s linear infinite; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.portal-core {
+  position: relative;
+  width: 156px;
+  height: 156px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 30%, rgba(45, 212, 191, 0.35), rgba(11, 18, 32, 0.1) 70%);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  box-shadow: 0 0 60px rgba(45, 212, 191, 0.3), inset 0 0 40px rgba(45, 212, 191, 0.15);
+}
+.portal-core .portal-mark {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.connector-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.connector-svg path {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 6;
+}
+
+.floating-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-lg);
+  width: 188px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .floating-card { animation: float 5s ease-in-out infinite; }
+  .floating-card.card-right { animation-delay: 1.2s; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.floating-card.card-left { top: 4%; left: -4%; }
+.floating-card.card-right { bottom: 8%; right: -6%; }
+
+.visual-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #05131f;
+}
+.visual-avatar svg { width: 18px; height: 18px; }
+.visual-avatar.avatar-a { background: linear-gradient(135deg, var(--primary), #99f6e4); }
+.visual-avatar.avatar-b { background: linear-gradient(135deg, var(--secondary), #818cf8); }
+
+.floating-card-label { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.floating-card-sub { font-size: 0.72rem; font-weight: 600; color: var(--primary); }
+
+/* ---------- Stats bar ---------- */
+.stats-bar {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  padding: var(--space-7) 0;
+}
+.stat-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); }
+.stat-item .icon-circle { width: 44px; height: 44px; }
+.stat-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2vw, 2.1rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Icon circle (steps, stats, features) ---------- */
+.icon-circle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.icon-circle svg { width: 22px; height: 22px; }
+
+/* ---------- How it works ---------- */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-5);
+}
+.step-card { position: relative; text-align: center; }
+.step-card:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: calc(50% + 40px);
+  width: calc(100% - 80px);
+  height: 1px;
+  background: var(--border-strong);
+}
+.step-card .icon-circle { margin-inline: auto; margin-bottom: var(--space-4); }
+.step-number {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Why CareerNexus ---------- */
+.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+.feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.feature-icon svg { width: 22px; height: 22px; }
+
+/* ---------- CTA ---------- */
+.cta-section {
+  background: linear-gradient(120deg, rgba(45, 212, 191, 0.14), rgba(99, 102, 241, 0.1)), var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, var(--radius-lg));
+  padding: var(--space-7);
+}
+.cta-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  background: var(--bg-alt, var(--background));
+  border-top: 1px solid var(--border);
+  padding: var(--space-8) 0 var(--space-5);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--space-6);
+}
+.footer a:hover { color: var(--primary); }
+
+.footer-social { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
+.footer-social a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.footer-social a:hover { color: var(--primary); border-color: var(--primary); }
+.footer-social svg { width: 16px; height: 16px; }
+
+/* ---------- Responsive (landing-specific) ---------- */
+@media (max-width: 1280px) {
+  .steps-grid { grid-template-columns: repeat(3, 1fr); row-gap: var(--space-6); }
+  .step-card:nth-child(3)::after { display: none; }
+}
+
+@media (max-width: 1024px) {
+  .hero-grid { grid-template-columns: 1fr !important; text-align: center; }
+  .hero-copy .badge { margin-inline: auto; }
+  .hero-copy p { margin-inline: auto; }
+  .hero-copy .flex { justify-content: center; }
+  .hero-visual { height: 320px; margin-top: var(--space-6); }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps-grid { grid-template-columns: repeat(2, 1fr); }
+  .step-card::after { display: none; }
+  .grid-cols-4 { grid-template-columns: 1fr; }
+  .cta-flex { flex-direction: column; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .footer-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-5) var(--space-3); }
+  .steps-grid { grid-template-columns: 1fr; }
+  .hero-visual { height: 280px; transform: scale(0.88); }
+  .hero-copy .flex.gap-3 { flex-direction: column; align-items: stretch; }
+}
+
+@media (max-width: 390px) {
+  .floating-card { width: 164px; }
+}

@@ -23,7 +23,9 @@ async function apiRequest(path, options = {}) {
     let message = 'Something went wrong. Please try again.';
     try {
       const body = await res.json();
-      message = body.message || message;
+      // FastAPI's HTTPException serializes to {"detail": "..."} — fall back
+      // to .message in case an endpoint ever returns a different shape.
+      message = body.detail || body.message || message;
     } catch (_) {
       /* non-JSON error body, keep default message */
     }

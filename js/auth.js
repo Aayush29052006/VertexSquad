@@ -144,6 +144,7 @@ if (registerForm) {
       const payload = {
         full_name: fields.fullName.value.trim(),
         email: fields.regEmail.value.trim(),
+        password: fields.regPassword.value,
         college: fields.college.value.trim(),
         degree: fields.degree.value,
         branch: fields.branch.value.trim(),

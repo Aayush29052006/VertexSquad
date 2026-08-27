@@ -10,10 +10,10 @@ const CONFIG = {
   // one that must never appear in frontend code or this repo.
   SUPABASE_URL: 'https://cfmawwxrtstmiarbaqyh.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmbWF3d3hydHN0bWlhcmJhcXloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDAzMDUsImV4cCI6MjEwMzM3NjMwNX0.lZRKzjvynEDD1bCRLfRy_Fbfs-8QSVysH9uc3HmpUzY',
-  // Flip to false only once the FastAPI backend is actually running and
-  // reachable at API_BASE_URL — the backend source isn't on this machine
-  // yet, so leaving this on true keeps the app fully working on mock data.
-  USE_MOCK_DATA: true,
+  // The FastAPI backend is real and running locally now (see
+  // CareerNexus-backend/backend/). Flip this back to true if you ever need
+  // to browse the frontend without the backend server up.
+  USE_MOCK_DATA: false,
   MATCH_THRESHOLDS: {
     EXCELLENT: 80,
     GOOD: 60,

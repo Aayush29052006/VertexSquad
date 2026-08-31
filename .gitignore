@@ -23,7 +23,6 @@ uploads/
 node_modules/
 
 # --- Editors / OS ---
-.claude/
 .vscode/
 .idea/
 .DS_Store

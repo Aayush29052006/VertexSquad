@@ -1,0 +1,23 @@
+# CareerNexus — backend dependencies
+# Install with:  pip install -r requirements.txt
+
+# Web framework & server
+fastapi==0.141.1
+uvicorn==0.52.4
+python-multipart==0.0.32       # required for file uploads (resume upload endpoint)
+
+# Database
+SQLAlchemy==2.0.52
+psycopg2-binary==2.9.12        # PostgreSQL driver (Supabase)
+supabase==2.31.0
+
+# Auth
+PyJWT==2.13.0
+passlib==1.7.4
+email-validator==2.3.0         # required by Pydantic's EmailStr
+
+# Resume parsing
+pypdf==6.16.2
+
+# Config
+python-dotenv==1.2.3

@@ -648,8 +648,10 @@ def parse_resume_with_gemini(text: str) -> Optional[dict]:
         return None
     
     # gemini-1.5-flash and 2.5-flash are retired and 404 for new keys.
-    # gemini-flash-latest always points at the current stable flash model.
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+    # We try a pinned current model first, then fall back to the moving
+    # "-latest" alias. The alias is convenient but is frequently rate-limited
+    # (HTTP 503), which would silently drop us to keyword-only parsing.
+    MODEL_CANDIDATES = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]
     prompt = (
         "You are an AI resume parser. Extract skills and metadata from the following resume text. "
         "Format the output strictly as a JSON object with the following schema:\n"
@@ -672,29 +674,36 @@ def parse_resume_with_gemini(text: str) -> Optional[dict]:
         }
     }
     
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=10) as response:
-            res_body = json.loads(response.read().decode())
-            candidate = res_body["candidates"][0]
-            text_response = candidate["content"]["parts"][0]["text"].strip()
-            # Clean up potential markdown formatting if returned anyway
-            if text_response.startswith("```"):
-                lines = text_response.splitlines()
-                if lines[0].startswith("```"):
-                    lines = lines[1:]
-                if lines[-1].startswith("```"):
-                    lines = lines[:-1]
-                text_response = "\n".join(lines).strip()
-            return json.loads(text_response)
-    except Exception as e:
-        print("Error calling Gemini API:", e)
-        return None
+    for model in MODEL_CANDIDATES:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=30) as response:
+                res_body = json.loads(response.read().decode())
+                candidate = res_body["candidates"][0]
+                text_response = candidate["content"]["parts"][0]["text"].strip()
+                # Clean up potential markdown formatting if returned anyway
+                if text_response.startswith("```"):
+                    lines = text_response.splitlines()
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    text_response = "\n".join(lines).strip()
+                print(f"Gemini: parsed resume using {model}")
+                return json.loads(text_response)
+        except Exception as e:
+            # 404 (retired model) or 503 (overloaded) -> try the next candidate
+            print(f"Gemini: {model} failed ({e}); trying next model")
+            continue
+
+    print("Gemini: all models failed, falling back to keyword parsing")
+    return None
 
 
 @app.post("/api/resume/upload")

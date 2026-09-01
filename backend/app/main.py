@@ -63,6 +63,45 @@ Base = declarative_base()
 
 security = HTTPBearer()
 
+# --- PASSWORD HASHING ---
+# PBKDF2-HMAC-SHA256 from the standard library: no extra dependency to install
+# and no bcrypt/passlib version pitfalls. Passwords are never stored in
+# readable form.
+import hashlib
+import secrets
+import hmac as _hmac
+
+PBKDF2_ITERATIONS = 260000
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ITERATIONS)
+    return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt}${dk.hex()}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    """Check a password against a stored hash.
+
+    Also accepts legacy plaintext values left over from the early prototype so
+    existing accounts keep working; those are re-hashed on next login.
+    """
+    if not stored:
+        return False
+    if stored.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt, digest = stored.split("$")
+            dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), int(iterations))
+            return _hmac.compare_digest(dk.hex(), digest)
+        except Exception:
+            return False
+    # Legacy plaintext row — compare in constant time, then the caller upgrades it.
+    return _hmac.compare_digest(password, stored)
+
+
+def needs_rehash(stored: str) -> bool:
+    return not (stored or "").startswith("pbkdf2_sha256$")
+
 # --- DB MODELS ---
 
 class StudentModel(Base):
@@ -205,7 +244,8 @@ def seed_database():
             default_student = StudentModel(
                 id="stu_1001",
                 email="aayushswapnali@gmail.com",
-                password_hash="mock_password_hash",  # for testing/mocking simplicity
+                # Demo account password: demo1234 (documented in the README)
+                password_hash=hash_password("demo1234"),
                 full_name="Aayush Chaudhari",
                 phone="+91 98765 43210",
                 location="Pune, Maharashtra",
@@ -422,26 +462,17 @@ class WhatIfPayload(BaseModel):
 @app.post("/api/auth/login")
 def login(payload: LoginPayload, db: Session = Depends(get_db)):
     student = db.query(StudentModel).filter(StudentModel.email == payload.email).first()
-    if not student:
-        # For simple hackathon user experience, auto-register the student with mock details if login fails
-        student = StudentModel(
-            id=f"stu_{int(datetime.datetime.now().timestamp())}",
-            email=payload.email,
-            password_hash=payload.password,  # Simple plain storage for hackathon prototype
-            full_name=payload.email.split("@")[0].title(),
-            skills=json.dumps(["HTML", "CSS", "JavaScript"]),
-            soft_skills=json.dumps(["Communication", "Teamwork"]),
-            projects=json.dumps([]),
-            certifications=json.dumps([]),
-            experience=json.dumps([]),
-            preferred_roles=json.dumps(["Frontend Developer"]),
-            preferred_locations=json.dumps(["Pune", "Remote"]),
-            work_mode="Remote",
-            duration="3 months",
-            profile_completion=45,
-            placement_readiness=50
-        )
-        db.add(student)
+
+    # Verify the password. The same generic message is returned whether the
+    # email is unknown or the password is wrong, so this endpoint cannot be
+    # used to discover which email addresses have accounts.
+    if not student or not verify_password(payload.password, student.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Transparently upgrade legacy plaintext rows to a real hash on first
+    # successful login, so old accounts keep working without a manual reset.
+    if needs_rehash(student.password_hash):
+        student.password_hash = hash_password(payload.password)
         db.commit()
         db.refresh(student)
 
@@ -494,7 +525,7 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
     student = StudentModel(
         id=student_id,
         email=payload.email,
-        password_hash=payload.password,
+        password_hash=hash_password(payload.password),
         full_name=payload.full_name,
         college=payload.college,
         branch=payload.branch,

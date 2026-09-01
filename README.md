@@ -234,6 +234,16 @@ documentation at **http://localhost:8000/docs**.
 On first start the backend automatically creates its tables and seeds sample
 internships and a demo student — no manual database import needed.
 
+**Demo login**
+
+| Email | Password |
+|---|---|
+| `aayushswapnali@gmail.com` | `demo1234` |
+
+Or create your own account from the register page. Passwords are hashed with
+PBKDF2-HMAC-SHA256 (260,000 iterations, per-user salt) and are never stored in
+readable form.
+
 ### Terminal 2 — Frontend
 
 The frontend is static, so any file server works:
@@ -307,7 +317,6 @@ This is a hackathon prototype. Before any real deployment:
 - **Set a strong `JWT_SECRET_KEY`** — anyone who knows the signing secret can
   forge login tokens
 - **Restrict CORS** — currently `allow_origins=["*"]` for local development
-- **Hash passwords** — the prototype stores them in plaintext for demo speed
 - **Validate uploads server-side** — never trust a browser-supplied filename or
   MIME type
 - Rotate any credential that has been shared over chat or committed

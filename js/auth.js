@@ -63,6 +63,11 @@ function initGoogleSignIn() {
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: handleGoogleCredential,
+        // Keep the whole flow in a popup. In redirect mode Google would send
+        // the browser to a redirect_uri this static app does not serve, which
+        // shows up as a 404.
+        ux_mode: 'popup',
+        auto_select: false,
       });
       window.google.accounts.id.renderButton(slot, {
         theme: 'outline',

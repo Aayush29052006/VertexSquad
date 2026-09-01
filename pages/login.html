@@ -55,6 +55,13 @@
           </button>
           <p class="form-error text-center mt-3" id="formError" hidden></p>
         </form>
+
+        <div class="google-block" id="googleBlock">
+          <div class="auth-divider"><span>or</span></div>
+          <div class="google-slot" id="googleSlot"></div>
+          <p class="form-error text-center mt-2" id="googleError" hidden></p>
+        </div>
+
       </div>
       <p class="auth-links text-caption">By continuing you agree to our Terms and Privacy Policy.</p>
     </div>
@@ -76,6 +83,7 @@
   </div>
 </div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="../js/config.js"></script>
 <script src="../js/mock-data.js"></script>
 <script src="../js/api.js"></script>

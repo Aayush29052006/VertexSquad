@@ -45,6 +45,19 @@ const api = {
     return apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
   },
 
+  // Exchange a Google ID token for a CareerNexus session.
+  // The token is verified server-side against Google's public keys.
+  async loginWithGoogle(credential) {
+    if (CONFIG.USE_MOCK_DATA) {
+      await delay(500);
+      return { token: 'mock_token_123', student: MOCK.student };
+    }
+    return apiRequest('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+  },
+
   async register(payload) {
     if (CONFIG.USE_MOCK_DATA) {
       await delay(600);

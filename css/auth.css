@@ -43,3 +43,29 @@
   .auth-side { display: none; }
   .auth-card .brand { display: flex; justify-content: center; margin-bottom: var(--space-5); }
 }
+
+/* ---------- Google Sign-In ---------- */
+.google-block { margin-top: var(--space-5); }
+.google-block[hidden] { display: none; }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.google-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}

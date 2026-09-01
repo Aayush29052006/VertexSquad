@@ -19,6 +19,67 @@ function setFieldError(inputEl, errorEl, message) {
   }
 }
 
+/* ---------- Google Sign-In ----------
+   Uses Google Identity Services. The browser receives an ID token signed by
+   Google and hands it to our backend, which verifies the signature before
+   issuing a CareerNexus session. If no client ID is configured the whole
+   block is hidden, so the page still works without it. */
+function handleGoogleCredential(response) {
+  const slot = document.getElementById('googleSlot');
+  const errorEl = document.getElementById('googleError');
+  if (errorEl) errorEl.hidden = true;
+
+  api.loginWithGoogle(response.credential)
+    .then(({ token, student }) => {
+      localStorage.setItem('cn_token', token);
+      localStorage.setItem('cn_student_name', student.full_name);
+      window.location.href = 'dashboard.html';
+    })
+    .catch((err) => {
+      if (errorEl) {
+        errorEl.textContent = err.message || 'Google sign-in failed. Please try again.';
+        errorEl.hidden = false;
+      }
+      if (slot) slot.setAttribute('aria-busy', 'false');
+    });
+}
+
+function initGoogleSignIn() {
+  const slot = document.getElementById('googleSlot');
+  const block = document.getElementById('googleBlock');
+  if (!slot || !block) return;
+
+  const clientId = (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_CLIENT_ID) || '';
+  if (!clientId) {
+    block.hidden = true; // not configured yet — hide rather than show a dead button
+    return;
+  }
+
+  // google.accounts loads asynchronously; wait for it before rendering.
+  let tries = 0;
+  const ready = setInterval(() => {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      clearInterval(ready);
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+      });
+      window.google.accounts.id.renderButton(slot, {
+        theme: 'outline',
+        size: 'large',
+        width: 320,
+        text: 'continue_with',
+        shape: 'pill',
+      });
+    } else if (++tries > 40) {
+      clearInterval(ready);
+      block.hidden = true; // script blocked or offline
+    }
+  }, 100);
+}
+
+document.addEventListener('DOMContentLoaded', initGoogleSignIn);
+
 /* ---------- Login ---------- */
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {

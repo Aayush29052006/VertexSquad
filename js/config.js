@@ -14,6 +14,14 @@ const CONFIG = {
   // CareerNexus-backend/backend/). Flip this back to true if you ever need
   // to browse the frontend without the backend server up.
   USE_MOCK_DATA: false,
+  // Google Sign-In. A Google OAuth *client ID* is public by design (it is
+  // visible in every page that uses Google sign-in) — the client SECRET is
+  // the part that must stay server-side, and we never use it here.
+  // Create one at https://console.cloud.google.com/apis/credentials
+  // (OAuth client ID -> Web application), then paste it below AND set the
+  // same value as GOOGLE_CLIENT_ID in backend/.env.
+  // Leave blank to hide the Google button entirely.
+  GOOGLE_CLIENT_ID: '',
   MATCH_THRESHOLDS: {
     EXCELLENT: 80,
     GOOD: 60,

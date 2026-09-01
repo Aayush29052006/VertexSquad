@@ -556,6 +556,82 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
     return {"token": token, "student": student_dict}
 
 
+class GooglePayload(BaseModel):
+    credential: str
+
+
+@app.post("/api/auth/google")
+def google_login(payload: GooglePayload, db: Session = Depends(get_db)):
+    """Sign in with Google.
+
+    The browser sends the ID token issued by Google Identity Services. We
+    verify that token's signature server-side against Google's public keys
+    before trusting any of its claims — without this check anyone could POST
+    an arbitrary email and be issued a session.
+    """
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+    if not client_id:
+        raise HTTPException(
+            status_code=503,
+            detail="Google sign-in is not configured on the server. Set GOOGLE_CLIENT_ID in .env",
+        )
+
+    try:
+        from jwt import PyJWKClient
+
+        jwks_client = PyJWKClient("https://www.googleapis.com/oauth2/v3/certs")
+        signing_key = jwks_client.get_signing_key_from_jwt(payload.credential)
+        claims = jwt.decode(
+            payload.credential,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=client_id,
+            issuer=["https://accounts.google.com", "accounts.google.com"],
+        )
+    except Exception as e:
+        print(f"Google sign-in: token verification failed ({e})")
+        raise HTTPException(status_code=401, detail="Google sign-in failed. Please try again.")
+
+    email = claims.get("email")
+    if not email or not claims.get("email_verified", False):
+        raise HTTPException(status_code=401, detail="Google account has no verified email address")
+
+    student = db.query(StudentModel).filter(StudentModel.email == email).first()
+    if student is None:
+        student = StudentModel(
+            id=f"stu_{int(datetime.datetime.now().timestamp())}",
+            email=email,
+            password_hash="google_oauth",  # no local password for Google accounts
+            full_name=claims.get("name") or email.split("@")[0].title(),
+            photo_url=claims.get("picture", ""),
+            skills=json.dumps([]),
+            soft_skills=json.dumps([]),
+            projects=json.dumps([]),
+            certifications=json.dumps([]),
+            experience=json.dumps([]),
+            preferred_roles=json.dumps([]),
+            preferred_locations=json.dumps(["Remote"]),
+            work_mode="Remote",
+            duration="3 months",
+            profile_completion=30,
+            placement_readiness=40,
+        )
+        db.add(student)
+        db.commit()
+        db.refresh(student)
+    elif claims.get("picture") and not student.photo_url:
+        student.photo_url = claims["picture"]
+        db.commit()
+        db.refresh(student)
+
+    token = jwt.encode(
+        {"sub": student.email, "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7)},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+    return {"token": token, "student": get_profile(student)}
+
+
 @app.get("/api/student/profile")
 def get_profile(student: StudentModel = Depends(get_current_student)):
     return {

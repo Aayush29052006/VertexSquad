@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap' },
   { href: 'applications.html', icon: '📋', label: 'Applications' },
   { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis' },
+  { href: 'add-internship.html', icon: '🏢', label: 'Post Internship' },
 ];
 
 function themeToggleHtml() {

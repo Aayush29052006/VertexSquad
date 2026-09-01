@@ -642,16 +642,60 @@ def update_profile(payload: ProfileUpdatePayload, student: StudentModel = Depend
     return get_profile(student)
 
 
-def parse_resume_with_gemini(text: str) -> Optional[dict]:
+# gemini-1.5-flash and 2.5-flash are retired and 404 for new keys.
+# We try a pinned current model first, then fall back to the moving
+# "-latest" alias. The alias is convenient but is frequently rate-limited
+# (HTTP 503), which would silently drop us to the non-AI fallback.
+GEMINI_MODEL_CANDIDATES = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]
+
+
+def call_gemini(prompt: str, json_mode: bool = True, label: str = "request") -> Optional[str]:
+    """Send a prompt to Gemini, trying each model until one succeeds.
+
+    Returns the raw text response, or None if AI is unavailable (missing key,
+    all models failing). Callers must handle None with a non-AI fallback —
+    the app should never hard-fail just because Gemini is down.
+    """
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key or "your_gemini" in api_key or api_key == "":
+    if not api_key or "your_gemini" in api_key:
         return None
-    
-    # gemini-1.5-flash and 2.5-flash are retired and 404 for new keys.
-    # We try a pinned current model first, then fall back to the moving
-    # "-latest" alias. The alias is convenient but is frequently rate-limited
-    # (HTTP 503), which would silently drop us to keyword-only parsing.
-    MODEL_CANDIDATES = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]
+
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    if json_mode:
+        payload["generationConfig"] = {"responseMimeType": "application/json"}
+
+    for model in GEMINI_MODEL_CANDIDATES:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as response:
+                res_body = json.loads(response.read().decode())
+                text_response = res_body["candidates"][0]["content"]["parts"][0]["text"].strip()
+                # Strip markdown fences if the model added them anyway
+                if text_response.startswith("```"):
+                    lines = text_response.splitlines()
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    text_response = "\n".join(lines).strip()
+                print(f"Gemini: {label} served by {model}")
+                return text_response
+        except Exception as e:
+            # 404 (retired model) or 503 (overloaded) -> try the next candidate
+            print(f"Gemini: {model} failed for {label} ({e}); trying next model")
+            continue
+
+    print(f"Gemini: all models failed for {label}")
+    return None
+
+
+def parse_resume_with_gemini(text: str) -> Optional[dict]:
     prompt = (
         "You are an AI resume parser. Extract skills and metadata from the following resume text. "
         "Format the output strictly as a JSON object with the following schema:\n"
@@ -665,45 +709,14 @@ def parse_resume_with_gemini(text: str) -> Optional[dict]:
         f"Resume text:\n{text[:8000]}"
     )
     
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }],
-        "generationConfig": {
-            "responseMimeType": "application/json"
-        }
-    }
-    
-    for model in MODEL_CANDIDATES:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=30) as response:
-                res_body = json.loads(response.read().decode())
-                candidate = res_body["candidates"][0]
-                text_response = candidate["content"]["parts"][0]["text"].strip()
-                # Clean up potential markdown formatting if returned anyway
-                if text_response.startswith("```"):
-                    lines = text_response.splitlines()
-                    if lines[0].startswith("```"):
-                        lines = lines[1:]
-                    if lines[-1].startswith("```"):
-                        lines = lines[:-1]
-                    text_response = "\n".join(lines).strip()
-                print(f"Gemini: parsed resume using {model}")
-                return json.loads(text_response)
-        except Exception as e:
-            # 404 (retired model) or 503 (overloaded) -> try the next candidate
-            print(f"Gemini: {model} failed ({e}); trying next model")
-            continue
-
-    print("Gemini: all models failed, falling back to keyword parsing")
-    return None
+    raw = call_gemini(prompt, json_mode=True, label="resume parsing")
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        print("Gemini: resume response was not valid JSON, falling back")
+        return None
 
 
 @app.post("/api/resume/upload")
@@ -1036,6 +1049,175 @@ def get_what_if_score(internship_id: str, payload: WhatIfPayload, student: Stude
         "current_match": current_details["match_score"],
         "potential_match": potential_details["match_score"]
     }
+
+
+# =====================================================================
+# AI INTERVIEW PREP
+# =====================================================================
+
+@app.get("/api/internships/{internship_id}/interview-prep")
+def get_interview_prep(internship_id: str, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
+    """Generate role-specific interview questions with model answers."""
+    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
+    if not internship:
+        raise HTTPException(status_code=404, detail="Internship not found")
+
+    req_skills = json.loads(internship.required_skills)
+    stu_skills = json.loads(student.skills)
+
+    prompt = (
+        "You are an experienced technical interviewer preparing a student for an "
+        "internship interview. Generate exactly 3 likely interview questions with strong "
+        "sample answers.\n\n"
+        f"Role: {internship.title}\n"
+        f"Company: {internship.company}\n"
+        f"Required skills: {', '.join(req_skills)}\n"
+        f"Candidate's current skills: {', '.join(stu_skills)}\n\n"
+        "Mix technical and behavioural questions relevant to this specific role. "
+        "Each sample answer should be 2-4 sentences, concrete, and written in the first "
+        "person as the student would say it.\n"
+        "Return ONLY raw JSON (no markdown fences) with this schema:\n"
+        '{"questions":[{"question":"...","sample_answer":"...","type":"Technical" or "Behavioural"}]}'
+    )
+
+    raw = call_gemini(prompt, json_mode=True, label="interview prep")
+
+    if raw:
+        try:
+            data = json.loads(raw)
+            questions = data.get("questions", [])
+            if questions:
+                return {
+                    "role": internship.title,
+                    "company": internship.company,
+                    "source": "ai",
+                    "questions": questions[:3],
+                }
+        except json.JSONDecodeError:
+            pass
+
+    # Non-AI fallback so the feature still works if Gemini is unavailable
+    top_skill = req_skills[0] if req_skills else "your core stack"
+    return {
+        "role": internship.title,
+        "company": internship.company,
+        "source": "fallback",
+        "questions": [
+            {
+                "type": "Technical",
+                "question": f"Walk me through a project where you used {top_skill}.",
+                "sample_answer": f"I'd describe the problem, why I chose {top_skill}, one concrete challenge I hit, and the measurable result.",
+            },
+            {
+                "type": "Technical",
+                "question": f"How would you approach learning the skills this {internship.title} role needs that you haven't used yet?",
+                "sample_answer": "I'd name the specific gap, the resource I'd use, and a small project I'd build within two weeks to prove it.",
+            },
+            {
+                "type": "Behavioural",
+                "question": f"Why do you want to intern at {internship.company}?",
+                "sample_answer": "I'd connect something specific about the company's work to a skill I'm building and what I want to learn from their team.",
+            },
+        ],
+    }
+
+
+# =====================================================================
+# AI CAREER ASSISTANT (CHAT)
+# =====================================================================
+
+class ChatPayload(BaseModel):
+    message: str
+
+
+@app.post("/api/assistant/chat")
+def career_assistant_chat(payload: ChatPayload, student: StudentModel = Depends(get_current_student)):
+    """Career guidance chatbot, grounded in the student's own profile."""
+    question = (payload.message or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(question) > 1000:
+        raise HTTPException(status_code=400, detail="Message is too long (max 1000 characters)")
+
+    stu_skills = json.loads(student.skills)
+
+    prompt = (
+        "You are CareerNexus Assistant, a concise and practical career advisor for "
+        "engineering students in India. Answer the student's question in at most 120 "
+        "words. Be specific and actionable. Use plain text only (no markdown, no "
+        "bullet characters). If asked something unrelated to careers, skills, resumes, "
+        "internships or interviews, politely redirect to those topics.\n\n"
+        f"Student context — name: {student.full_name}; "
+        f"degree: {student.degree or 'not set'}; branch: {student.branch or 'not set'}; "
+        f"skills: {', '.join(stu_skills) if stu_skills else 'none listed yet'}.\n\n"
+        f"Question: {question}"
+    )
+
+    reply = call_gemini(prompt, json_mode=False, label="assistant chat")
+
+    if not reply:
+        return {
+            "reply": "The AI assistant is temporarily unavailable. In the meantime, check your Skill Gap page for the specific skills to focus on next.",
+            "source": "fallback",
+        }
+
+    return {"reply": reply, "source": "ai"}
+
+
+# =====================================================================
+# CREATE INTERNSHIP (RECRUITER / ADMIN)
+# =====================================================================
+
+class NewInternshipPayload(BaseModel):
+    title: str
+    company: str
+    location: str
+    work_mode: str
+    stipend: Optional[str] = ""
+    duration: Optional[str] = ""
+    deadline: Optional[str] = ""
+    required_skills: List[str] = []
+
+
+@app.post("/api/internships", status_code=201)
+def create_internship(payload: NewInternshipPayload, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
+    """Post a new internship. Requires authentication."""
+    title = payload.title.strip()
+    company = payload.company.strip()
+    if not title or not company:
+        raise HTTPException(status_code=400, detail="Title and company are required")
+
+    skills = [s.strip() for s in payload.required_skills if s and s.strip()]
+    if not skills:
+        raise HTTPException(status_code=400, detail="At least one required skill is needed")
+
+    internship = InternshipModel(
+        id=f"int_{int(datetime.datetime.now().timestamp())}",
+        title=title,
+        company=company,
+        location=payload.location.strip() or "Not specified",
+        work_mode=payload.work_mode.strip() or "Remote",
+        stipend=payload.stipend.strip(),
+        duration=payload.duration.strip(),
+        deadline=payload.deadline.strip(),
+        required_skills=json.dumps(skills),
+    )
+    db.add(internship)
+    db.commit()
+    db.refresh(internship)
+
+    return {
+        "id": internship.id,
+        "title": internship.title,
+        "company": internship.company,
+        "location": internship.location,
+        "work_mode": internship.work_mode,
+        "stipend": internship.stipend,
+        "duration": internship.duration,
+        "deadline": internship.deadline,
+        "required_skills": json.loads(internship.required_skills),
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

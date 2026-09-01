@@ -439,3 +439,105 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
 .timeline-item { position: relative; padding-bottom: var(--space-5); }
 .timeline-item::before { content: ''; position: absolute; left: -28px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 3px solid var(--primary-light); }
 .timeline-item:last-child { padding-bottom: 0; }
+
+/* ---------- Floating AI Career Assistant ---------- */
+.assistant-root { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 900; }
+
+.assistant-fab {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--primary); color: var(--text-on-primary);
+  border: none; box-shadow: var(--shadow-lg);
+  font-size: 1.5rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+.assistant-fab:hover { transform: scale(1.06); background: var(--primary-dark); }
+
+.assistant-panel {
+  position: absolute; right: 0; bottom: 68px;
+  width: min(360px, calc(100vw - 2 * var(--space-5)));
+  height: min(480px, calc(100vh - 140px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.assistant-panel[hidden] { display: none; }
+
+.assistant-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+.assistant-title { font-weight: 700; font-size: 0.95rem; }
+.assistant-sub { font-size: 0.75rem; color: var(--text-muted); }
+.assistant-close {
+  background: none; border: none; font-size: 1.4rem; line-height: 1;
+  color: var(--text-muted); padding: 0 4px;
+}
+.assistant-close:hover { color: var(--text-primary); }
+
+.assistant-log {
+  flex: 1; overflow-y: auto;
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+
+.assistant-msg {
+  max-width: 85%;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.assistant-msg-bot { background: var(--surface-alt); border: 1px solid var(--border); align-self: flex-start; }
+.assistant-msg-user { background: var(--primary); color: var(--text-on-primary); align-self: flex-end; font-weight: 500; }
+.assistant-msg-error { background: var(--danger-bg); color: var(--danger); }
+.assistant-thinking { opacity: 0.65; font-style: italic; }
+
+.assistant-suggestions {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+}
+.assistant-chip {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.76rem;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.assistant-chip:hover { color: var(--primary); border-color: var(--primary); }
+
+.assistant-form {
+  display: flex; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.assistant-input {
+  flex: 1; min-width: 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--background);
+  font-size: 0.88rem;
+}
+.assistant-input:focus { outline: none; border-color: var(--primary); }
+.assistant-send {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--primary); color: var(--text-on-primary);
+  border: none; flex-shrink: 0; font-size: 0.9rem;
+}
+.assistant-send:disabled { opacity: 0.5; }
+
+@media print { .assistant-root { display: none !important; } }
+
+@media (max-width: 480px) {
+  .assistant-root { right: var(--space-4); bottom: var(--space-4); }
+  .assistant-panel { height: min(440px, calc(100vh - 120px)); }
+}

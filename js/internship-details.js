@@ -98,12 +98,66 @@ function renderDetails(pageBody, item) {
           <p class="text-card-heading mb-4">${formatDate(item.deadline)}</p>
           ${matchBadge(item.match_score)}
           <button class="btn btn-primary btn-block btn-lg mt-4" id="applyBtn">Apply Now</button>
+          <button class="btn btn-secondary btn-block mt-3" id="prepBtn">🤖 Prepare with AI</button>
         </div>
       </div>
     </div>
   `;
 
   document.getElementById('applyBtn').addEventListener('click', openApplyModal);
+  document.getElementById('prepBtn').addEventListener('click', openPrepModal);
+}
+
+/* ---------- AI Interview Prep ---------- */
+async function openPrepModal() {
+  const modalOverlay = document.getElementById('applyModal');
+  const modal = modalOverlay.querySelector('.modal');
+  modal.classList.add('modal-wide');
+
+  const closeModal = () => {
+    modalOverlay.hidden = true;
+    modal.classList.remove('modal-wide');
+  };
+
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3 class="text-card-heading">🤖 AI Interview Prep</h3>
+      <button class="modal-close" id="closePrep" aria-label="Close">&times;</button>
+    </div>
+    <p class="text-caption mb-4">Likely questions for <strong>${escapeHtml(currentInternship.title)}</strong> at ${escapeHtml(currentInternship.company)}</p>
+    <div id="prepBody">${loadingState('Generating your interview questions...')}</div>
+  `;
+  modalOverlay.hidden = false;
+  document.getElementById('closePrep').addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+  try {
+    const data = await api.getInterviewPrep(currentInternship.id);
+    const badge = data.source === 'ai'
+      ? '<span class="badge badge-success">AI generated</span>'
+      : '<span class="badge badge-warning">Offline mode</span>';
+
+    document.getElementById('prepBody').innerHTML = `
+      <div class="mb-4">${badge}</div>
+      ${data.questions.map((q, i) => `
+        <div class="prep-card">
+          <div class="prep-q-head">
+            <span class="prep-num">${i + 1}</span>
+            <span class="badge badge-neutral">${escapeHtml(q.type || 'Question')}</span>
+          </div>
+          <p class="prep-question">${escapeHtml(q.question)}</p>
+          <details class="prep-answer">
+            <summary>Show sample answer</summary>
+            <p class="text-body mt-2">${escapeHtml(q.sample_answer)}</p>
+          </details>
+        </div>
+      `).join('')}
+    `;
+  } catch (err) {
+    document.getElementById('prepBody').innerHTML = errorState(
+      err.message || 'Could not generate interview questions right now.', null
+    );
+  }
 }
 
 function openApplyModal() {

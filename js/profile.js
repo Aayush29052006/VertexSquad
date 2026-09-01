@@ -12,7 +12,10 @@ function renderProfile(pageBody, student) {
         <h1 class="text-page-heading">${escapeHtml(student.full_name)}</h1>
         <p class="text-body">${escapeHtml(student.degree)}, ${escapeHtml(student.branch)} · ${escapeHtml(student.college)}</p>
       </div>
-      <button class="btn btn-primary" id="editProfileBtn">Edit Profile</button>
+      <div class="profile-header-actions">
+        <button class="btn btn-secondary" id="downloadResumeBtn">📄 Download ATS Resume</button>
+        <button class="btn btn-primary" id="editProfileBtn">Edit Profile</button>
+      </div>
     </div>
 
     <div class="profile-grid">
@@ -93,6 +96,86 @@ function renderProfile(pageBody, student) {
   `;
 
   document.getElementById('editProfileBtn').addEventListener('click', openEditModal);
+  document.getElementById('downloadResumeBtn').addEventListener('click', downloadAtsResume);
+}
+
+/* ---------- ATS-friendly resume export ----------
+   Builds a clean, single-column, parser-friendly resume and hands it to the
+   browser's print dialog, where the user picks "Save as PDF". Single column
+   with real headings is what ATS parsers handle best — multi-column layouts
+   and graphics are exactly what they choke on. Uses no external library, so
+   there is nothing to load and nothing to break offline. */
+function atsSection(title, innerHtml) {
+  if (!innerHtml) return '';
+  return `<section class="ats-section"><h2>${escapeHtml(title)}</h2>${innerHtml}</section>`;
+}
+
+function buildAtsResume(s) {
+  const contact = [s.email, s.phone, s.location].filter(Boolean).map(escapeHtml).join('  |  ');
+
+  const education = `
+    <p><strong>${escapeHtml(s.degree || '')}${s.branch ? ', ' + escapeHtml(s.branch) : ''}</strong></p>
+    <p>${escapeHtml(s.college || '')}</p>
+    <p>${s.graduation_year ? 'Graduating ' + escapeHtml(String(s.graduation_year)) : ''}${s.cgpa ? '  |  CGPA: ' + escapeHtml(String(s.cgpa)) : ''}</p>`;
+
+  const skills = (s.skills || []).length
+    ? `<p>${(s.skills || []).map(escapeHtml).join(', ')}</p>` : '';
+
+  const softSkills = (s.soft_skills || []).length
+    ? `<p>${(s.soft_skills || []).map(escapeHtml).join(', ')}</p>` : '';
+
+  const experience = (s.experience || []).map((e) => `
+    <div class="ats-entry">
+      <p><strong>${escapeHtml(e.role || '')}</strong>${e.org ? ' — ' + escapeHtml(e.org) : ''}</p>
+      <p class="ats-meta">${escapeHtml(e.duration || '')}</p>
+      <p>${escapeHtml(e.description || '')}</p>
+    </div>`).join('');
+
+  const projects = (s.projects || []).map((p) => `
+    <div class="ats-entry">
+      <p><strong>${escapeHtml(p.title || '')}</strong>${(p.tech || []).length ? ' — ' + (p.tech || []).map(escapeHtml).join(', ') : ''}</p>
+      <p>${escapeHtml(p.description || '')}</p>
+    </div>`).join('');
+
+  const certifications = (s.certifications || []).map((c) => `
+    <p>${escapeHtml(c.title || '')}${c.issuer ? ' — ' + escapeHtml(c.issuer) : ''}${c.year ? ' (' + escapeHtml(String(c.year)) + ')' : ''}</p>`).join('');
+
+  return `
+    <div class="ats-resume" id="atsResume">
+      <header class="ats-head">
+        <h1>${escapeHtml(s.full_name || '')}</h1>
+        <p>${contact}</p>
+      </header>
+      ${atsSection('Education', education)}
+      ${atsSection('Technical Skills', skills)}
+      ${atsSection('Experience', experience)}
+      ${atsSection('Projects', projects)}
+      ${atsSection('Certifications', certifications)}
+      ${atsSection('Soft Skills', softSkills)}
+    </div>`;
+}
+
+function downloadAtsResume() {
+  if (!currentStudent) return;
+
+  document.getElementById('atsResumeHost')?.remove();
+
+  const host = document.createElement('div');
+  host.id = 'atsResumeHost';
+  host.innerHTML = buildAtsResume(currentStudent);
+  document.body.appendChild(host);
+
+  // Give the browser a tick to lay the new nodes out before printing
+  const cleanup = () => host.remove();
+  window.addEventListener('afterprint', cleanup, { once: true });
+
+  setTimeout(() => {
+    window.print();
+    // Safari/Firefox don't always fire afterprint — clean up defensively
+    setTimeout(() => { if (document.getElementById('atsResumeHost')) cleanup(); }, 1000);
+  }, 60);
+
+  showToast('Choose "Save as PDF" in the print dialog.', 'success');
 }
 
 function openEditModal() {

@@ -42,3 +42,48 @@
 @media (max-width: 768px) {
   .req-columns { grid-template-columns: 1fr; }
 }
+
+/* ---------- AI Interview Prep modal ---------- */
+.modal.modal-wide { max-width: 640px; }
+
+.prep-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--surface-alt);
+}
+.prep-q-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.prep-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.prep-question {
+  font-weight: 600;
+  line-height: 1.45;
+  margin-bottom: var(--space-2);
+}
+.prep-answer summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  list-style: none;
+}
+.prep-answer summary::-webkit-details-marker { display: none; }
+.prep-answer summary::before { content: '▸ '; }
+.prep-answer[open] summary::before { content: '▾ '; }

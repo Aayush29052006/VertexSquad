@@ -204,4 +204,47 @@ const api = {
       body: JSON.stringify({ skills: addedSkills }),
     });
   },
+
+  // ---------- AI interview prep (backend calls Gemini) ----------
+  async getInterviewPrep(internshipId) {
+    if (CONFIG.USE_MOCK_DATA) {
+      await delay(900);
+      const item = findInternship(internshipId);
+      return {
+        role: item.title,
+        company: item.company,
+        source: 'fallback',
+        questions: [
+          { type: 'Technical', question: `Walk me through a project where you used ${item.required_skills[0]}.`, sample_answer: 'Describe the problem, your approach, one challenge, and the result.' },
+          { type: 'Technical', question: `How would you close the gap on ${item.missing_skills[0] || 'a skill new to you'}?`, sample_answer: 'Name the gap, the resource, and a small project to prove it.' },
+          { type: 'Behavioural', question: `Why do you want to intern at ${item.company}?`, sample_answer: 'Connect their work to a skill you are building and what you want to learn.' },
+        ],
+      };
+    }
+    return apiRequest(`/internships/${internshipId}/interview-prep`);
+  },
+
+  // ---------- AI career assistant ----------
+  async askAssistant(message) {
+    if (CONFIG.USE_MOCK_DATA) {
+      await delay(700);
+      return { reply: 'This is a demo reply. Connect the backend to get real AI career guidance.', source: 'fallback' };
+    }
+    return apiRequest('/assistant/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  },
+
+  // ---------- Recruiter: post a new internship ----------
+  async createInternship(payload) {
+    if (CONFIG.USE_MOCK_DATA) {
+      await delay(600);
+      return { id: `int_${Date.now()}`, ...payload };
+    }
+    return apiRequest('/internships', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };

@@ -301,6 +301,17 @@ Open **http://localhost:5500** in your browser.
 
 `start.bat` in the repo root launches both servers and opens the browser.
 
+### Admin tasks from the command line
+
+For things there is no UI for yet, run `backend/manage.py` (venv active):
+
+```bash
+cd backend
+python manage.py list-admins                     # who has admin access
+python manage.py make-admin  teammate@email.com   # promote a registered account
+python manage.py set-password you@email.com       # prompts for a new password (hidden)
+```
+
 ### Running the frontend without a backend
 
 Set `USE_MOCK_DATA: true` in [`frontend/js/config.js`](frontend/js/config.js) to

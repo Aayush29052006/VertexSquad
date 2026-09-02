@@ -134,20 +134,22 @@ function studentRow(s) {
       <td style="font-weight:600;">${escapeHtml(s.full_name)}</td>
       <td>${escapeHtml(s.email)}</td>
       <td>${escapeHtml(s.college || '—')}</td>
-      <td>${s.graduation_year || '—'}</td>
-      <td>${s.cgpa ? s.cgpa.toFixed(1) : '—'}</td>
-      <td>${s.skills_count}</td>
-      <td>${s.placement_readiness}%</td>
+      <td class="col-num">${s.graduation_year || '—'}</td>
+      <td class="col-num">${s.cgpa ? s.cgpa.toFixed(1) : '—'}</td>
+      <td class="col-num">${s.skills_count}</td>
+      <td class="col-num">${s.placement_readiness}%</td>
       <td><span class="badge ${s.role === 'admin' ? 'badge-info' : ''}">${s.role}</span></td>
       <td><span class="badge ${s.is_active ? 'status-selected' : 'status-rejected'}">${s.is_active ? 'active' : 'disabled'}</span></td>
-      <td style="white-space:nowrap;">
-        ${
-          s.role === 'admin'
-            ? `<button class="btn btn-ghost btn-sm" data-action="demote" data-id="${s.id}">Demote</button>`
-            : `<button class="btn btn-ghost btn-sm" data-action="promote" data-id="${s.id}">Make admin</button>`
-        }
-        <button class="btn btn-ghost btn-sm" data-action="toggle" data-id="${s.id}" data-value="${s.is_active ? '0' : '1'}">${s.is_active ? 'Disable' : 'Enable'}</button>
-        <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${s.id}" style="color:var(--danger,#e5484d);">Delete</button>
+      <td>
+        <div class="row-actions">
+          ${
+            s.role === 'admin'
+              ? `<button class="btn btn-ghost btn-sm" data-action="demote" data-id="${s.id}">Demote</button>`
+              : `<button class="btn btn-ghost btn-sm" data-action="promote" data-id="${s.id}">Make admin</button>`
+          }
+          <button class="btn btn-ghost btn-sm" data-action="toggle" data-id="${s.id}" data-value="${s.is_active ? '0' : '1'}">${s.is_active ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${s.id}" style="color:var(--danger,#e5484d);">Delete</button>
+        </div>
       </td>
     </tr>`;
 }
@@ -214,11 +216,13 @@ function internshipRow(i) {
       <td>${escapeHtml(i.work_mode)}</td>
       <td>${escapeHtml(i.stipend || '—')}</td>
       <td>${escapeHtml(i.deadline || '—')}</td>
-      <td>${i.applicant_count ?? 0}</td>
+      <td class="col-num">${i.applicant_count ?? 0}</td>
       <td>${(i.required_skills || []).slice(0, 4).map((s) => `<span class="badge">${escapeHtml(s)}</span>`).join(' ')}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn btn-ghost btn-sm" data-action="edit" data-id="${i.id}">Edit</button>
-        <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${i.id}" style="color:var(--danger,#e5484d);">Delete</button>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-action="edit" data-id="${i.id}">Edit</button>
+          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${i.id}" style="color:var(--danger,#e5484d);">Delete</button>
+        </div>
       </td>
     </tr>`;
 }
@@ -346,15 +350,22 @@ async function renderSkillGaps(el) {
     el.innerHTML = emptyState('🎯', 'Not enough data yet.', 'Add internships and get students to fill their skills to see the shortage report.');
     return;
   }
+  const tier = (pct) => (pct >= 70 ? 'gap-high' : pct >= 40 ? 'gap-med' : 'gap-low');
+
   el.innerHTML = `
     <div class="card">
       <h2 class="text-card-heading mb-1">Skill shortage across ${data.total_students} active students</h2>
       <p class="text-caption mb-4">Share of students who don't yet have each skill our internships ask for.</p>
+      <div class="gap-legend">
+        <span><i style="background:var(--danger)"></i>Critical (70%+ missing)</span>
+        <span><i style="background:var(--warning)"></i>Moderate (40–69%)</span>
+        <span><i style="background:var(--success)"></i>Well covered (&lt;40%)</span>
+      </div>
       ${data.gaps.map((g) => `
         <div class="bar-row">
-          <span>${escapeHtml(g.skill)}</span>
-          <span class="bar-track"><span class="bar-fill" style="width:${g.pct_missing}%;"></span></span>
-          <span style="text-align:right;">${g.pct_missing}%</span>
+          <span class="bar-skill">${escapeHtml(g.skill)}</span>
+          <span class="bar-track"><span class="bar-fill ${tier(g.pct_missing)}" style="width:${g.pct_missing}%;"></span></span>
+          <span class="bar-meta"><b>${g.pct_missing}%</b><span>${g.students_missing}/${data.total_students}</span></span>
         </div>
       `).join('')}
     </div>

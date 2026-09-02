@@ -89,6 +89,7 @@ VertexSquad/
 │
 ├── frontend/                       # Static site — no build step, no npm
 │   ├── index.html                  #   Landing page
+│   ├── serve.py                    #   Static server, directory listings off
 │   ├── pages/                      #   Application pages
 │   │   ├── login.html              #     Student authentication
 │   │   ├── admin-login.html        #     Team / admin sign-in (separate door)
@@ -281,21 +282,23 @@ and are never stored in readable form.
 
 ### Terminal 2 — Frontend
 
-The frontend is static, so any file server works. Run it from the `frontend/`
-folder:
+The frontend is static. Run it from the `frontend/` folder with `serve.py`
+(a thin wrapper over Python's `http.server` that **disables directory
+listings** — a bare folder URL like `/pages/` returns 404 instead of showing
+every file name):
 
 ```bash
 cd frontend
-python -m http.server 5500
+python serve.py 5500
 ```
 
 Open **http://localhost:5500** in your browser.
 
-> The static server's root **must** be `frontend/` (that's where `index.html`
-> lives) and the port **must** be `5500` — that origin is what's registered in
-> the Google OAuth client and in `ALLOWED_ORIGINS`.
-> From anywhere you can also target it directly:
-> `python -m http.server 5500 --directory "C:\path\to\VertexSquad\frontend"`
+> Port **must** be `5500` — that origin is registered in the Google OAuth
+> client and in `ALLOWED_ORIGINS`.
+> Plain `python -m http.server 5500` also works but will list directory
+> contents; real hosts (Netlify/Vercel/nginx) don't, so `serve.py` matches
+> production.
 
 ### One-click (Windows)
 
@@ -411,6 +414,11 @@ This is a hackathon prototype. Before any real deployment:
 - **Frontend code is always visible** (F12) — that is normal for every website.
   Security lives in the backend: JWT verification, the `role = "admin"` check on
   every `/admin/*` call, Pydantic validation, and never trusting client input
+- **The admin panel URL is not a secret and doesn't need to be.** Anyone can
+  open `/pages/admin.html`; without an admin token every `/api/admin/*` request
+  returns 401/403 and the page renders empty. Serve with `frontend/serve.py`
+  (or a real host) so directory listings don't advertise the URL — but that is
+  tidiness, not the security boundary
 - **Validate uploads server-side** — never trust a browser-supplied filename or
   MIME type
 - Rotate any credential that has been shared over chat or committed

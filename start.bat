@@ -14,9 +14,9 @@ if exist "%~dp0backend\venv\Scripts\python.exe" (
 REM 2. Wait for the backend to come up
 timeout /t 2 /nobreak >nul
 
-REM 3. Frontend  --  static files on http://127.0.0.1:5500
+REM 3. Frontend  --  static files on http://127.0.0.1:5500 (serve.py = no dir listing)
 echo Starting frontend on http://127.0.0.1:5500 ...
-start "CareerNexus Frontend" cmd /k "cd /d %~dp0frontend && python -m http.server 5500 --bind 127.0.0.1"
+start "CareerNexus Frontend" cmd /k "cd /d %~dp0frontend && python serve.py 5500"
 
 REM 4. Open the browser
 timeout /t 1 /nobreak >nul

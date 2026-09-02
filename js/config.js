@@ -21,7 +21,7 @@ const CONFIG = {
   // (OAuth client ID -> Web application), then paste it below AND set the
   // same value as GOOGLE_CLIENT_ID in backend/.env.
   // Leave blank to hide the Google button entirely.
-  GOOGLE_CLIENT_ID: '750836357203-41cd3lcjlrv483v1lcdldpf1omrnrg6q.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID: '892645924851-th5b6j33ck4gs0qf6q7262qhbbihdgci.apps.googleusercontent.com',
   MATCH_THRESHOLDS: {
     EXCELLENT: 80,
     GOOD: 60,

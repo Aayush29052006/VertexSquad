@@ -95,7 +95,8 @@ VertexSquad/
 │   ├── skill-gap.html
 │   ├── what-if.html
 │   ├── applications.html
-│   └── settings.html
+│   ├── settings.html
+│   └── admin.html              #   Admin panel (role = "admin" only)
 │
 ├── css/
 │   ├── global.css              # Design tokens (light + dark themes)
@@ -108,6 +109,7 @@ VertexSquad/
 │   ├── api.js                  # Central API layer — all backend calls
 │   ├── ui.js                   # Shared components & helpers
 │   ├── auth.js                 # Login/register validation
+│   ├── admin.js                # Admin panel controller
 │   ├── theme.js                # Light/dark theme controller
 │   ├── mock-data.js            # Offline demo data
 │   └── ...                     # Page controllers
@@ -190,9 +192,12 @@ pip freeze > requirements.txt
 
 ### 4. Configure environment variables
 
-Copy the template and fill in your own values:
+The file lives at **`backend/.env`** (i.e. `CareerNexus-Frontend/backend/.env`).
+It is gitignored — every developer keeps their own. Copy the template and fill it in:
 
 ```bash
+cd backend
+
 # Windows
 copy .env.example .env
 
@@ -208,9 +213,14 @@ Then open `backend/.env` and set:
 | `SUPABASE_ANON_KEY` | Supabase public anon key |
 | `DATABASE_URL` | PostgreSQL connection string (see note below) |
 | `GEMINI_API_KEY` | Google Gemini key from [AI Studio](https://aistudio.google.com/apikey) |
-| `JWT_SECRET_KEY` | Any long random string used to sign login tokens (falls back to an insecure dev key with a warning if unset) |
-| `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API (defaults to localhost:5500 / 3000) |
-| `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup |
+| `GOOGLE_CLIENT_ID` | OAuth Web client ID — **must match `GOOGLE_CLIENT_ID` in `js/config.js`** |
+| `JWT_SECRET_KEY` | Long random string that signs login tokens. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Falls back to an insecure dev key (with a startup warning) if unset. |
+| `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. Default: `http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://127.0.0.1:3000` |
+| `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup (default: `aayushswapnali@gmail.com`) |
+
+> **Already have a `.env` from before the admin panel?** Add the three new keys —
+> `JWT_SECRET_KEY`, `ALLOWED_ORIGINS`, `ADMIN_EMAILS` — from `.env.example`.
+> Setting (or changing) `JWT_SECRET_KEY` logs everyone out; they just sign in again.
 
 > **Use the Connection Pooler URI for `DATABASE_URL`**
 > Supabase dashboard → Settings → Database → **Connection Pooling** → URI.
@@ -245,13 +255,17 @@ internships and a demo student — no manual database import needed.
 
 **Demo login**
 
-| Email | Password |
-|---|---|
-| `aayushswapnali@gmail.com` | `demo1234` |
+| Email | Password | Role |
+|---|---|---|
+| `aayushswapnali@gmail.com` | `demo1234` | admin |
 
-Or create your own account from the register page. Passwords are hashed with
-PBKDF2-HMAC-SHA256 (260,000 iterations, per-user salt) and are never stored in
-readable form.
+The demo account is an admin (it's in `ADMIN_EMAILS`), so after logging in an
+**Admin Panel** item appears in the sidebar → `/pages/admin.html`. New accounts
+from the register page are always regular students; an admin promotes them from
+the Students tab.
+
+Passwords are hashed with PBKDF2-HMAC-SHA256 (260,000 iterations, per-user salt)
+and are never stored in readable form.
 
 ### Terminal 2 — Frontend
 

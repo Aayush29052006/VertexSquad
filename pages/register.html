@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>(function(){try{var t=localStorage.getItem('cn_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create Account — CareerNexus</title>
+<link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
+<link rel="stylesheet" href="../css/global.css?v=20260901c" />
+<link rel="stylesheet" href="../css/components.css?v=20260901c" />
+<link rel="stylesheet" href="../css/auth.css?v=20260901c" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260901c" />
+</head>
+<body>
+<div class="auth-theme-toggle">
+  <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme" aria-pressed="true">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+  </button>
+</div>
+<div class="auth-shell">
+  <aside class="auth-side">
+    <a class="brand" href="../index.html"><img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" /><span class="brand-name">CareerNexus</span></a>
+    <div class="auth-side-content">
+      <h2>Your first step toward a career-ready profile.</h2>
+      <p>Build your profile, upload your resume, and let AI match you with internships that fit.</p>
+    </div>
+    <p class="auth-side-foot">Smart India Hackathon · Problem Statement SIH26044</p>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <a class="brand" href="../index.html"><img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" /><span class="brand-name">CareerNexus</span></a>
+      <div class="card">
+        <h1 class="text-page-heading">Create Your Account</h1>
+        <p class="text-body mt-2">Already have an account? <a href="login.html" style="color:var(--primary);font-weight:600;">Log in</a></p>
+
+        <form id="registerForm" class="mt-5" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="fullName">Full Name</label>
+            <input class="form-input" type="text" id="fullName" required />
+            <p class="form-error" id="fullNameError" hidden></p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="regEmail">Email</label>
+            <input class="form-input" type="email" id="regEmail" required />
+            <p class="form-error" id="regEmailError" hidden></p>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="regPassword">Password</label>
+              <input class="form-input" type="password" id="regPassword" required />
+              <p class="form-hint">At least 8 characters</p>
+              <p class="form-error" id="regPasswordError" hidden></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="confirmPassword">Confirm Password</label>
+              <input class="form-input" type="password" id="confirmPassword" required />
+              <p class="form-error" id="confirmPasswordError" hidden></p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="college">College</label>
+            <input class="form-input" type="text" id="college" required />
+            <p class="form-error" id="collegeError" hidden></p>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="degree">Degree</label>
+              <select class="form-select" id="degree" required>
+                <option value="">Select degree</option>
+                <option>B.Tech</option>
+                <option>B.E.</option>
+                <option>B.Sc</option>
+                <option>M.Tech</option>
+                <option>MCA</option>
+              </select>
+              <p class="form-error" id="degreeError" hidden></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="branch">Branch</label>
+              <input class="form-input" type="text" id="branch" placeholder="e.g. Computer Engineering" required />
+              <p class="form-error" id="branchError" hidden></p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="gradYear">Graduation Year</label>
+            <select class="form-select" id="gradYear" required>
+              <option value="">Select year</option>
+              <option>2026</option><option>2027</option><option>2028</option><option>2029</option>
+            </select>
+            <p class="form-error" id="gradYearError" hidden></p>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg mt-3" type="submit" id="registerSubmit">
+            <span id="registerSubmitText">Create Account</span>
+          </button>
+          <p class="form-error text-center mt-3" id="registerFormError" hidden></p>
+        </form>
+
+        <div class="google-block" id="googleBlock">
+          <div class="auth-divider"><span>or</span></div>
+          <div class="google-slot" id="googleSlot"></div>
+          <p class="form-error text-center mt-2" id="googleError" hidden></p>
+        </div>
+
+      </div>
+      <p class="auth-links text-caption">By continuing you agree to our Terms and Privacy Policy.</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="../js/config.js?v=20260901c"></script>
+<script src="../js/mock-data.js?v=20260901c"></script>
+<script src="../js/api.js?v=20260901c"></script>
+<script src="../js/ui.js?v=20260901c"></script>
+<script src="../js/theme.js?v=20260901c"></script>
+<script src="../js/auth.js?v=20260901c"></script>
+</body>
+</html>

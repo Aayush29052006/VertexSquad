@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>(function(){try{var t=localStorage.getItem('cn_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log In — CareerNexus</title>
+<link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
+<link rel="stylesheet" href="../css/global.css?v=20260901c" />
+<link rel="stylesheet" href="../css/components.css?v=20260901c" />
+<link rel="stylesheet" href="../css/auth.css?v=20260901c" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260901c" />
+</head>
+<body>
+<div class="auth-theme-toggle">
+  <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme" aria-pressed="true">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+  </button>
+</div>
+<div class="auth-shell">
+  <aside class="auth-side">
+    <a class="brand" href="../index.html"><img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" /><span class="brand-name">CareerNexus</span></a>
+    <div class="auth-side-content">
+      <h2>Welcome back to your career command center.</h2>
+      <p>Track your matches, close skill gaps, and apply to internships that actually fit your profile.</p>
+    </div>
+    <p class="auth-side-foot">Smart India Hackathon · Problem Statement SIH26044</p>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <a class="brand" href="../index.html"><img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" /><span class="brand-name">CareerNexus</span></a>
+      <div class="card">
+        <h1 class="text-page-heading">Log In</h1>
+        <p class="text-body mt-2">New to CareerNexus? <a href="register.html" style="color:var(--primary);font-weight:600;">Create an account</a></p>
+
+        <form id="loginForm" class="mt-5" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input class="form-input" type="email" id="email" name="email" autocomplete="email" required />
+            <p class="form-error" id="emailError" hidden></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input class="form-input" type="password" id="password" name="password" autocomplete="current-password" required />
+            <p class="form-error" id="passwordError" hidden></p>
+          </div>
+          <div class="flex justify-between items-center mb-4">
+            <label class="flex items-center gap-2 text-caption"><input type="checkbox" id="remember" /> Remember me</label>
+            <a href="#" id="forgotLink" style="color:var(--primary);font-size:0.88rem;font-weight:600;">Forgot Password?</a>
+          </div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit" id="loginSubmit">
+            <span id="loginSubmitText">Log In</span>
+          </button>
+          <p class="form-error text-center mt-3" id="formError" hidden></p>
+        </form>
+
+        <div class="google-block" id="googleBlock">
+          <div class="auth-divider"><span>or</span></div>
+          <div class="google-slot" id="googleSlot"></div>
+          <p class="form-error text-center mt-2" id="googleError" hidden></p>
+        </div>
+
+      </div>
+      <p class="auth-links text-caption">By continuing you agree to our Terms and Privacy Policy.</p>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="forgotModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+    <div class="modal-header">
+      <h3 id="forgotTitle" class="text-card-heading">Reset your password</h3>
+      <button class="modal-close" id="closeForgot" aria-label="Close">&times;</button>
+    </div>
+    <p class="text-body">Enter your email and we'll send you a reset link.</p>
+    <div class="form-group mt-4">
+      <label class="form-label" for="resetEmail">Email</label>
+      <input class="form-input" type="email" id="resetEmail" />
+    </div>
+    <button class="btn btn-primary btn-block" id="sendResetBtn">Send Reset Link</button>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="../js/config.js?v=20260901c"></script>
+<script src="../js/mock-data.js?v=20260901c"></script>
+<script src="../js/api.js?v=20260901c"></script>
+<script src="../js/ui.js?v=20260901c"></script>
+<script src="../js/theme.js?v=20260901c"></script>
+<script src="../js/auth.js?v=20260901c"></script>
+</body>
+</html>

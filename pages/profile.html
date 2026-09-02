@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>(function(){try{var t=localStorage.getItem('cn_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Profile — CareerNexus</title>
+<link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
+<link rel="stylesheet" href="../css/global.css?v=20260901c" />
+<link rel="stylesheet" href="../css/components.css?v=20260901c" />
+<link rel="stylesheet" href="../css/dashboard.css?v=20260901c" />
+<link rel="stylesheet" href="../css/profile.css?v=20260901c" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260901c" />
+</head>
+<body>
+<div class="app-shell" id="appShell"></div>
+
+<div class="modal-overlay" id="editModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal-header">
+      <h3 id="editTitle" class="text-card-heading">Edit Profile</h3>
+      <button class="modal-close" id="closeEdit" aria-label="Close">&times;</button>
+    </div>
+    <form id="editForm">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label" for="editName">Full Name</label><input class="form-input" id="editName" /></div>
+        <div class="form-group"><label class="form-label" for="editLocation">Location</label><input class="form-input" id="editLocation" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label" for="editPhone">Phone</label><input class="form-input" id="editPhone" /></div>
+        <div class="form-group"><label class="form-label" for="editCgpa">CGPA</label><input class="form-input" id="editCgpa" type="number" step="0.1" min="0" max="10" /></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="editSkills">Skills (comma separated)</label>
+        <input class="form-input" id="editSkills" />
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<script src="../js/config.js?v=20260901c"></script>
+<script src="../js/mock-data.js?v=20260901c"></script>
+<script src="../js/api.js?v=20260901c"></script>
+<script src="../js/ui.js?v=20260901c"></script>
+<script src="../js/theme.js?v=20260901c"></script>
+<script src="../js/assistant.js?v=20260901c"></script>
+<script src="../js/profile.js?v=20260901c"></script>
+</body>
+</html>

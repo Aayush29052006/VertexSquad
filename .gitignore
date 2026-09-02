@@ -1,0 +1,29 @@
+# --- Secrets: never commit these ---
+.env
+.env.*
+!.env.example
+
+# --- Python / backend ---
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- Local database & logs ---
+*.db
+*.sqlite3
+*.log
+
+# --- Uploaded user files ---
+uploads/
+
+# --- Node ---
+node_modules/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

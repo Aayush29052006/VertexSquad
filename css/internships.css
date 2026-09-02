@@ -1,0 +1,89 @@
+/* =========================================================
+   CareerNexus — Internship Discovery & Details
+   ========================================================= */
+
+.search-bar {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.search-bar .form-input { flex: 1; min-width: 220px; }
+
+.filter-bar {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+  align-items: center;
+}
+.filter-bar .form-select { width: auto; min-width: 150px; }
+.results-count { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* ---------- Internship details page ---------- */
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+.details-meta-row { display: flex; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-3); color: var(--text-secondary); }
+.details-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: start; }
+.req-columns { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+
+.apply-sticky { position: sticky; top: calc(var(--header-height) + var(--space-4)); }
+
+@media (max-width: 1024px) {
+  .details-grid { grid-template-columns: 1fr; }
+  .apply-sticky { position: static; }
+}
+@media (max-width: 768px) {
+  .req-columns { grid-template-columns: 1fr; }
+}
+
+/* ---------- AI Interview Prep modal ---------- */
+.modal.modal-wide { max-width: 640px; }
+
+.prep-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--surface-alt);
+}
+.prep-q-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.prep-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.prep-question {
+  font-weight: 600;
+  line-height: 1.45;
+  margin-bottom: var(--space-2);
+}
+.prep-answer summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  list-style: none;
+}
+.prep-answer summary::-webkit-details-marker { display: none; }
+.prep-answer summary::before { content: '▸ '; }
+.prep-answer[open] summary::before { content: '▾ '; }

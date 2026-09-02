@@ -1,0 +1,103 @@
+/* =========================================================
+   CareerNexus — Profile Page
+   ========================================================= */
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+.profile-header-info { flex: 1; min-width: 200px; }
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.profile-section { margin-bottom: var(--space-5); }
+.profile-field-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+.profile-field .field-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px; }
+.profile-field .field-value { font-weight: 600; }
+
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.entity-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3); }
+.entity-card:last-child { margin-bottom: 0; }
+.entity-card h4 { font-weight: 700; }
+.entity-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--space-2); }
+.entity-tag { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-full); padding: 2px 10px; font-size: 0.78rem; }
+
+@media (max-width: 1024px) {
+  .profile-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .profile-field-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Profile header actions ---------- */
+.profile-header-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ---------- ATS resume export ----------
+   Hidden on screen; the print block below reveals it and hides the app so a
+   "Save as PDF" produces a clean, single-column, ATS-parseable document. */
+#atsResumeHost { display: none; }
+
+@media print {
+  /* Hide the whole app shell, then re-show only the resume */
+  body > *:not(#atsResumeHost) { display: none !important; }
+
+  #atsResumeHost {
+    display: block !important;
+    position: static;
+  }
+
+  @page { margin: 14mm; }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .ats-resume {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: #000;
+    max-width: 100%;
+  }
+
+  .ats-resume p { margin: 0 0 4pt; }
+
+  .ats-head {
+    text-align: center;
+    border-bottom: 1.5pt solid #000;
+    padding-bottom: 6pt;
+    margin-bottom: 10pt;
+  }
+  .ats-head h1 {
+    font-size: 19pt;
+    letter-spacing: 0.5pt;
+    margin: 0 0 3pt;
+  }
+
+  .ats-section { margin-bottom: 10pt; page-break-inside: avoid; }
+  .ats-section h2 {
+    font-size: 11.5pt;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
+    border-bottom: 0.75pt solid #000;
+    padding-bottom: 2pt;
+    margin: 0 0 5pt;
+  }
+
+  .ats-entry { margin-bottom: 7pt; page-break-inside: avoid; }
+  .ats-meta { font-style: italic; font-size: 10pt; }
+}

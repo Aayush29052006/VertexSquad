@@ -13,7 +13,14 @@ const NAV_ITEMS = [
   { href: 'applications.html', icon: '📋', label: 'Applications' },
   { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis' },
   { href: 'add-internship.html', icon: '🏢', label: 'Post Internship' },
+  // Admin-only. Rendered only when localStorage.cn_role === 'admin'; the
+  // backend enforces the real check on every /api/admin/* call.
+  { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', adminOnly: true },
 ];
+
+function isAdmin() {
+  return localStorage.getItem('cn_role') === 'admin';
+}
 
 function themeToggleHtml() {
   return `
@@ -37,13 +44,16 @@ function renderAppShell(activeHref, studentName) {
     .join('')
     .toUpperCase();
 
-  const links = NAV_ITEMS.map(
-    (item) => `
+  const links = NAV_ITEMS
+    .filter((item) => !item.adminOnly || isAdmin())
+    .map(
+      (item) => `
       <a class="sidebar-link${item.href === (activeHref || page) ? ' active' : ''}" href="${item.href}">
         <span class="icon" aria-hidden="true">${item.icon}</span>
         <span>${item.label}</span>
       </a>`
-  ).join('');
+    )
+    .join('');
 
   return `
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -90,6 +100,8 @@ function mountAppShell(activeHref, studentName) {
   document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     localStorage.removeItem('cn_token');
+    localStorage.removeItem('cn_student_name');
+    localStorage.removeItem('cn_role');
     window.location.href = 'login.html';
   });
   return document.getElementById('pageBody');
@@ -98,6 +110,17 @@ function mountAppShell(activeHref, studentName) {
 function requireAuth() {
   if (!localStorage.getItem('cn_token')) {
     window.location.href = 'login.html';
+    return false;
+  }
+  return true;
+}
+
+// Guard for admin-only pages. The backend still enforces the real check on
+// every /api/admin/* request; this just avoids showing a broken page.
+function requireAdmin() {
+  if (!requireAuth()) return false;
+  if (!isAdmin()) {
+    window.location.href = 'dashboard.html';
     return false;
   }
   return true;

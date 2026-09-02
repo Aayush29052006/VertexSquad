@@ -31,6 +31,8 @@ async function apiRequest(path, options = {}) {
     }
     throw new Error(message);
   }
+  // 204 No Content (e.g. DELETE) has no body to parse.
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -259,5 +261,56 @@ const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  // ---------- Admin panel (role === 'admin' enforced server-side) ----------
+  admin: {
+    getStats() {
+      return apiRequest('/admin/stats');
+    },
+    getSkillGaps() {
+      return apiRequest('/admin/skill-gaps');
+    },
+    listStudents(search = '') {
+      const q = search ? `?search=${encodeURIComponent(search)}` : '';
+      return apiRequest(`/admin/students${q}`);
+    },
+    getStudent(id) {
+      return apiRequest(`/admin/students/${encodeURIComponent(id)}`);
+    },
+    updateStudent(id, patch) {
+      return apiRequest(`/admin/students/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+    },
+    deleteStudent(id) {
+      return apiRequest(`/admin/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+    listInternships() {
+      return apiRequest('/admin/internships');
+    },
+    createInternship(payload) {
+      return apiRequest('/admin/internships', { method: 'POST', body: JSON.stringify(payload) });
+    },
+    updateInternship(id, payload) {
+      return apiRequest(`/admin/internships/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+    deleteInternship(id) {
+      return apiRequest(`/admin/internships/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+    listApplications(status = '') {
+      const q = status ? `?status=${encodeURIComponent(status)}` : '';
+      return apiRequest(`/admin/applications${q}`);
+    },
+    updateApplication(id, status) {
+      return apiRequest(`/admin/applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    },
   },
 };

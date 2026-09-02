@@ -293,6 +293,35 @@ browse the full UI against local demo data with no server running.
 
 ---
 
+## Team Workflow
+
+We all push to `main`. To avoid overwriting each other:
+
+```bash
+git pull                 # 1. before you start — get everyone's latest
+# ... make your changes ...
+git add -A
+git commit -m "clear message of what changed"
+git pull                 # 2. before you push — in case someone pushed meanwhile
+git push                 # 3. normal push
+```
+
+**Rules**
+
+- **Never `git push --force` / `--force-with-lease` on `main`.** It deletes
+  commits other people pushed. A force-push already wiped this repo's history
+  once (2026-09-02) — it had to be manually stitched back.
+- **Never commit a `venv/` folder or a `.env` file.** Both are gitignored;
+  everyone creates their own (`.env` from `backend/.env.example`).
+- If `git pull` reports a **CONFLICT**, don't force past it — open the marked
+  files, keep both people's changes, `git add`, `git commit`, then push. Ask in
+  the group if unsure.
+- Big change or risky refactor → do it on a branch and open a Pull Request:
+  `git checkout -b my-feature` … `git push -u origin my-feature`.
+- Pull once at the **start of every work session**, even if you pulled yesterday.
+
+---
+
 ## API Reference
 
 All endpoints are prefixed with `/api`. Full interactive docs at `/docs`.

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>(function(){try{var t=localStorage.getItem('cn_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Team Sign In — CareerNexus</title>
+<link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
+<link rel="stylesheet" href="../css/global.css?v=20260901c" />
+<link rel="stylesheet" href="../css/components.css?v=20260901c" />
+<link rel="stylesheet" href="../css/auth.css?v=20260901c" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260901c" />
+<style>
+  .admin-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
+  .admin-login-card { width: 100%; max-width: 400px; }
+  .admin-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); border: 1px solid var(--primary); border-radius: 999px; padding: 4px 12px; margin-bottom: var(--space-4); }
+</style>
+</head>
+<body>
+<div class="auth-theme-toggle">
+  <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="true">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+  </button>
+</div>
+
+<div class="admin-login-wrap">
+  <div class="admin-login-card">
+    <a class="brand" href="../index.html" style="justify-content:center;margin-bottom:var(--space-5);">
+      <img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" />
+      <span class="brand-name">CareerNexus</span>
+    </a>
+    <div class="card">
+      <span class="admin-badge">🛡️ Team &amp; Admin</span>
+      <h1 class="text-page-heading">Team Sign In</h1>
+      <p class="text-body mt-2">Restricted to authorized team members. Student accounts have no access here.</p>
+
+      <form id="adminLoginForm" class="mt-5" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="email">Work email</label>
+          <input class="form-input" type="email" id="email" name="email" autocomplete="email" required />
+          <p class="form-error" id="emailError" hidden></p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" name="password" autocomplete="current-password" required />
+          <p class="form-error" id="passwordError" hidden></p>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit" id="adminLoginSubmit">
+          <span id="adminLoginSubmitText">Sign In</span>
+        </button>
+        <p class="form-error text-center mt-3" id="formError" hidden></p>
+      </form>
+
+      <p class="text-caption mt-4">
+        Not a team member? <a href="login.html" style="color:var(--primary);font-weight:600;">Student sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js?v=20260901c"></script>
+<script src="../js/mock-data.js?v=20260901c"></script>
+<script src="../js/api.js?v=20260901c"></script>
+<script src="../js/ui.js?v=20260901c"></script>
+<script src="../js/theme.js?v=20260901c"></script>
+<script src="../js/admin-auth.js?v=20260901c"></script>
+</body>
+</html>

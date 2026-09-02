@@ -99,10 +99,12 @@ function mountAppShell(activeHref, studentName) {
   backdrop?.addEventListener('click', closeMenu);
   document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
+    const wasAdmin = isAdmin();
     localStorage.removeItem('cn_token');
     localStorage.removeItem('cn_student_name');
     localStorage.removeItem('cn_role');
-    window.location.href = 'login.html';
+    // Team members land back on the team sign-in; students on the student one.
+    window.location.href = wasAdmin ? 'admin-login.html' : 'login.html';
   });
   return document.getElementById('pageBody');
 }
@@ -117,10 +119,10 @@ function requireAuth() {
 
 // Guard for admin-only pages. The backend still enforces the real check on
 // every /api/admin/* request; this just avoids showing a broken page.
+// Anyone not signed in as an admin is sent to the team sign-in page.
 function requireAdmin() {
-  if (!requireAuth()) return false;
-  if (!isAdmin()) {
-    window.location.href = 'dashboard.html';
+  if (!localStorage.getItem('cn_token') || !isAdmin()) {
+    window.location.href = 'admin-login.html';
     return false;
   }
   return true;

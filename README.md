@@ -47,7 +47,8 @@ behind their result rather than an opaque number.
 - **Application tracking** — statuses from Applied through Selected/Rejected
 - **Light & dark themes** — persisted per device
 
-**For admins / placement cell** (`/pages/admin.html`, `role = "admin"`)
+**For admins / placement cell** — separate team sign-in at `/pages/admin-login.html`,
+panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - **Overview** — students, internships, applications, at-risk count, top colleges
 - **Student management** — search, promote/demote admin, deactivate, delete
 - **Internship management** — create / edit / delete postings, applicant counts
@@ -89,7 +90,8 @@ VertexSquad/
 ├── frontend/                       # Static site — no build step, no npm
 │   ├── index.html                  #   Landing page
 │   ├── pages/                      #   Application pages
-│   │   ├── login.html              #     Authentication
+│   │   ├── login.html              #     Student authentication
+│   │   ├── admin-login.html        #     Team / admin sign-in (separate door)
 │   │   ├── register.html
 │   │   ├── dashboard.html          #     Student dashboard
 │   │   ├── profile.html
@@ -107,6 +109,7 @@ VertexSquad/
 │   │   ├── api.js                  #     Central API layer — all backend calls
 │   │   ├── ui.js                   #     Shared components & helpers
 │   │   ├── auth.js                 #     Login / register validation
+│   │   ├── admin-auth.js           #     Team sign-in (role-gated)
 │   │   ├── admin.js                #     Admin panel controller
 │   │   ├── theme.js                #     Light / dark theme
 │   │   ├── mock-data.js            #     Offline demo data
@@ -256,10 +259,22 @@ internships and a demo student — no manual database import needed.
 |---|---|---|
 | `aayushswapnali@gmail.com` | `demo1234` | admin |
 
-The demo account is an admin (it's in `ADMIN_EMAILS`), so after logging in an
-**Admin Panel** item appears in the sidebar → `/pages/admin.html`. New accounts
-from the register page are always regular students; an admin promotes them from
-the Students tab.
+**Two front doors, one auth system:**
+
+| Page | For | URL |
+|---|---|---|
+| `login.html` | Students (+ Google sign-in, register) | `/pages/login.html` |
+| `admin-login.html` | Team & admins only | `/pages/admin-login.html` |
+
+The team sign-in page uses the same `/api/auth/login` endpoint, then **refuses
+to keep the session unless `role == "admin"`** — a student's valid credentials
+get "no team access" and nothing is stored. It's a cleaner front door, not the
+lock: the real gate is the server-side `role` check on every `/api/admin/*`
+request, so a hidden or guessed URL buys an attacker nothing.
+
+The team page is `noindex` and not linked from the public site — bookmark it.
+New accounts from the register page are always `student`; an admin promotes
+them from the panel's Students tab. `ADMIN_EMAILS` seeds the first admin(s).
 
 Passwords are hashed with PBKDF2-HMAC-SHA256 (260,000 iterations, per-user salt)
 and are never stored in readable form.

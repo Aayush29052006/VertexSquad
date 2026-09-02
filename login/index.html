@@ -2,12 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="refresh" content="0; url=../pages/login.html" />
 <title>CareerNexus</title>
 <script>
-  // Convenience redirect for an extension-less URL. Preserves any query
-  // string and hash (e.g. ?id=int_1).
   location.replace('../pages/login.html' + location.search + location.hash);
 </script>
 </head>
-<body><p>Redirecting...</p></body>
+<body>
+  <p>Redirecting to CareerNexus...
+    If nothing happens, <a id="fallbackLink" href="../pages/login.html">click here</a>.
+  </p>
+  <script>
+    document.getElementById('fallbackLink').href = '../pages/login.html' + location.search + location.hash;
+  </script>
+</body>
 </html>

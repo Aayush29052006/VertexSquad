@@ -33,6 +33,7 @@ function handleGoogleCredential(response) {
     .then(({ token, student }) => {
       localStorage.setItem('cn_token', token);
       localStorage.setItem('cn_student_name', student.full_name);
+      localStorage.setItem('cn_role', student.role || 'student');
       window.location.href = 'dashboard.html';
     })
     .catch((err) => {
@@ -123,6 +124,7 @@ if (loginForm) {
       const { token, student } = await api.login(emailInput.value, passwordInput.value);
       localStorage.setItem('cn_token', token);
       localStorage.setItem('cn_student_name', student.full_name);
+      localStorage.setItem('cn_role', student.role || 'student');
       window.location.href = 'dashboard.html';
     } catch (err) {
       formError.textContent = err.message || 'Login failed. Please try again.';
@@ -219,6 +221,7 @@ if (registerForm) {
       const { token, student } = await api.register(payload);
       localStorage.setItem('cn_token', token);
       localStorage.setItem('cn_student_name', student.full_name);
+      localStorage.setItem('cn_role', student.role || 'student');
       window.location.href = 'dashboard.html';
     } catch (err) {
       formError.textContent = err.message || 'Registration failed. Please try again.';

@@ -7,36 +7,52 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, F
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, Text
+from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import io
 import pypdf
 import urllib.request
 
+# Load environment variables FIRST — every os.environ read below depends on it.
+from dotenv import load_dotenv
+load_dotenv()
+
 # Initialize FastAPI app
 app = FastAPI(title="CareerNexus Backend", version="1.0")
 
-# Enable CORS for frontend communication
+# --- CORS ---
+# Only these origins may call the API from a browser. Override in production by
+# setting ALLOWED_ORIGINS in .env to a comma-separated list of full origins,
+# e.g. ALLOWED_ORIGINS=https://careernexus.example.com
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permits all origins for hackathon simplicity
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load environment variables (must happen before any os.environ reads below)
-from dotenv import load_dotenv
-load_dotenv()
-
 # JWT Configurations
 # Read the signing secret from the environment so it is never committed to the
 # repo. The fallback keeps local development working out of the box, but any
-# real deployment must set JWT_SECRET_KEY in .env — anyone who knows the
+# real deployment MUST set JWT_SECRET_KEY in .env — anyone who knows the
 # signing secret can forge a login token.
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "careernexus-local-dev-only-change-me")
 ALGORITHM = "HS256"
+if SECRET_KEY == "careernexus-local-dev-only-change-me":
+    print(
+        "WARNING: JWT_SECRET_KEY not set — using the insecure dev fallback. "
+        "Generate one with:  python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
 
 # Database Configuration
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./careernexus.db")
@@ -111,6 +127,12 @@ class StudentModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
+    # "student" or "admin". Admin unlocks the /api/admin/* endpoints and the
+    # admin panel in the frontend. Never settable from a normal signup — only
+    # promoted by another admin or by the ADMIN_EMAILS bootstrap on startup.
+    role = Column(String, nullable=False, default="student")
+    # Deactivated accounts keep their data but cannot log in or call the API.
+    is_active = Column(Integer, nullable=False, default=1)
     phone = Column(String, nullable=True)
     location = Column(String, nullable=True)
     photo_url = Column(String, nullable=True, default="")
@@ -170,6 +192,62 @@ class ResumeModel(Base):
 
 # Create tables
 Base.metadata.create_all(bind=engine)
+
+
+# --- LIGHTWEIGHT MIGRATIONS ---
+# create_all() never ALTERs an existing table, so columns added after a table
+# was first created (role, is_active) have to be back-filled by hand. This runs
+# on every startup and is a no-op once the columns exist.
+def run_migrations():
+    is_sqlite = DATABASE_URL.startswith("sqlite")
+    add_columns = [
+        ("students", "role", "VARCHAR DEFAULT 'student'"),
+        ("students", "is_active", "INTEGER DEFAULT 1"),
+    ]
+    with engine.connect() as conn:
+        for table, column, ddl in add_columns:
+            try:
+                if is_sqlite:
+                    # SQLite has no ADD COLUMN IF NOT EXISTS; just try and ignore.
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+                else:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl}"))
+                conn.commit()
+            except Exception:
+                conn.rollback()  # column already exists
+        # Normalise any NULLs left over from the ALTER.
+        try:
+            conn.execute(text("UPDATE students SET role = 'student' WHERE role IS NULL"))
+            conn.execute(text("UPDATE students SET is_active = 1 WHERE is_active IS NULL"))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+
+run_migrations()
+
+# Emails in ADMIN_EMAILS (comma-separated, from .env) are promoted to admin on
+# startup so there is always a way in. Everyone else stays a student.
+ADMIN_EMAILS = [
+    e.strip().lower()
+    for e in os.environ.get("ADMIN_EMAILS", "aayushswapnali@gmail.com").split(",")
+    if e.strip()
+]
+
+
+def bootstrap_admins():
+    if not ADMIN_EMAILS:
+        return
+    db = SessionLocal()
+    try:
+        for email in ADMIN_EMAILS:
+            student = db.query(StudentModel).filter(StudentModel.email == email).first()
+            if student and student.role != "admin":
+                student.role = "admin"
+        db.commit()
+    finally:
+        db.close()
+
 
 # --- DB SEEDING (ON STARTUP) ---
 
@@ -247,6 +325,8 @@ def seed_database():
                 # Demo account password: demo1234 (documented in the README)
                 password_hash=hash_password("demo1234"),
                 full_name="Aayush Chaudhari",
+                role="admin",
+                is_active=1,
                 phone="+91 98765 43210",
                 location="Pune, Maharashtra",
                 photo_url="",
@@ -293,6 +373,7 @@ def seed_database():
         db.close()
 
 seed_database()
+bootstrap_admins()
 
 # --- DB HELPERS ---
 
@@ -317,11 +398,23 @@ def get_student_from_token(token: str, db: Session) -> StudentModel:
     student = db.query(StudentModel).filter(StudentModel.email == email).first()
     if student is None:
         raise HTTPException(status_code=404, detail="Student profile not found")
+    if student.is_active == 0:
+        raise HTTPException(status_code=403, detail="This account has been deactivated")
     return student
 
 def get_current_student(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> StudentModel:
     token = credentials.credentials
     return get_student_from_token(token, db)
+
+def get_current_admin(student: StudentModel = Depends(get_current_student)) -> StudentModel:
+    """Same as get_current_student, but rejects anyone who is not an admin.
+
+    This is the ONLY thing standing between a normal user and the admin API —
+    hiding the admin link in the frontend is cosmetic; this check is the wall.
+    """
+    if (student.role or "student") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return student
 
 # --- PAIRED ALGORITHMS ---
 
@@ -488,6 +581,7 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
         "id": student.id,
         "full_name": student.full_name,
         "email": student.email,
+        "role": student.role or "student",
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
@@ -560,6 +654,7 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
         "id": student.id,
         "full_name": student.full_name,
         "email": student.email,
+        "role": student.role or "student",
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
@@ -669,6 +764,7 @@ def get_profile(student: StudentModel = Depends(get_current_student)):
         "id": student.id,
         "full_name": student.full_name,
         "email": student.email,
+        "role": student.role or "student",
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
@@ -1324,6 +1420,317 @@ def create_internship(payload: NewInternshipPayload, student: StudentModel = Dep
         "deadline": internship.deadline,
         "required_skills": json.loads(internship.required_skills),
     }
+
+
+# =====================================================================
+# ADMIN PANEL  (all endpoints require role == "admin")
+# =====================================================================
+
+def _internship_out(i: InternshipModel) -> dict:
+    return {
+        "id": i.id,
+        "title": i.title,
+        "company": i.company,
+        "location": i.location,
+        "work_mode": i.work_mode,
+        "stipend": i.stipend,
+        "duration": i.duration,
+        "deadline": i.deadline,
+        "required_skills": json.loads(i.required_skills or "[]"),
+    }
+
+
+def _student_row_out(s: StudentModel) -> dict:
+    """Compact student record for the admin table (not the full profile)."""
+    return {
+        "id": s.id,
+        "full_name": s.full_name,
+        "email": s.email,
+        "role": s.role or "student",
+        "is_active": bool(s.is_active),
+        "college": s.college or "",
+        "branch": s.branch or "",
+        "graduation_year": s.graduation_year or 0,
+        "cgpa": s.cgpa or 0.0,
+        "skills_count": len(json.loads(s.skills or "[]")),
+        "profile_completion": s.profile_completion or 0,
+        "placement_readiness": s.placement_readiness or 0,
+    }
+
+
+class AdminStudentUpdate(BaseModel):
+    role: Optional[str] = None          # "student" | "admin"
+    is_active: Optional[bool] = None
+
+
+class AdminApplicationUpdate(BaseModel):
+    status: str                          # applied | shortlisted | under_review | rejected
+
+
+class AdminInternshipUpsert(BaseModel):
+    title: str
+    company: str
+    location: str
+    work_mode: str
+    stipend: Optional[str] = ""
+    duration: Optional[str] = ""
+    deadline: Optional[str] = ""
+    required_skills: List[str] = []
+
+
+VALID_APP_STATUSES = {"applied", "shortlisted", "under_review", "rejected"}
+
+
+@app.get("/api/admin/stats")
+def admin_stats(admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    students = db.query(StudentModel).all()
+    internships = db.query(InternshipModel).all()
+    apps = db.query(ApplicationModel).all()
+
+    by_status = {}
+    for a in apps:
+        by_status[a.status] = by_status.get(a.status, 0) + 1
+
+    # "at risk" = active students with low placement readiness
+    at_risk = [s for s in students if s.is_active and (s.placement_readiness or 0) < 50]
+
+    # top colleges by head-count
+    colleges = {}
+    for s in students:
+        if s.college:
+            colleges[s.college] = colleges.get(s.college, 0) + 1
+    top_colleges = sorted(colleges.items(), key=lambda kv: kv[1], reverse=True)[:5]
+
+    return {
+        "students_total": len(students),
+        "students_active": sum(1 for s in students if s.is_active),
+        "admins": sum(1 for s in students if (s.role or "student") == "admin"),
+        "internships_total": len(internships),
+        "applications_total": len(apps),
+        "applications_by_status": by_status,
+        "at_risk_count": len(at_risk),
+        "resumes_uploaded": db.query(ResumeModel).count(),
+        "top_colleges": [{"college": c, "students": n} for c, n in top_colleges],
+    }
+
+
+@app.get("/api/admin/skill-gaps")
+def admin_skill_gaps(admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    """For every skill any internship asks for, what share of active students lack it."""
+    students = [s for s in db.query(StudentModel).all() if s.is_active]
+    internships = db.query(InternshipModel).all()
+    if not students:
+        return {"total_students": 0, "gaps": []}
+
+    demanded = set()
+    for i in internships:
+        for sk in json.loads(i.required_skills or "[]"):
+            demanded.add(sk)
+
+    gaps = []
+    for skill in demanded:
+        lacking = 0
+        for s in students:
+            have = [x.lower() for x in json.loads(s.skills or "[]")]
+            if skill.lower() not in have:
+                lacking += 1
+        gaps.append({
+            "skill": skill,
+            "students_missing": lacking,
+            "pct_missing": round(lacking * 100 / len(students)),
+        })
+    gaps.sort(key=lambda g: g["students_missing"], reverse=True)
+    return {"total_students": len(students), "gaps": gaps}
+
+
+@app.get("/api/admin/students")
+def admin_list_students(
+    search: Optional[str] = Query(None),
+    admin: StudentModel = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(StudentModel)
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            (StudentModel.full_name.ilike(like))
+            | (StudentModel.email.ilike(like))
+            | (StudentModel.college.ilike(like))
+        )
+    rows = q.order_by(StudentModel.full_name).all()
+    return [_student_row_out(s) for s in rows]
+
+
+@app.get("/api/admin/students/{student_id}")
+def admin_get_student(student_id: str, admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    s = db.query(StudentModel).filter(StudentModel.id == student_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return get_profile(s)
+
+
+@app.patch("/api/admin/students/{student_id}")
+def admin_update_student(
+    student_id: str,
+    payload: AdminStudentUpdate,
+    admin: StudentModel = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    s = db.query(StudentModel).filter(StudentModel.id == student_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    if payload.role is not None:
+        if payload.role not in ("student", "admin"):
+            raise HTTPException(status_code=400, detail="role must be 'student' or 'admin'")
+        s.role = payload.role
+
+    if payload.is_active is not None:
+        if s.id == admin.id and payload.is_active is False:
+            raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
+        s.is_active = 1 if payload.is_active else 0
+
+    db.commit()
+    db.refresh(s)
+    return _student_row_out(s)
+
+
+@app.delete("/api/admin/students/{student_id}", status_code=204)
+def admin_delete_student(student_id: str, admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    if student_id == admin.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account")
+    s = db.query(StudentModel).filter(StudentModel.id == student_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Student not found")
+    db.query(ApplicationModel).filter(ApplicationModel.student_id == student_id).delete()
+    db.query(ResumeModel).filter(ResumeModel.student_id == student_id).delete()
+    db.delete(s)
+    db.commit()
+    return
+
+
+@app.get("/api/admin/internships")
+def admin_list_internships(admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    rows = db.query(InternshipModel).all()
+    out = []
+    for i in rows:
+        d = _internship_out(i)
+        d["applicant_count"] = db.query(ApplicationModel).filter(ApplicationModel.internship_id == i.id).count()
+        out.append(d)
+    return out
+
+
+@app.post("/api/admin/internships", status_code=201)
+def admin_create_internship(payload: AdminInternshipUpsert, admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    title, company = payload.title.strip(), payload.company.strip()
+    skills = [s.strip() for s in payload.required_skills if s and s.strip()]
+    if not title or not company:
+        raise HTTPException(status_code=400, detail="Title and company are required")
+    if not skills:
+        raise HTTPException(status_code=400, detail="At least one required skill is needed")
+    i = InternshipModel(
+        id=f"int_{int(datetime.datetime.now().timestamp())}",
+        title=title,
+        company=company,
+        location=payload.location.strip() or "Not specified",
+        work_mode=payload.work_mode.strip() or "Remote",
+        stipend=(payload.stipend or "").strip(),
+        duration=(payload.duration or "").strip(),
+        deadline=(payload.deadline or "").strip(),
+        required_skills=json.dumps(skills),
+    )
+    db.add(i)
+    db.commit()
+    db.refresh(i)
+    return _internship_out(i)
+
+
+@app.put("/api/admin/internships/{internship_id}")
+def admin_update_internship(
+    internship_id: str,
+    payload: AdminInternshipUpsert,
+    admin: StudentModel = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    i = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
+    if not i:
+        raise HTTPException(status_code=404, detail="Internship not found")
+    skills = [s.strip() for s in payload.required_skills if s and s.strip()]
+    if not payload.title.strip() or not payload.company.strip():
+        raise HTTPException(status_code=400, detail="Title and company are required")
+    if not skills:
+        raise HTTPException(status_code=400, detail="At least one required skill is needed")
+    i.title = payload.title.strip()
+    i.company = payload.company.strip()
+    i.location = payload.location.strip() or "Not specified"
+    i.work_mode = payload.work_mode.strip() or "Remote"
+    i.stipend = (payload.stipend or "").strip()
+    i.duration = (payload.duration or "").strip()
+    i.deadline = (payload.deadline or "").strip()
+    i.required_skills = json.dumps(skills)
+    db.commit()
+    db.refresh(i)
+    return _internship_out(i)
+
+
+@app.delete("/api/admin/internships/{internship_id}", status_code=204)
+def admin_delete_internship(internship_id: str, admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
+    i = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
+    if not i:
+        raise HTTPException(status_code=404, detail="Internship not found")
+    db.query(ApplicationModel).filter(ApplicationModel.internship_id == internship_id).delete()
+    db.delete(i)
+    db.commit()
+    return
+
+
+@app.get("/api/admin/applications")
+def admin_list_applications(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    admin: StudentModel = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(ApplicationModel)
+    if status_filter:
+        q = q.filter(ApplicationModel.status == status_filter)
+    apps = q.all()
+    students = {s.id: s for s in db.query(StudentModel).all()}
+    internships = {i.id: i for i in db.query(InternshipModel).all()}
+    out = []
+    for a in apps:
+        s = students.get(a.student_id)
+        i = internships.get(a.internship_id)
+        out.append({
+            "id": a.id,
+            "student_id": a.student_id,
+            "student_name": s.full_name if s else "(deleted)",
+            "student_email": s.email if s else "",
+            "internship_id": a.internship_id,
+            "internship_title": i.title if i else "(deleted)",
+            "company": i.company if i else "",
+            "applied_on": a.applied_on,
+            "status": a.status,
+            "match_score": a.match_score,
+        })
+    out.sort(key=lambda x: x["applied_on"], reverse=True)
+    return out
+
+
+@app.patch("/api/admin/applications/{application_id}")
+def admin_update_application(
+    application_id: str,
+    payload: AdminApplicationUpdate,
+    admin: StudentModel = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    a = db.query(ApplicationModel).filter(ApplicationModel.id == application_id).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Application not found")
+    if payload.status not in VALID_APP_STATUSES:
+        raise HTTPException(status_code=400, detail=f"status must be one of {sorted(VALID_APP_STATUSES)}")
+    a.status = payload.status
+    db.commit()
+    return {"id": a.id, "status": a.status}
 
 
 if __name__ == "__main__":

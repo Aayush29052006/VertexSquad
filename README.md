@@ -47,6 +47,13 @@ behind their result rather than an opaque number.
 - **Application tracking** — statuses from Applied through Selected/Rejected
 - **Light & dark themes** — persisted per device
 
+**For admins / placement cell** (`/pages/admin.html`, `role = "admin"`)
+- **Overview** — students, internships, applications, at-risk count, top colleges
+- **Student management** — search, promote/demote admin, deactivate, delete
+- **Internship management** — create / edit / delete postings, applicant counts
+- **Application management** — filter by status, change any application's status
+- **Skill-shortage report** — % of students missing each skill the internships ask for
+
 **Engineering**
 - Central API layer (`js/api.js`) — no scattered `fetch()` calls
 - Mock-data mode for frontend work without a running backend
@@ -201,7 +208,9 @@ Then open `backend/.env` and set:
 | `SUPABASE_ANON_KEY` | Supabase public anon key |
 | `DATABASE_URL` | PostgreSQL connection string (see note below) |
 | `GEMINI_API_KEY` | Google Gemini key from [AI Studio](https://aistudio.google.com/apikey) |
-| `JWT_SECRET_KEY` | Any long random string used to sign login tokens |
+| `JWT_SECRET_KEY` | Any long random string used to sign login tokens (falls back to an insecure dev key with a warning if unset) |
+| `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API (defaults to localhost:5500 / 3000) |
+| `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup |
 
 > **Use the Connection Pooler URI for `DATABASE_URL`**
 > Supabase dashboard → Settings → Database → **Connection Pooling** → URI.
@@ -286,8 +295,15 @@ All endpoints are prefixed with `/api`. Full interactive docs at `/docs`.
 | `POST` | `/internships/{id}/apply` | Submit an application |
 | `POST` | `/internships/{id}/what-if` | Recompute score with added skills |
 | `GET` | `/applications` | Application history |
+| `GET` | `/admin/stats` | **admin** — platform overview |
+| `GET` | `/admin/skill-gaps` | **admin** — skill shortage across students |
+| `GET` `PATCH` `DELETE` | `/admin/students[/{id}]` | **admin** — manage students |
+| `GET` `POST` `PUT` `DELETE` | `/admin/internships[/{id}]` | **admin** — manage postings |
+| `GET` `PATCH` | `/admin/applications[/{id}]` | **admin** — review applications |
 
 Authenticated endpoints expect an `Authorization: Bearer <token>` header.
+`/admin/*` additionally requires the token's account to have `role = "admin"` —
+the check is enforced on every request, not just hidden in the UI.
 
 ---
 
@@ -315,8 +331,12 @@ This is a hackathon prototype. Before any real deployment:
 - **Enable Row Level Security** on all Supabase tables — the anon key is public
   by design, so RLS is what actually protects the data
 - **Set a strong `JWT_SECRET_KEY`** — anyone who knows the signing secret can
-  forge login tokens
-- **Restrict CORS** — currently `allow_origins=["*"]` for local development
+  forge login tokens (the app warns loudly if it falls back to the dev key)
+- **Restrict CORS** — set `ALLOWED_ORIGINS` in `.env` to your real frontend
+  origin(s); the API no longer accepts `*`
+- **Frontend code is always visible** (F12) — that is normal for every website.
+  Security lives in the backend: JWT verification, the `role = "admin"` check on
+  every `/admin/*` call, Pydantic validation, and never trusting client input
 - **Validate uploads server-side** — never trust a browser-supplied filename or
   MIME type
 - Rotate any credential that has been shared over chat or committed

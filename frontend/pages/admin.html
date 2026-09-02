@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin Panel — CareerNexus</title>
 <link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
-<link rel="stylesheet" href="../css/global.css?v=20260902a" />
-<link rel="stylesheet" href="../css/components.css?v=20260902a" />
-<link rel="stylesheet" href="../css/dashboard.css?v=20260902a" />
-<link rel="stylesheet" href="../css/responsive.css?v=20260902a" />
+<link rel="stylesheet" href="../css/global.css?v=20260902b" />
+<link rel="stylesheet" href="../css/components.css?v=20260902b" />
+<link rel="stylesheet" href="../css/dashboard.css?v=20260902b" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260902b" />
 <style>
   /* The admin panel uses the full content width — no 1400px cap. */
   .main-content .page-body { max-width: none; }
@@ -32,19 +32,22 @@
   .admin-toolbar { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4); }
   .admin-toolbar .form-input, .admin-toolbar select.form-input { max-width: 260px; }
 
-  /* Skill-shortage bars — colour by how urgent the gap is */
-  .bar-row { display: grid; grid-template-columns: minmax(120px, 190px) 1fr auto; align-items: center; gap: 16px; margin-bottom: 12px; font-size: 0.9rem; }
+  /* Skill-shortage bars — colour by how urgent the gap is (kept soft) */
+  .bar-row { display: grid; grid-template-columns: minmax(120px, 190px) 1fr auto; align-items: center; gap: 16px; margin-bottom: 15px; font-size: 0.9rem; }
   .bar-skill { font-weight: 600; }
-  .bar-track { background: rgba(127, 127, 127, 0.16); border-radius: 999px; height: 14px; overflow: hidden; display: block; }
-  .bar-fill { display: block; height: 100%; border-radius: 999px; min-width: 3px; transition: width 0.5s ease; }
-  .bar-fill.gap-high { background: var(--danger); }
-  .bar-fill.gap-med  { background: var(--warning); }
-  .bar-fill.gap-low  { background: var(--success); }
+  .bar-track { background: rgba(127, 127, 127, 0.12); border-radius: 999px; height: 8px; overflow: hidden; display: block; }
+  .bar-fill { display: block; height: 100%; border-radius: 999px; min-width: 3px; opacity: 0.82; transition: width 0.5s ease; }
+  .bar-fill.gap-high { background: #d9707a; }
+  .bar-fill.gap-med  { background: #d69a52; }
+  .bar-fill.gap-low  { background: #4faf82; }
   .bar-meta { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .bar-meta b { font-size: 0.95rem; }
+  .bar-meta b { font-size: 0.92rem; }
   .bar-meta span { color: var(--text-muted); font-size: 0.8rem; margin-left: 6px; }
-  .gap-legend { display: flex; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); font-size: 0.82rem; color: var(--text-muted); }
-  .gap-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+  .gap-legend { display: flex; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); font-size: 0.82rem; color: var(--text-muted); }
+  .gap-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: middle; opacity: 0.82; }
+  .gap-legend i.gap-high { background: #d9707a; }
+  .gap-legend i.gap-med  { background: #d69a52; }
+  .gap-legend i.gap-low  { background: #4faf82; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: var(--space-4); z-index: 50; }
   .modal { background: var(--bg-elevated, var(--bg-card, #14181f)); border: 1px solid var(--border); border-radius: var(--radius-lg, 14px); padding: var(--space-6); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
@@ -53,11 +56,11 @@
 <body>
 <div class="app-shell" id="appShell"></div>
 
-<script src="../js/config.js?v=20260902a"></script>
-<script src="../js/mock-data.js?v=20260902a"></script>
-<script src="../js/api.js?v=20260902a"></script>
-<script src="../js/ui.js?v=20260902a"></script>
-<script src="../js/theme.js?v=20260902a"></script>
-<script src="../js/admin.js?v=20260902a"></script>
+<script src="../js/config.js?v=20260902b"></script>
+<script src="../js/mock-data.js?v=20260902b"></script>
+<script src="../js/api.js?v=20260902b"></script>
+<script src="../js/ui.js?v=20260902b"></script>
+<script src="../js/theme.js?v=20260902b"></script>
+<script src="../js/admin.js?v=20260902b"></script>
 </body>
 </html>

@@ -357,9 +357,9 @@ async function renderSkillGaps(el) {
       <h2 class="text-card-heading mb-1">Skill shortage across ${data.total_students} active students</h2>
       <p class="text-caption mb-4">Share of students who don't yet have each skill our internships ask for.</p>
       <div class="gap-legend">
-        <span><i style="background:var(--danger)"></i>Critical (70%+ missing)</span>
-        <span><i style="background:var(--warning)"></i>Moderate (40–69%)</span>
-        <span><i style="background:var(--success)"></i>Well covered (&lt;40%)</span>
+        <span><i class="gap-high"></i>Critical (70%+ missing)</span>
+        <span><i class="gap-med"></i>Moderate (40–69%)</span>
+        <span><i class="gap-low"></i>Well covered (&lt;40%)</span>
       </div>
       ${data.gaps.map((g) => `
         <div class="bar-row">

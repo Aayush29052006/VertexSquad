@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logos/careernexus-logo.png" alt="CareerNexus" width="96" />
+  <img src="frontend/assets/logos/careernexus-logo.png" alt="CareerNexus" width="96" />
   <h1>CareerNexus</h1>
   <p><strong>AI-powered Academia–Industry Collaboration Portal</strong></p>
   <p>Smart India Hackathon 2026 · Problem Statement <strong>SIH26044</strong> · Team VertexSquad</p>
@@ -55,7 +55,7 @@ behind their result rather than an opaque number.
 - **Skill-shortage report** — % of students missing each skill the internships ask for
 
 **Engineering**
-- Central API layer (`js/api.js`) — no scattered `fetch()` calls
+- Central API layer (`frontend/js/api.js`) — no scattered `fetch()` calls
 - Mock-data mode for frontend work without a running backend
 - All untrusted data is HTML-escaped before DOM insertion (XSS hardened)
 - Automatic DB seeding on startup, plus an offline SQLite fallback
@@ -83,43 +83,40 @@ jQuery — so it runs from any static file server with zero build step.
 
 ```
 VertexSquad/
-├── index.html                  # Landing page
-├── pages/                      # Application pages
-│   ├── login.html              #   Authentication
-│   ├── register.html
-│   ├── dashboard.html          #   Student dashboard
-│   ├── profile.html
-│   ├── resume.html             #   Upload + AI extraction
-│   ├── internships.html        #   Discovery & filtering
-│   ├── internship-details.html #   Match breakdown + apply
-│   ├── skill-gap.html
-│   ├── what-if.html
-│   ├── applications.html
-│   ├── settings.html
-│   └── admin.html              #   Admin panel (role = "admin" only)
+├── README.md
+├── start.bat                       # One-click: starts both servers (Windows)
 │
-├── css/
-│   ├── global.css              # Design tokens (light + dark themes)
-│   ├── components.css          # Buttons, cards, badges, modals
-│   ├── responsive.css          # Breakpoints
-│   └── ...                     # Page-specific styles
+├── frontend/                       # Static site — no build step, no npm
+│   ├── index.html                  #   Landing page
+│   ├── pages/                      #   Application pages
+│   │   ├── login.html              #     Authentication
+│   │   ├── register.html
+│   │   ├── dashboard.html          #     Student dashboard
+│   │   ├── profile.html
+│   │   ├── resume.html             #     Upload + AI extraction
+│   │   ├── internships.html        #     Discovery & filtering
+│   │   ├── internship-details.html #     Match breakdown + apply
+│   │   ├── skill-gap.html
+│   │   ├── what-if.html
+│   │   ├── applications.html
+│   │   ├── settings.html
+│   │   └── admin.html              #     Admin panel (role = "admin" only)
+│   ├── css/                        #   global · components · responsive · per-page
+│   ├── js/
+│   │   ├── config.js               #     API base URL & feature flags
+│   │   ├── api.js                  #     Central API layer — all backend calls
+│   │   ├── ui.js                   #     Shared components & helpers
+│   │   ├── auth.js                 #     Login / register validation
+│   │   ├── admin.js                #     Admin panel controller
+│   │   ├── theme.js                #     Light / dark theme
+│   │   ├── mock-data.js            #     Offline demo data
+│   │   └── ...                     #     One controller per page
+│   └── assets/logos/
 │
-├── js/
-│   ├── config.js               # API base URL & feature flags
-│   ├── api.js                  # Central API layer — all backend calls
-│   ├── ui.js                   # Shared components & helpers
-│   ├── auth.js                 # Login/register validation
-│   ├── admin.js                # Admin panel controller
-│   ├── theme.js                # Light/dark theme controller
-│   ├── mock-data.js            # Offline demo data
-│   └── ...                     # Page controllers
-│
-├── assets/logos/
-│
-└── backend/
-    ├── app/main.py             # FastAPI app: routes, models, matching engine
-    ├── requirements.txt        # Python dependencies
-    └── .env.example            # Environment variable template
+└── backend/                        # FastAPI service
+    ├── app/main.py                 #   Routes, models, matching engine, admin API
+    ├── requirements.txt            #   Python dependencies
+    └── .env.example                #   Environment variable template
 ```
 
 ---
@@ -213,7 +210,7 @@ Then open `backend/.env` and set:
 | `SUPABASE_ANON_KEY` | Supabase public anon key |
 | `DATABASE_URL` | PostgreSQL connection string (see note below) |
 | `GEMINI_API_KEY` | Google Gemini key from [AI Studio](https://aistudio.google.com/apikey) |
-| `GOOGLE_CLIENT_ID` | OAuth Web client ID — **must match `GOOGLE_CLIENT_ID` in `js/config.js`** |
+| `GOOGLE_CLIENT_ID` | OAuth Web client ID — **must match `GOOGLE_CLIENT_ID` in `frontend/js/config.js`** |
 | `JWT_SECRET_KEY` | Long random string that signs login tokens. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Falls back to an insecure dev key (with a startup warning) if unset. |
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. Default: `http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://127.0.0.1:3000` |
 | `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup (default: `aayushswapnali@gmail.com`) |
@@ -269,22 +266,30 @@ and are never stored in readable form.
 
 ### Terminal 2 — Frontend
 
-The frontend is static, so any file server works:
+The frontend is static, so any file server works. Run it from the `frontend/`
+folder:
 
 ```bash
+cd frontend
 python -m http.server 5500
 ```
 
 Open **http://localhost:5500** in your browser.
 
-> Run this from the **repository root**, not from `backend/`.
-> On Windows Command Prompt you can target it directly:
-> `python -m http.server 5500 --directory "C:\path\to\VertexSquad"`
+> The static server's root **must** be `frontend/` (that's where `index.html`
+> lives) and the port **must** be `5500` — that origin is what's registered in
+> the Google OAuth client and in `ALLOWED_ORIGINS`.
+> From anywhere you can also target it directly:
+> `python -m http.server 5500 --directory "C:\path\to\VertexSquad\frontend"`
+
+### One-click (Windows)
+
+`start.bat` in the repo root launches both servers and opens the browser.
 
 ### Running the frontend without a backend
 
-Set `USE_MOCK_DATA: true` in [`js/config.js`](js/config.js) to browse the full
-UI against local demo data with no server running — useful for design work.
+Set `USE_MOCK_DATA: true` in [`frontend/js/config.js`](frontend/js/config.js) to
+browse the full UI against local demo data with no server running.
 
 ---
 
@@ -334,7 +339,7 @@ Scores are computed entirely server-side and weighted across four dimensions:
 
 The frontend renders whatever breakdown the backend returns — it never computes
 or invents a score. Score bands (Excellent / Good / Moderate / Low) are
-configurable in [`js/config.js`](js/config.js).
+configurable in [`frontend/js/config.js`](frontend/js/config.js).
 
 ---
 

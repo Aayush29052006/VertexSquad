@@ -19,5 +19,7 @@ echo Starting frontend on http://127.0.0.1:5500 ...
 start "CareerNexus Frontend" cmd /k "cd /d %~dp0frontend && python serve.py 5500"
 
 REM 4. Open the browser
+REM    Use localhost (NOT 127.0.0.1) - Google treats them as different origins
+REM    and only http://localhost:5500 is registered in the OAuth client.
 timeout /t 1 /nobreak >nul
-start "" "http://127.0.0.1:5500"
+start "" "http://localhost:5500"

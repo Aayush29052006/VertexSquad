@@ -15,7 +15,8 @@ const TABS = [
   { id: 'skillgaps', label: 'Skill Gaps' },
 ];
 
-let activeTab = 'overview';
+// Deep-linkable: /pages/admin.html#students opens that tab directly.
+let activeTab = TABS.some((t) => t.id === location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
 
 (function initAdmin() {
   if (!requireAdmin()) return;
@@ -35,6 +36,7 @@ let activeTab = 'overview';
     const btn = e.target.closest('[data-tab]');
     if (!btn) return;
     activeTab = btn.dataset.tab;
+    history.replaceState(null, '', '#' + activeTab);
     document.querySelectorAll('.admin-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === activeTab));
     renderTab();
   });

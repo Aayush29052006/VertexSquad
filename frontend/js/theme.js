@@ -49,3 +49,83 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => syncThemeControls(getTheme()));
+
+/* ---------- Scroll reveal ----------
+   Fades content in as it scrolls into view. Purely decorative: if the user
+   prefers reduced motion, or IntersectionObserver is missing, we do nothing
+   and everything stays visible (the CSS only hides elements once <html> has
+   the .cn-reveal class, which we add here). */
+(function initReveal() {
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!('IntersectionObserver' in window)) return;
+  } catch (e) {
+    return;
+  }
+
+  // Elements that should reveal on scroll (marked up or matched by selector).
+  const SELECTORS = [
+    '[data-reveal]',
+    '.stat-item',
+    '.step-card',
+    '.cta-section',
+    '#features .card',
+    '.footer-grid > *',
+    '.section-header',
+  ].join(',');
+
+  const root = document.documentElement;
+  root.classList.add('cn-reveal');
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('cn-in');
+          io.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: '0px 0px -6% 0px' }
+  );
+
+  function tag(el) {
+    if (el.dataset.reveal === undefined) el.dataset.reveal = '';
+    // Already on screen? Show it now, in the same frame — no hide-then-reveal flash.
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.top < vh * 0.92 && rect.bottom > 0) {
+      el.classList.add('cn-in');
+    } else {
+      io.observe(el);
+    }
+  }
+
+  function scan(node) {
+    if (node.nodeType !== 1) return;
+    if (node.matches && node.matches(SELECTORS)) tag(node);
+    if (node.querySelectorAll) node.querySelectorAll(SELECTORS).forEach(tag);
+  }
+
+  // Safety net: if the observer never fires (edge cases), reveal everything.
+  const failSafe = setTimeout(() => {
+    document.querySelectorAll('[data-reveal]:not(.cn-in)').forEach((el) => el.classList.add('cn-in'));
+  }, 2500);
+  io.takeRecords; // no-op, keeps linters calm
+
+  const start = () => {
+    scan(document.body);
+    // App pages render content asynchronously — watch for it.
+    new MutationObserver((muts) => {
+      muts.forEach((m) => m.addedNodes.forEach(scan));
+    }).observe(document.body, { childList: true, subtree: true });
+    // clear the fail-safe once we've had a chance to reveal
+    setTimeout(() => clearTimeout(failSafe), 4000);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+})();

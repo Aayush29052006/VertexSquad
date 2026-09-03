@@ -541,3 +541,87 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
   .assistant-root { right: var(--space-4); bottom: var(--space-4); }
   .assistant-panel { height: min(440px, calc(100vh - 120px)); }
 }
+
+/* ============================================================
+   Motion — entrance animations + micro-interactions
+   Everything here is gated on prefers-reduced-motion, so the UI
+   is fully static and instant for users who ask for that.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+
+  @keyframes cn-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes cn-pop  { from { opacity: 0; transform: scale(0.96); }      to { opacity: 1; transform: none; } }
+  @keyframes cn-fade { from { opacity: 0; }                              to { opacity: 1; } }
+
+  /* --- Page entrance for the app shell (content is JS-rendered into #pageBody) --- */
+  .page-body,
+  .auth-card,
+  .greeting-banner,
+  #adminContent { animation: cn-rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+  /* --- Landing hero --- */
+  .hero-copy   { animation: cn-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .hero-visual { animation: cn-fade 0.9s ease both; }
+
+  /* --- Cards & tiles inside the app shell: staggered rise.
+         (Landing-page cards use the scroll-reveal system instead.) --- */
+  .page-body .card,
+  .page-body .stat-tile,
+  .page-body .internship-card,
+  .page-body .breakdown-row,
+  .page-body .timeline-item { animation: cn-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+  .stat-grid > *:nth-child(1), .recommend-grid > *:nth-child(1) { animation-delay: 0.02s; }
+  .stat-grid > *:nth-child(2), .recommend-grid > *:nth-child(2) { animation-delay: 0.08s; }
+  .stat-grid > *:nth-child(3), .recommend-grid > *:nth-child(3) { animation-delay: 0.14s; }
+  .stat-grid > *:nth-child(4), .recommend-grid > *:nth-child(4) { animation-delay: 0.20s; }
+  .stat-grid > *:nth-child(5) { animation-delay: 0.26s; }
+  .stat-grid > *:nth-child(6) { animation-delay: 0.32s; }
+
+  /* --- Table rows fade in as data lands --- */
+  .admin-table tbody tr,
+  .applications-table tbody tr { animation: cn-fade 0.4s ease both; }
+  .admin-table tbody tr:nth-child(2), .applications-table tbody tr:nth-child(2) { animation-delay: 0.03s; }
+  .admin-table tbody tr:nth-child(3), .applications-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
+  .admin-table tbody tr:nth-child(4), .applications-table tbody tr:nth-child(4) { animation-delay: 0.09s; }
+  .admin-table tbody tr:nth-child(5), .applications-table tbody tr:nth-child(5) { animation-delay: 0.12s; }
+  .admin-table tbody tr:nth-child(n+6), .applications-table tbody tr:nth-child(n+6) { animation-delay: 0.15s; }
+
+  /* --- Scroll reveal (theme.js adds .cn-reveal to <html> and data-reveal to elements) --- */
+  .cn-reveal [data-reveal] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .cn-reveal [data-reveal].cn-in { opacity: 1; transform: none; }
+  .cn-reveal [data-reveal][data-reveal-i="1"] { transition-delay: 0.07s; }
+  .cn-reveal [data-reveal][data-reveal-i="2"] { transition-delay: 0.14s; }
+  .cn-reveal [data-reveal][data-reveal-i="3"] { transition-delay: 0.21s; }
+
+  /* --- Micro-interactions --- */
+  .card-hover { transition: box-shadow var(--transition-base), transform var(--transition-base); }
+  .internship-card { transition: box-shadow var(--transition-base), transform var(--transition-base), border-color var(--transition-fast); }
+  .internship-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+  .stat-tile { transition: transform var(--transition-fast), border-color var(--transition-fast); }
+  .stat-tile:hover { transform: translateY(-2px); border-color: var(--border-strong, var(--primary)); }
+
+  .sidebar-link { transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast); }
+  .sidebar-link:hover { transform: translateX(3px); }
+
+  .btn { will-change: transform; }
+  .btn:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+
+  .badge, .skill-chip { transition: transform var(--transition-fast); }
+  .skill-chip:hover { transform: translateY(-1px); }
+
+  .admin-tab { transition: color var(--transition-fast), border-color var(--transition-fast); }
+
+  /* --- Modal --- */
+  .modal-overlay { animation: cn-fade 0.18s ease both; }
+  .modal { animation: cn-pop 0.24s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+  /* --- Progress / rings settle in --- */
+  .progress-fill { transition: width 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+}

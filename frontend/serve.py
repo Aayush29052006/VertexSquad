@@ -21,6 +21,16 @@ class NoListingHandler(SimpleHTTPRequestHandler):
         self.send_error(404, "Not found")
         return None
 
+    def end_headers(self):
+        # Never let the browser cache pages during development. A cached .html
+        # keeps pointing at an old ?v= asset URL, so edits to js/css appear to
+        # do nothing until you manually clear the cache — a nasty surprise
+        # mid-demo. Static hosts set their own caching in production.
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
 
 if __name__ == "__main__":
     handler = partial(NoListingHandler, directory=ROOT)

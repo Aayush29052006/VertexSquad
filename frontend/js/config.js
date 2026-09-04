@@ -2,8 +2,24 @@
  * CareerNexus — Global configuration
  * Single source of truth for API base URL and feature flags.
  */
+// Where the FastAPI backend lives. Detected from the hostname so the same
+// file works in local dev and in production with no edits:
+//   localhost / 127.0.0.1  -> the backend you started with start.bat
+//   anything else          -> the deployed Render service
+// After creating the Render web service, replace PROD_API_BASE_URL below with
+// its real URL (Render shows it as https://<service-name>.onrender.com).
+const PROD_API_BASE_URL = 'https://careernexus-api.onrender.com/api';
+
+function resolveApiBaseUrl() {
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '') {
+    return 'http://localhost:8000/api';
+  }
+  return PROD_API_BASE_URL;
+}
+
 const CONFIG = {
-  API_BASE_URL: 'http://localhost:8000/api',
+  API_BASE_URL: resolveApiBaseUrl(),
   // Supabase's anon/public key is meant to be shipped in client-side code —
   // it's safe here because access is enforced by Row Level Security on the
   // Supabase project, not by hiding this key. The SERVICE ROLE key is the

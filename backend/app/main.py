@@ -79,6 +79,36 @@ Base = declarative_base()
 
 security = HTTPBearer()
 
+# --- GOOGLE SIGN-IN KEY CACHE ---
+# One shared client for the whole process. Google's public keys are fetched
+# once and reused for an hour, so a sign-in no longer depends on a live
+# network round-trip to Google succeeding at that exact moment — which is
+# what made Google login work intermittently on flaky Wi-Fi.
+from jwt import PyJWKClient
+from jwt.exceptions import PyJWKClientConnectionError
+
+GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_JWKS = PyJWKClient(
+    GOOGLE_CERTS_URL,
+    cache_keys=True,
+    cache_jwk_set=True,
+    lifespan=3600,   # re-fetch at most once an hour
+    timeout=10,      # fail fast instead of hanging the request
+)
+
+
+def warm_google_keys():
+    """Pull Google's signing keys at startup so the first login is fast.
+
+    Never fatal: without internet the app still starts, and Google sign-in
+    simply fetches the keys on first use instead.
+    """
+    try:
+        GOOGLE_JWKS.get_jwk_set()
+        print("Google sign-in: signing keys cached")
+    except Exception as e:
+        print(f"Google sign-in: could not pre-fetch signing keys ({e}); will retry on first login")
+
 # --- PASSWORD HASHING ---
 # PBKDF2-HMAC-SHA256 from the standard library: no extra dependency to install
 # and no bcrypt/passlib version pitfalls. Passwords are never stored in
@@ -374,6 +404,7 @@ def seed_database():
 
 seed_database()
 bootstrap_admins()
+warm_google_keys()
 
 # --- DB HELPERS ---
 
@@ -702,11 +733,29 @@ def google_login(payload: GooglePayload, db: Session = Depends(get_db)):
             detail="Google sign-in is not configured on the server. Set GOOGLE_CLIENT_ID in .env",
         )
 
+    # Fetch Google's signing key. The client is a module-level singleton so the
+    # key set is cached — otherwise every sign-in makes a live HTTPS call to
+    # Google and fails whenever the network hiccups. One retry covers a cache
+    # miss caused by Google rotating its keys.
     try:
-        from jwt import PyJWKClient
+        signing_key = GOOGLE_JWKS.get_signing_key_from_jwt(payload.credential)
+    except PyJWKClientConnectionError as first_error:
+        # Genuinely could not reach Google — worth one retry, then say so
+        # plainly instead of blaming the user's account.
+        try:
+            signing_key = GOOGLE_JWKS.get_signing_key_from_jwt(payload.credential)
+        except Exception as e:
+            print(f"Google sign-in: cannot reach Google's key server ({first_error} / {e})")
+            raise HTTPException(
+                status_code=503,
+                detail="Could not reach Google to verify your sign-in. Check your internet connection and try again.",
+            )
+    except Exception as e:
+        # Malformed or unsigned token — a client problem, not a network one.
+        print(f"Google sign-in: bad token ({type(e).__name__}: {e})")
+        raise HTTPException(status_code=401, detail="Google sign-in failed. Please try again.")
 
-        jwks_client = PyJWKClient("https://www.googleapis.com/oauth2/v3/certs")
-        signing_key = jwks_client.get_signing_key_from_jwt(payload.credential)
+    try:
         claims = jwt.decode(
             payload.credential,
             signing_key.key,
@@ -715,7 +764,7 @@ def google_login(payload: GooglePayload, db: Session = Depends(get_db)):
             issuer=["https://accounts.google.com", "accounts.google.com"],
         )
     except Exception as e:
-        print(f"Google sign-in: token verification failed ({e})")
+        print(f"Google sign-in: token rejected ({type(e).__name__}: {e})")
         raise HTTPException(status_code=401, detail="Google sign-in failed. Please try again.")
 
     email = claims.get("email")

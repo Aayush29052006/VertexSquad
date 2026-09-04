@@ -13,7 +13,11 @@ const PROD_API_BASE_URL = 'https://careernexus-api.onrender.com/api';
 function resolveApiBaseUrl() {
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1' || host === '') {
-    return 'http://localhost:8000/api';
+    // Use 127.0.0.1, NOT localhost. On Windows "localhost" resolves to ::1
+    // (IPv6) first, but uvicorn binds 127.0.0.1 (IPv4) only — so the browser
+    // hits ::1:8000, gets connection-refused, and every call dies with
+    // "Failed to fetch" before it ever reaches the backend.
+    return 'http://127.0.0.1:8000/api';
   }
   return PROD_API_BASE_URL;
 }

@@ -88,6 +88,108 @@
     if (e.key === 'Escape' && !panel.hidden) closePanel();
   });
 
+  /* ---------- Drag to move, drag the corner to resize ----------
+     Position and size are remembered per device so the panel stays where
+     the user put it while moving between pages. Double-click the header
+     to snap it back to the launcher button. */
+  const BOX_KEY = 'cn_assistant_box';
+  const head = panel.querySelector('.assistant-head');
+
+  function clamp(v, min, max) {
+    return Math.min(Math.max(v, min), max);
+  }
+
+  function applyBox(box) {
+    if (!box) return;
+    if (box.w) panel.style.width = `${box.w}px`;
+    if (box.h) panel.style.height = `${box.h}px`;
+    if (typeof box.x === 'number' && typeof box.y === 'number') {
+      panel.classList.add('is-free');
+      // Keep it on screen even if the window is smaller than last time.
+      const w = box.w || panel.offsetWidth || 360;
+      const h = box.h || panel.offsetHeight || 480;
+      panel.style.left = `${clamp(box.x, 0, Math.max(0, window.innerWidth - w))}px`;
+      panel.style.top = `${clamp(box.y, 0, Math.max(0, window.innerHeight - h))}px`;
+    }
+  }
+
+  function saveBox() {
+    const box = { w: panel.offsetWidth, h: panel.offsetHeight };
+    if (panel.classList.contains('is-free')) {
+      const r = panel.getBoundingClientRect();
+      box.x = Math.round(r.left);
+      box.y = Math.round(r.top);
+    }
+    try {
+      localStorage.setItem(BOX_KEY, JSON.stringify(box));
+    } catch (e) {
+      /* private mode / storage blocked - position just won't persist */
+    }
+  }
+
+  try {
+    applyBox(JSON.parse(localStorage.getItem(BOX_KEY) || 'null'));
+  } catch (e) {
+    /* corrupt value - ignore and use the default position */
+  }
+
+  let drag = null;
+
+  head.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.assistant-close')) return; // let the X do its job
+    const r = panel.getBoundingClientRect();
+    // Freeze the current on-screen position before switching anchors,
+    // otherwise the panel jumps on the first drag.
+    panel.classList.add('is-free');
+    panel.style.left = `${r.left}px`;
+    panel.style.top = `${r.top}px`;
+    panel.style.width = `${r.width}px`;
+    panel.style.height = `${r.height}px`;
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+    head.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  head.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    panel.style.left = `${clamp(e.clientX - drag.dx, 0, window.innerWidth - drag.w)}px`;
+    panel.style.top = `${clamp(e.clientY - drag.dy, 0, window.innerHeight - drag.h)}px`;
+  });
+
+  function endDrag(e) {
+    if (!drag) return;
+    drag = null;
+    try { head.releasePointerCapture(e.pointerId); } catch (_) {}
+    saveBox();
+  }
+  head.addEventListener('pointerup', endDrag);
+  head.addEventListener('pointercancel', endDrag);
+
+  // Double-click the header to snap back to the default corner position.
+  head.addEventListener('dblclick', () => {
+    panel.classList.remove('is-free');
+    panel.style.left = panel.style.top = panel.style.width = panel.style.height = '';
+    try { localStorage.removeItem(BOX_KEY); } catch (_) {}
+  });
+
+  // Remember the size after a corner-resize.
+  if (window.ResizeObserver) {
+    let t;
+    new ResizeObserver(() => {
+      if (panel.hidden || drag) return;
+      clearTimeout(t);
+      t = setTimeout(saveBox, 250);
+    }).observe(panel);
+  }
+
+  // If the window shrinks, pull the panel back into view.
+  window.addEventListener('resize', () => {
+    if (!panel.classList.contains('is-free') || panel.hidden) return;
+    const r = panel.getBoundingClientRect();
+    panel.style.left = `${clamp(r.left, 0, Math.max(0, window.innerWidth - r.width))}px`;
+    panel.style.top = `${clamp(r.top, 0, Math.max(0, window.innerHeight - r.height))}px`;
+  });
+
   async function ask(question) {
     if (busy || !question.trim()) return;
     busy = true;

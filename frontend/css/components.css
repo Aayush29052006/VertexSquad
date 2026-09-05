@@ -462,15 +462,31 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column; overflow: hidden;
+  /* Drag the header to move it, drag the bottom-right corner to resize. */
+  resize: both;
+  min-width: 300px; min-height: 300px;
+  max-width: 95vw; max-height: 92vh;
 }
 .assistant-panel[hidden] { display: none; }
+
+/* Once dragged, the panel detaches from the launcher and is positioned
+   from the top-left of the viewport instead of anchored to the button. */
+.assistant-panel.is-free {
+  position: fixed;
+  right: auto; bottom: auto;
+}
 
 .assistant-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--surface-alt);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
+.assistant-head:active { cursor: grabbing; }
+.assistant-head .assistant-close { cursor: pointer; }
 .assistant-title { font-weight: 700; font-size: 0.95rem; }
 .assistant-sub { font-size: 0.75rem; color: var(--text-muted); }
 .assistant-close {

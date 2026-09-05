@@ -82,10 +82,24 @@ function renderWhatIf(pageBody, item) {
     calcBtn.innerHTML = '<span class="spinner"></span> Calculating...';
     try {
       const result = await api.getWhatIfScore(item.id, addedSkills);
+      const gain = result.potential_match - result.current_match;
       document.getElementById('compareBlock').hidden = false;
       document.getElementById('currentScore').textContent = `${result.current_match}%`;
       document.getElementById('potentialScore').textContent = `${result.potential_match}%`;
-      document.getElementById('deltaScore').textContent = `+${result.potential_match - result.current_match}% →`;
+      document.getElementById('deltaScore').textContent = `+${gain}% →`;
+
+      // A +0% result is a real answer, not a failure - say why, otherwise it
+      // just looks like the calculator is broken.
+      if (gain === 0) {
+        const missing = item.missing_skills || [];
+        errorEl.style.color = 'var(--text-muted)';
+        errorEl.textContent = missing.length
+          ? `These skills aren't required for this role. Try ${missing.slice(0, 3).join(', ')} instead.`
+          : 'You already have every skill this role asks for — your score is limited by preferences, CGPA and projects rather than skills.';
+        errorEl.hidden = false;
+      } else {
+        errorEl.style.color = '';
+      }
     } catch (err) {
       errorEl.textContent = err.message || 'Unable to calculate potential match right now.';
       errorEl.hidden = false;

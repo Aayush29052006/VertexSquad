@@ -895,10 +895,14 @@ def update_profile(payload: ProfileUpdatePayload, student: StudentModel = Depend
 
 
 # gemini-1.5-flash and 2.5-flash are retired and 404 for new keys.
-# We try a pinned current model first, then fall back to the moving
-# "-latest" alias. The alias is convenient but is frequently rate-limited
-# (HTTP 503), which would silently drop us to the non-AI fallback.
-GEMINI_MODEL_CANDIDATES = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]
+# Order is by measured reliability then latency, best first. On this key:
+#   gemini-3.1-flash-lite  ~2.0s   answers every request - our workhorse
+#   gemini-flash-latest    ~2.8s   good, but frequently returns HTTP 503
+#   gemini-3.6-flash      ~29.5s   works, far too slow to sit ahead of others
+# Leading with the slow model made every AI feature look like it took 30
+# seconds to "wake up"; leading with flash-latest still cost ~10s whenever
+# it 503'd. flash-lite first keeps the assistant responsive during a demo.
+GEMINI_MODEL_CANDIDATES = ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.6-flash"]
 
 
 def call_gemini(prompt: str, json_mode: bool = True, label: str = "request") -> Optional[str]:
@@ -925,7 +929,9 @@ def call_gemini(prompt: str, json_mode: bool = True, label: str = "request") -> 
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=30) as response:
+            # 12s is generous for a working model (fastest is ~2s) but fails
+            # fast enough that falling through the whole chain stays snappy.
+            with urllib.request.urlopen(req, timeout=12) as response:
                 res_body = json.loads(response.read().decode())
                 text_response = res_body["candidates"][0]["content"]["parts"][0]["text"].strip()
                 # Strip markdown fences if the model added them anyway

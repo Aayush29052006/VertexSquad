@@ -277,9 +277,34 @@ html[data-theme='dark'] .status-interview { background: rgba(244, 114, 182, 0.18
   position: sticky;
   top: 0;
   height: 100vh;
+  /* On mobile browsers 100vh includes the address bar, which would push
+     Logout below the visible area. dvh tracks the actual viewport. */
+  height: 100dvh;
 }
-.sidebar-brand { padding: 0 var(--space-2); margin-bottom: var(--space-6); }
-.sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.sidebar-brand { padding: 0 var(--space-2); margin-bottom: var(--space-6); flex-shrink: 0; }
+
+/* The nav is the only part that scrolls: the brand stays at the top and
+   Settings/Logout stay at the bottom, however many links a role has.
+   `min-height: 0` is what makes it actually scroll — without it a flex
+   child refuses to shrink below its content and the list is just clipped. */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.sidebar-nav::-webkit-scrollbar { width: 6px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 .sidebar-link {
   display: flex; align-items: center; gap: var(--space-3);
   padding: 0.7rem var(--space-3);
@@ -292,8 +317,9 @@ html[data-theme='dark'] .status-interview { background: rgba(244, 114, 182, 0.18
 .sidebar-link:hover { background: var(--surface-alt); color: var(--text-primary); }
 .sidebar-link.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
 .sidebar-link .icon { width: 20px; text-align: center; flex-shrink: 0; }
-.sidebar-divider { height: 1px; background: var(--border); margin: var(--space-4) 0; }
-.sidebar-footer { display: flex; flex-direction: column; gap: 4px; }
+.sidebar-divider { height: 1px; background: var(--border); margin: var(--space-4) 0; flex-shrink: 0; }
+/* Settings and Logout stay pinned to the bottom and never get squeezed. */
+.sidebar-footer { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 
 .main-content { flex: 1; min-width: 0; }
 .topbar {

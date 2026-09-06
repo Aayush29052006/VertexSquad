@@ -443,6 +443,11 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
 /* ---------- Floating AI Career Assistant ---------- */
 .assistant-root { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 900; }
 
+/* Once the launcher has been dragged it is positioned from the top-left of
+   the viewport. The panel is absolutely positioned inside this container, so
+   moving the launcher carries the panel with it. */
+.assistant-root.is-free { right: auto; bottom: auto; }
+
 .assistant-fab {
   width: 56px; height: 56px; border-radius: 50%;
   background: var(--primary); color: var(--text-on-primary);
@@ -450,8 +455,14 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
   font-size: 1.5rem; line-height: 1;
   display: flex; align-items: center; justify-content: center;
   transition: transform var(--transition-fast), background var(--transition-fast);
+  /* Drag to move it. touch-action stops the page scrolling under the finger. */
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .assistant-fab:hover { transform: scale(1.06); background: var(--primary-dark); }
+.assistant-fab.is-dragging { cursor: grabbing; transform: scale(1.02); transition: none; }
 
 .assistant-panel {
   position: absolute; right: 0; bottom: 68px;
@@ -475,6 +486,12 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
   position: fixed;
   right: auto; bottom: auto;
 }
+
+/* The panel normally opens up-and-left from the launcher. When the launcher
+   has been dragged near the top or the left edge there is no room that way,
+   so it opens down / right instead and stays on screen. */
+.assistant-root.flip-down .assistant-panel:not(.is-free) { top: 68px; bottom: auto; }
+.assistant-root.flip-right .assistant-panel:not(.is-free) { left: 0; right: auto; }
 
 .assistant-head {
   display: flex; align-items: center; justify-content: space-between;

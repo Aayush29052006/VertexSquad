@@ -69,6 +69,9 @@
   function openPanel() {
     panel.hidden = false;
     fab.setAttribute('aria-expanded', 'true');
+    // The panel's size is only measurable once it is visible, so decide
+    // which way it should open now rather than while it was hidden.
+    updatePanelFlip();
     if (!greeted) {
       const name = (localStorage.getItem('cn_student_name') || 'there').split(' ')[0];
       addMessage(`Hi ${name}! Ask me anything about your skills, resume, or interviews.`, 'bot');
@@ -82,7 +85,15 @@
     fab.setAttribute('aria-expanded', 'false');
   }
 
-  fab.addEventListener('click', () => (panel.hidden ? openPanel() : closePanel()));
+  fab.addEventListener('click', () => {
+    // A drag ends with a click event too; ignore that one so moving the
+    // button never also opens the panel.
+    if (suppressFabClick) {
+      suppressFabClick = false;
+      return;
+    }
+    panel.hidden ? openPanel() : closePanel();
+  });
   closeBtn.addEventListener('click', closePanel);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !panel.hidden) closePanel();
@@ -93,11 +104,114 @@
      the user put it while moving between pages. Double-click the header
      to snap it back to the launcher button. */
   const BOX_KEY = 'cn_assistant_box';
+  const FAB_KEY = 'cn_assistant_fab';
   const head = panel.querySelector('.assistant-head');
 
   function clamp(v, min, max) {
     return Math.min(Math.max(v, min), max);
   }
+
+  /* ---------- The launcher button itself is draggable ----------
+     The panel is absolutely positioned inside `root`, so moving the root
+     carries the button and the panel together. */
+  let suppressFabClick = false;
+
+  function fabSize() {
+    return { w: fab.offsetWidth || 56, h: fab.offsetHeight || 56 };
+  }
+
+  /* The panel opens up-and-left of the button by default. Near the top or
+     left edge there is no room for that, so flip it the other way. */
+  function updatePanelFlip() {
+    if (!root.classList.contains('is-free')) {
+      root.classList.remove('flip-down', 'flip-right');
+      return;
+    }
+    const r = fab.getBoundingClientRect();
+    const needed = panel.offsetHeight || 480;
+    root.classList.toggle('flip-down', r.top < needed + 12);
+    root.classList.toggle('flip-right', r.left < (panel.offsetWidth || 360));
+  }
+
+  function placeFab(x, y) {
+    const { w, h } = fabSize();
+    root.classList.add('is-free');
+    root.style.left = `${clamp(x, 0, Math.max(0, window.innerWidth - w))}px`;
+    root.style.top = `${clamp(y, 0, Math.max(0, window.innerHeight - h))}px`;
+  }
+
+  function saveFabPos() {
+    if (!root.classList.contains('is-free')) return;
+    const r = fab.getBoundingClientRect();
+    try {
+      localStorage.setItem(FAB_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }));
+    } catch (e) {
+      /* private mode / storage blocked - position just won't persist */
+    }
+  }
+
+  function resetFab() {
+    root.classList.remove('is-free', 'flip-down', 'flip-right');
+    root.style.left = root.style.top = '';
+    try {
+      localStorage.removeItem(FAB_KEY);
+    } catch (e) { /* nothing to clean up */ }
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAB_KEY) || 'null');
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
+      placeFab(saved.x, saved.y);
+      updatePanelFlip();
+    }
+  } catch (e) {
+    /* corrupt value - ignore and keep the default corner */
+  }
+
+  let fabDrag = null;
+
+  fab.addEventListener('pointerdown', (e) => {
+    const r = fab.getBoundingClientRect();
+    fabDrag = { dx: e.clientX - r.left, dy: e.clientY - r.top, startX: e.clientX, startY: e.clientY, moved: false };
+    fab.setPointerCapture(e.pointerId);
+  });
+
+  fab.addEventListener('pointermove', (e) => {
+    if (!fabDrag) return;
+    // A few pixels of travel is a click, not a drag — otherwise the button
+    // would be almost impossible to press.
+    if (!fabDrag.moved) {
+      if (Math.hypot(e.clientX - fabDrag.startX, e.clientY - fabDrag.startY) < 4) return;
+      fabDrag.moved = true;
+      fab.classList.add('is-dragging');
+    }
+    placeFab(e.clientX - fabDrag.dx, e.clientY - fabDrag.dy);
+    updatePanelFlip();
+  });
+
+  function endFabDrag(e) {
+    if (!fabDrag) return;
+    const moved = fabDrag.moved;
+    fabDrag = null;
+    fab.classList.remove('is-dragging');
+    try { fab.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (moved) {
+      suppressFabClick = true;
+      saveFabPos();
+      updatePanelFlip();
+    }
+  }
+  fab.addEventListener('pointerup', endFabDrag);
+  fab.addEventListener('pointercancel', endFabDrag);
+
+  // Double-click snaps the launcher back to its corner. The two clicks
+  // toggle the panel open then shut, so its state is left as it was.
+  fab.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    resetFab();
+  });
+
+  fab.title = 'Drag to move · double-click to reset';
 
   function applyBox(box) {
     if (!box) return;
@@ -165,11 +279,13 @@
   head.addEventListener('pointerup', endDrag);
   head.addEventListener('pointercancel', endDrag);
 
-  // Double-click the header to snap back to the default corner position.
+  // Double-click the header to snap everything back to the default corner —
+  // the panel's own position and size, and the launcher it hangs off.
   head.addEventListener('dblclick', () => {
     panel.classList.remove('is-free');
     panel.style.left = panel.style.top = panel.style.width = panel.style.height = '';
     try { localStorage.removeItem(BOX_KEY); } catch (_) {}
+    resetFab();
   });
 
   // Remember the size after a corner-resize.
@@ -182,8 +298,14 @@
     }).observe(panel);
   }
 
-  // If the window shrinks, pull the panel back into view.
+  // If the window shrinks, pull the launcher and the panel back into view.
   window.addEventListener('resize', () => {
+    if (root.classList.contains('is-free')) {
+      const f = fab.getBoundingClientRect();
+      placeFab(f.left, f.top);
+      updatePanelFlip();
+      saveFabPos();
+    }
     if (!panel.classList.contains('is-free') || panel.hidden) return;
     const r = panel.getBoundingClientRect();
     panel.style.left = `${clamp(r.left, 0, Math.max(0, window.innerWidth - r.width))}px`;

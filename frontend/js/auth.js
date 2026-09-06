@@ -145,6 +145,51 @@ if (loginForm) {
     forgotModal.hidden = true;
     showToast('If an account exists for that email, a reset link has been sent.', 'success');
   });
+
+  /* ---------- Team entrance ----------
+     The team sign-in lives at admin-login.html. This page shows no link to
+     it, so a student who is not looking for it never sees one.
+
+     Be clear about what that is worth: it is tidiness, not security. Anyone
+     who opens View Source can read this. The actual gate is the server —
+     admin-login.html refuses to keep a session whose role is not "admin",
+     and every /api/admin/* route re-checks the role on its own, so knowing
+     the address gets an outsider precisely nowhere without the password.
+
+     Two ways in, because a phone has no keyboard:
+       - Ctrl+Shift+A (Cmd+Shift+A on a Mac)
+       - five quick taps on the small print at the bottom of the card
+
+     The gesture deliberately targets the fine print rather than the logo:
+     the logo is a link home, so its first tap would navigate away before
+     the fifth ever landed. */
+  function openTeamSignIn() {
+    window.location.href = 'admin-login.html';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+      e.preventDefault();
+      openTeamSignIn();
+    }
+  });
+
+  const tapTarget = document.querySelector('.auth-links');
+  if (tapTarget) {
+    let taps = 0;
+    let tapTimer = null;
+    tapTarget.style.cursor = 'default';
+    tapTarget.addEventListener('click', () => {
+      taps += 1;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => { taps = 0; }, 1500);
+      if (taps >= 5) {
+        taps = 0;
+        clearTimeout(tapTimer);
+        openTeamSignIn();
+      }
+    });
+  }
 }
 
 /* ---------- Register ---------- */

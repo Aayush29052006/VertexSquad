@@ -7,15 +7,18 @@
 <meta name="robots" content="noindex, nofollow" />
 <title>Team Sign In — CareerNexus</title>
 <link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
-<link rel="stylesheet" href="../css/global.css?v=20260906j" />
-<link rel="stylesheet" href="../css/components.css?v=20260906j" />
-<link rel="stylesheet" href="../css/platform.css?v=20260906j" />
-<link rel="stylesheet" href="../css/auth.css?v=20260906j" />
-<link rel="stylesheet" href="../css/responsive.css?v=20260906j" />
+<link rel="stylesheet" href="../css/global.css?v=20260906k" />
+<link rel="stylesheet" href="../css/components.css?v=20260906k" />
+<link rel="stylesheet" href="../css/platform.css?v=20260906k" />
+<link rel="stylesheet" href="../css/auth.css?v=20260906k" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260906k" />
 <style>
   .admin-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
   .admin-login-card { width: 100%; max-width: 400px; }
   .admin-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); border: 1px solid var(--primary); border-radius: 999px; padding: 4px 12px; margin-bottom: var(--space-4); }
+  /* Shown when a team session is already on this device — you pick it
+     deliberately instead of being redirected through on someone's token. */
+  .active-session { margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--radius, 10px); background: rgba(127,127,127,0.05); }
 </style>
 </head>
 <body>
@@ -64,13 +67,13 @@
   </div>
 </div>
 
-<script src="../js/config.js?v=20260906j"></script>
-<script src="../js/mock-data.js?v=20260906j"></script>
-<script src="../js/api.js?v=20260906j"></script>
-<script src="../js/ui.js?v=20260906j"></script>
-<script src="../js/theme.js?v=20260906j"></script>
-<script src="../js/demo-accounts.js?v=20260906j"></script>
-<script src="../js/admin-auth.js?v=20260906j"></script>
+<script src="../js/config.js?v=20260906k"></script>
+<script src="../js/mock-data.js?v=20260906k"></script>
+<script src="../js/api.js?v=20260906k"></script>
+<script src="../js/ui.js?v=20260906k"></script>
+<script src="../js/theme.js?v=20260906k"></script>
+<script src="../js/demo-accounts.js?v=20260906k"></script>
+<script src="../js/admin-auth.js?v=20260906k"></script>
 <script>
   mountDemoAccounts({
     mountId: 'demoAccounts',

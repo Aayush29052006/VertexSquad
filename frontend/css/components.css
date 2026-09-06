@@ -458,6 +458,11 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
   /* Drag to move it. touch-action stops the page scrolling under the finger. */
   cursor: grab;
   touch-action: none;
+  /* On a short window the panel cannot fit above or below the button, so it
+     gets clamped into view and may overlap. Keep the button on top so it
+     stays clickable whatever the panel does. */
+  position: relative;
+  z-index: 2;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -480,20 +485,16 @@ html[data-theme='dark'] .theme-switch button.is-active { color: var(--primary); 
 }
 .assistant-panel[hidden] { display: none; }
 
-/* Once dragged, the panel detaches from the launcher and is positioned
-   from the top-left of the viewport instead of anchored to the button. */
-.assistant-panel.is-free {
-  position: fixed;
-  right: auto; bottom: auto;
-}
+/* The panel is always anchored to the launcher — drag either one and both
+   move together. Which side it opens on is decided in JS (positionPanel),
+   which flips it away from whichever viewport edge is too close. */
 
-/* The panel normally opens up-and-left from the launcher. When the launcher
-   has been dragged near the top or the left edge there is no room that way,
-   so it opens down / right instead and stays on screen. */
-.assistant-root.flip-down .assistant-panel:not(.is-free) { top: 68px; bottom: auto; }
-.assistant-root.flip-right .assistant-panel:not(.is-free) { left: 0; right: auto; }
-
+/* The header is the panel's drag handle, so it must not start a text
+   selection or scroll the page under a finger. */
 .assistant-head {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-4);
   border-bottom: 1px solid var(--border);

@@ -69,3 +69,81 @@
   justify-content: center;
   min-height: 44px;
 }
+
+/* ---------- Demo account quick-fill ----------
+   Both sign-in pages offer one-click prefill for the seeded demo accounts,
+   so a reviewer can reach any of the five stakeholder views without being
+   told a password. Deliberately styled as a distinct panel rather than part
+   of the form, so it never reads as one of the real fields. */
+.demo-block {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg, 14px);
+  background: rgba(127, 127, 127, 0.04);
+}
+
+.demo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.demo-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.demo-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.demo-clear:hover { color: var(--primary); }
+
+.demo-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.demo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.demo-chip:hover { border-color: var(--primary); }
+.demo-chip.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #06231c;
+}
+
+.demo-hint {
+  margin: var(--space-3) 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  min-height: 1.1em;
+}
+
+@media (max-width: 420px) {
+  .demo-chip { flex: 1 1 calc(50% - 8px); justify-content: center; }
+}

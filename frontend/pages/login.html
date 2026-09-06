@@ -6,10 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Log In — CareerNexus</title>
 <link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
-<link rel="stylesheet" href="../css/global.css?v=20260905b" />
-<link rel="stylesheet" href="../css/components.css?v=20260905b" />
-<link rel="stylesheet" href="../css/auth.css?v=20260905b" />
-<link rel="stylesheet" href="../css/responsive.css?v=20260905b" />
+<link rel="stylesheet" href="../css/global.css?v=20260906b" />
+<link rel="stylesheet" href="../css/components.css?v=20260906b" />
+<link rel="stylesheet" href="../css/platform.css?v=20260906b" />
+<link rel="stylesheet" href="../css/auth.css?v=20260906b" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260906b" />
 </head>
 <body>
 <div class="auth-theme-toggle">
@@ -34,6 +35,10 @@
       <div class="card">
         <h1 class="text-page-heading">Log In</h1>
         <p class="text-body mt-2">New to CareerNexus? <a href="register.html" style="color:var(--primary);font-weight:600;">Create an account</a></p>
+
+        <!-- One-click prefill for the seeded demo accounts. Filled by
+             js/demo-accounts.js, which also selects the first one on load. -->
+        <div id="demoAccounts"></div>
 
         <form id="loginForm" class="mt-5" novalidate>
           <div class="form-group">
@@ -84,11 +89,21 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="../js/config.js?v=20260905b"></script>
-<script src="../js/mock-data.js?v=20260905b"></script>
-<script src="../js/api.js?v=20260905b"></script>
-<script src="../js/ui.js?v=20260905b"></script>
-<script src="../js/theme.js?v=20260905b"></script>
-<script src="../js/auth.js?v=20260905b"></script>
+<script src="../js/config.js?v=20260906b"></script>
+<script src="../js/mock-data.js?v=20260906b"></script>
+<script src="../js/api.js?v=20260906b"></script>
+<script src="../js/ui.js?v=20260906b"></script>
+<script src="../js/theme.js?v=20260906b"></script>
+<script src="../js/demo-accounts.js?v=20260906b"></script>
+<script src="../js/auth.js?v=20260906b"></script>
+<script>
+  mountDemoAccounts({
+    mountId: 'demoAccounts',
+    roles: ['student', 'recruiter', 'faculty', 'institution'],
+    emailId: 'email',
+    passwordId: 'password',
+    title: 'Try a demo account',
+  });
+</script>
 </body>
 </html>

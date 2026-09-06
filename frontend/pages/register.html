@@ -6,10 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Create Account — CareerNexus</title>
 <link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
-<link rel="stylesheet" href="../css/global.css?v=20260905b" />
-<link rel="stylesheet" href="../css/components.css?v=20260905b" />
-<link rel="stylesheet" href="../css/auth.css?v=20260905b" />
-<link rel="stylesheet" href="../css/responsive.css?v=20260905b" />
+<link rel="stylesheet" href="../css/global.css?v=20260906b" />
+<link rel="stylesheet" href="../css/components.css?v=20260906b" />
+<link rel="stylesheet" href="../css/platform.css?v=20260906b" />
+<link rel="stylesheet" href="../css/auth.css?v=20260906b" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260906b" />
 </head>
 <body>
 <div class="auth-theme-toggle">
@@ -36,6 +37,19 @@
         <p class="text-body mt-2">Already have an account? <a href="login.html" style="color:var(--primary);font-weight:600;">Log in</a></p>
 
         <form id="registerForm" class="mt-5" novalidate>
+          <!-- Which of the four stakeholder types is signing up. The fields
+               below change to match; "admin" is deliberately not offered and
+               is rejected server-side even if someone forges it. -->
+          <div class="form-group">
+            <label class="form-label" for="accountRole">I am a...</label>
+            <select class="form-select" id="accountRole">
+              <option value="student">Student</option>
+              <option value="faculty">Faculty / Academician</option>
+              <option value="recruiter">Recruiter / Industry</option>
+              <option value="institution">Institution / Placement Cell</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="fullName">Full Name</label>
             <input class="form-input" type="text" id="fullName" required />
@@ -62,6 +76,27 @@
             </div>
           </div>
 
+          <!-- Shown for faculty, recruiters and institutions. -->
+          <div id="orgFields" hidden>
+            <div class="form-group">
+              <label class="form-label" for="orgName">Organisation</label>
+              <input class="form-input" type="text" id="orgName" placeholder="Company or college name" />
+              <p class="form-error" id="orgNameError" hidden></p>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="designation">Designation</label>
+                <input class="form-input" type="text" id="designation" placeholder="e.g. Campus Hiring Lead" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="department">Department</label>
+                <input class="form-input" type="text" id="department" placeholder="e.g. Computer Engineering" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Shown for students only. -->
+          <div id="studentFields">
           <div class="form-group">
             <label class="form-label" for="college">College</label>
             <input class="form-input" type="text" id="college" required />
@@ -96,6 +131,7 @@
             </select>
             <p class="form-error" id="gradYearError" hidden></p>
           </div>
+          </div><!-- /#studentFields -->
 
           <button class="btn btn-primary btn-block btn-lg mt-3" type="submit" id="registerSubmit">
             <span id="registerSubmitText">Create Account</span>
@@ -116,11 +152,11 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="../js/config.js?v=20260905b"></script>
-<script src="../js/mock-data.js?v=20260905b"></script>
-<script src="../js/api.js?v=20260905b"></script>
-<script src="../js/ui.js?v=20260905b"></script>
-<script src="../js/theme.js?v=20260905b"></script>
-<script src="../js/auth.js?v=20260905b"></script>
+<script src="../js/config.js?v=20260906b"></script>
+<script src="../js/mock-data.js?v=20260906b"></script>
+<script src="../js/api.js?v=20260906b"></script>
+<script src="../js/ui.js?v=20260906b"></script>
+<script src="../js/theme.js?v=20260906b"></script>
+<script src="../js/auth.js?v=20260906b"></script>
 </body>
 </html>

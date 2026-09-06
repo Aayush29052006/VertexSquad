@@ -263,6 +263,153 @@ const api = {
     });
   },
 
+  // ---------- Skill assessment ----------
+  // The questionnaire the problem statement opens with. Correct answers are
+  // never sent to the browser — scoring happens entirely on the server.
+  getAssessmentQuestions() {
+    return apiRequest('/assessment/questions');
+  },
+  submitAssessment(answers) {
+    return apiRequest('/assessment/submit', { method: 'POST', body: JSON.stringify({ answers }) });
+  },
+  getAssessmentResult() {
+    return apiRequest('/assessment/result');
+  },
+
+  // ---------- Learning programs ----------
+  getLearningRecommendations() {
+    return apiRequest('/learning/recommendations');
+  },
+  listLearningPrograms(filters = {}) {
+    const q = new URLSearchParams(filters).toString();
+    return apiRequest(`/learning/programs${q ? `?${q}` : ''}`);
+  },
+  createLearningProgram(payload) {
+    return apiRequest('/learning/programs', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  deleteLearningProgram(id) {
+    return apiRequest(`/learning/programs/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  // ---------- Opportunities (internships, jobs, apprenticeships, FDPs) ----------
+  listOpportunities(filters = {}) {
+    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    const q = new URLSearchParams(clean).toString();
+    return apiRequest(`/opportunities${q ? `?${q}` : ''}`);
+  },
+  createOpportunity(payload) {
+    return apiRequest('/opportunities', { method: 'POST', body: JSON.stringify(payload) });
+  },
+
+  // ---------- Recruiter portal ----------
+  recruiter: {
+    getPostings() {
+      return apiRequest('/recruiter/postings');
+    },
+    getApplicants(filters = {}) {
+      const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+      const q = new URLSearchParams(clean).toString();
+      return apiRequest(`/recruiter/applicants${q ? `?${q}` : ''}`);
+    },
+    setApplicationStatus(id, status) {
+      return apiRequest(`/recruiter/applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    },
+    completeInternship(applicationId) {
+      return apiRequest(`/applications/${encodeURIComponent(applicationId)}/complete`, { method: 'POST' });
+    },
+  },
+
+  // ---------- Internship progress & mentor feedback ----------
+  getProgress(applicationId) {
+    return apiRequest(`/applications/${encodeURIComponent(applicationId)}/progress`);
+  },
+  addProgress(applicationId, payload) {
+    return apiRequest(`/applications/${encodeURIComponent(applicationId)}/progress`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  addMentorFeedback(logId, payload) {
+    return apiRequest(`/progress/${encodeURIComponent(logId)}/feedback`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ---------- Verified digital portfolio ----------
+  getMyPortfolio() {
+    return apiRequest('/portfolio/me');
+  },
+  // Public: deliberately no auth header needed, so a recruiter can open the
+  // shared link without an account.
+  getPublicPortfolio(studentId) {
+    return apiRequest(`/portfolio/${encodeURIComponent(studentId)}`);
+  },
+  verifyPortfolioItem(payload) {
+    return apiRequest('/portfolio/verify', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  getPendingVerifications() {
+    return apiRequest('/verify/pending');
+  },
+
+  // ---------- Industry-academia collaboration ----------
+  listCollaborations(filters = {}) {
+    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    const q = new URLSearchParams(clean).toString();
+    return apiRequest(`/collaborations${q ? `?${q}` : ''}`);
+  },
+  createCollaboration(payload) {
+    return apiRequest('/collaborations', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  registerForCollaboration(id, note = '') {
+    return apiRequest(`/collaborations/${encodeURIComponent(id)}/register`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+  getCollaborationRegistrations(id) {
+    return apiRequest(`/collaborations/${encodeURIComponent(id)}/registrations`);
+  },
+
+  // ---------- Secure documents ----------
+  listDocuments() {
+    return apiRequest('/documents');
+  },
+  async uploadDocument(file, title, docType) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    formData.append('doc_type', docType);
+    const token = localStorage.getItem('cn_token');
+    const res = await fetch(`${CONFIG.API_BASE_URL}/documents`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      let message = 'Upload failed. Please try again.';
+      try {
+        message = (await res.json()).detail || message;
+      } catch (_) { /* non-JSON body */ }
+      throw new Error(message);
+    }
+    return res.json();
+  },
+  getDocument(id) {
+    return apiRequest(`/documents/${encodeURIComponent(id)}`);
+  },
+  deleteDocument(id) {
+    return apiRequest(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  // ---------- Institution analytics ----------
+  getInstitutionAnalytics() {
+    return apiRequest('/institution/analytics');
+  },
+
   // ---------- Admin panel (role === 'admin' enforced server-side) ----------
   admin: {
     getStats() {

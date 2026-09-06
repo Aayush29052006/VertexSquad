@@ -20,19 +20,64 @@ to unlock better opportunities.
 The core flow:
 
 ```
-Profile → Resume → AI Skill Extraction → Recommendations
-       → Match Score → Skill Gap → Apply → Track
+Assess → Find Skill Gaps → Learn → Apply → Internship
+       → Get Evaluated → Build Verified Portfolio → Get Placed
 ```
 
 Unlike a keyword-based job board, every match score is computed and explained
 server-side across four weighted dimensions, so a student can see the reasoning
 behind their result rather than an opaque number.
 
+The platform serves all four stakeholders the problem statement names — students,
+academicians, industry and institutions — each with their own portal and their own
+role-gated view of the same data.
+
+### Demo accounts
+
+Every account below uses the password `demo1234`, and the sign-in page pre-fills the
+student one — open `/pages/login.html`, press **Log In**, and you are in. The chips
+above the form switch to any other role in one click.
+
+| Role | Email | Lands on |
+|---|---|---|
+| Student | `demo.student@careernexus.example.com` | Student dashboard |
+| Recruiter | `recruiter@technova.example.com` | Recruiter portal |
+| Faculty | `faculty@sscoetjalgaon.example.com` | Faculty portal |
+| Institution | `tpo@sscoetjalgaon.example.com` | Institution analytics |
+| Admin | `aayushswapnali@gmail.com` | Everything |
+
+These five accounts are seeded on **every** database, so the sign-in shortcuts always
+work. The separate ten-student demo *cohort* — used to make the institution analytics
+look realistic — seeds **only into a local SQLite database**. Pointing `DATABASE_URL`
+at a shared Postgres instance leaves real data untouched, so ten fabricated students
+can never end up in the team's live analytics. Set `SEED_DEMO_COHORT=true` to override
+that.
+
 ---
 
 ## Features
 
 **For students**
+- **Skill assessment** — a 26-question questionnaire across technical MCQs,
+  aptitude and self-rated soft skills. Scored entirely server-side (the answer key
+  never reaches the browser), producing a skill profile, a per-category strength/gap
+  breakdown, and an attempt history. Demonstrated skills are merged into the profile
+  and immediately drive every match score on the site
+- **Personalised learning paths** — each gap is ranked by how many open roles that
+  one skill would unlock, with courses attached: industry-published programs first
+  (they come with a hiring partner), then curated NPTEL / SWAYAM / freeCodeCamp /
+  Microsoft Learn / AWS courses
+- **Jobs & opportunities** — internships, full-time roles, apprenticeships and live
+  projects in one ranked feed, filterable by type and work mode
+- **Verified digital portfolio** — a shareable public page (`portfolio.html?id=…`,
+  no login required) where every skill, project, certificate and internship is
+  marked either *verified* — carrying the name and role of the faculty member,
+  institution or employer who signed it — or *self-declared*. A credibility score
+  shows what share of the portfolio is independently vouched for
+- **Internship progress tracking** — weekly logs with hours, reviewed by the mentor
+  who posted the role, feeding a completion record that is signed into the portfolio
+- **Secure documents** — certificates, internship reports and academic records,
+  readable only by their owner and by verifying staff
 - **AI resume parsing** — extracts technical skills, soft skills, projects, and
   certifications from an uploaded PDF/DOCX via the Gemini API, with a rule-based
   fallback when AI is unavailable
@@ -47,6 +92,36 @@ behind their result rather than an opaque number.
 - **Application tracking** — statuses from Applied through Selected/Rejected
 - **Light & dark themes** — persisted per device
 
+**For industry (recruiters)**
+- **Post any opportunity** — internships, jobs, apprenticeships, live projects, and
+  the faculty track (FDPs, industrial training, consultancy) from one form
+- **Candidate shortlisting** — applicants ranked by skill compatibility, with CGPA
+  eligibility flagged against the posting's own cutoff, and a link straight to each
+  candidate's verified portfolio. Scoped server-side, so one company can never see
+  another's pipeline
+- **Publish learning programs** — training, certifications, workshops and mentorship
+  that appear against exactly the skill gap they close
+- **Mentor feedback** — review an intern's weekly log, then sign off the completed
+  internship into their portfolio
+
+**For academia (faculty)**
+- **Faculty opportunities** — faculty internships, industrial training and FDPs,
+  matched to the academician's own profile
+- **Verification queue** — work through students' unverified skills, projects and
+  certificates. A verifier's name and role are attached to every stamp, and the
+  backend refuses any attempt to verify your own portfolio
+- **Collaboration calls** — guest lectures, workshops, live projects, innovation
+  challenges, joint research and consultancy, with registration lists for whoever
+  published them
+
+**For institutions (placement cell)**
+- **Cohort analytics** — placement readiness bands, assessment coverage,
+  participation and placement rates, and an application funnel
+- **Curriculum gaps** — every skill ranked by *impact*: how many of your students
+  lack it, weighted by how many open roles demand it. The top row is the evidence
+  for a syllabus change
+- **Branch breakdown** — average readiness and participation per branch
+
 **For admins / placement cell** — separate team sign-in at `/pages/admin-login.html`,
 panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - **Overview** — students, internships, applications, at-risk count, top colleges
@@ -59,7 +134,43 @@ panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - Central API layer (`frontend/js/api.js`) — no scattered `fetch()` calls
 - Mock-data mode for frontend work without a running backend
 - All untrusted data is HTML-escaped before DOM insertion (XSS hardened)
+- User-supplied links are validated as http(s) on both sides before becoming an
+  `href` - escaping alone does not stop a `javascript:` URL
+- Uploaded documents are restricted to PDF and images, checked by both MIME type
+  and extension: the viewer hands bytes to the browser as a blob URL, which
+  inherits this app's origin, so a stored `.html` or `.svg` would otherwise run
+  script in the session of any staff member who opened it
 - Automatic DB seeding on startup, plus an offline SQLite fallback
+
+---
+
+## Problem statement coverage
+
+Every requirement in SIH26044, and where it lives in the build.
+
+| SIH26044 requirement | Where it is implemented |
+|---|---|
+| Skill assessment through questionnaires and aptitude tests | `assessment.html` · `POST /api/assessment/submit` |
+| Skill profiling, technical and soft skill gaps | `_score_assessment()` — per-category breakdown, proven vs weak skills |
+| Skill mapping to roles and programs | `GET /api/learning/recommendations` — gaps ranked by roles unlocked |
+| Personalised learning recommendations & certifications | `learning.html` · industry programs + curated NPTEL/SWAYAM catalogue |
+| Career guidance from skills, interests and demand | AI Career Assistant · match breakdown · What-If analysis |
+| Student digital portfolios with verified items | `portfolio.html` · `VerificationModel` · public shareable link |
+| Industries post internships with required skills | `post-opportunity.html` · `POST /api/opportunities` |
+| Industries post jobs, apprenticeships, projects | Same endpoint — `opportunity_type` covers all four |
+| Matching students to opportunities by skill profile | `calculate_match_score_breakdown()` — four weighted dimensions |
+| Application and tracking system | `applications.html` · `GET /api/applications` |
+| Faculty internships, industrial training, FDPs | `faculty.html` · `audience="faculty"` opportunity track |
+| Progress tracking, mentor feedback, completion records | `ProgressLogModel` · `PATCH /api/progress/{id}/feedback` |
+| Industry learning programs (training, certs, workshops, mentorship) | `LearningProgramModel` · `POST /api/learning/programs` |
+| Candidate shortlisting by skill compatibility & eligibility | `recruiter.html` · `GET /api/recruiter/applicants` |
+| Recruitment management for recruiters | `PATCH /api/recruiter/applications/{id}` |
+| Institution dashboards & analytics | `institution.html` · `GET /api/institution/analytics` |
+| Skill demand trends for policymakers | Curriculum-gap ranking by impact (students lacking × roles demanding) |
+| Industry–academia collaboration (lectures, workshops, challenges, research) | `collaborations.html` · `CollaborationModel` |
+| Role-based access for all four stakeholders | `require_roles()` on every endpoint · role-filtered navigation |
+| Secure document management | `documents.html` · `DocumentModel` — owner + staff only |
+| Integration with learning platforms | Curated catalogue links to NPTEL, SWAYAM, freeCodeCamp, MS Learn, AWS |
 
 ---
 
@@ -93,15 +204,31 @@ VertexSquad/
 │   ├── pages/                      #   Application pages
 │   │   ├── login.html              #     Student authentication
 │   │   ├── admin-login.html        #     Team / admin sign-in (separate door)
-│   │   ├── register.html
+│   │   ├── register.html           #     Signup — picks one of four roles
+│   │   │
+│   │   │                           #   -- Student journey --
 │   │   ├── dashboard.html          #     Student dashboard
+│   │   ├── assessment.html         #     Skill assessment questionnaire
 │   │   ├── profile.html
 │   │   ├── resume.html             #     Upload + AI extraction
-│   │   ├── internships.html        #     Discovery & filtering
-│   │   ├── internship-details.html #     Match breakdown + apply
 │   │   ├── skill-gap.html
+│   │   ├── learning.html           #     Personalised learning paths
+│   │   ├── internships.html        #     Discovery & filtering
+│   │   ├── opportunities.html      #     Jobs, apprenticeships, projects, FDPs
+│   │   ├── internship-details.html #     Match breakdown + apply
 │   │   ├── what-if.html
 │   │   ├── applications.html
+│   │   ├── documents.html          #     Secure certificates & reports
+│   │   ├── portfolio.html          #     Verified portfolio (+ public view)
+│   │   │
+│   │   │                           #   -- Industry & academia --
+│   │   ├── recruiter.html          #     Postings + candidate shortlisting
+│   │   ├── post-opportunity.html   #     Publish any opportunity type
+│   │   ├── faculty.html            #     Faculty portal
+│   │   ├── verify.html             #     Verification queue
+│   │   ├── institution.html        #     Cohort analytics
+│   │   ├── collaborations.html     #     Lectures, projects, research
+│   │   │
 │   │   ├── settings.html
 │   │   └── admin.html              #     Admin panel (role = "admin" only)
 │   ├── css/                        #   global · components · responsive · per-page

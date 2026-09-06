@@ -159,6 +159,10 @@ if (registerForm) {
     degree: document.getElementById('degree'),
     branch: document.getElementById('branch'),
     gradYear: document.getElementById('gradYear'),
+    accountRole: document.getElementById('accountRole'),
+    orgName: document.getElementById('orgName'),
+    designation: document.getElementById('designation'),
+    department: document.getElementById('department'),
   };
   const errors = {
     fullName: document.getElementById('fullNameError'),
@@ -169,10 +173,34 @@ if (registerForm) {
     degree: document.getElementById('degreeError'),
     branch: document.getElementById('branchError'),
     gradYear: document.getElementById('gradYearError'),
+    orgName: document.getElementById('orgNameError'),
   };
   const formError = document.getElementById('registerFormError');
   const submitBtn = document.getElementById('registerSubmit');
   const submitText = document.getElementById('registerSubmitText');
+
+  // Students give academic details; everyone else gives an organisation.
+  // Asking a recruiter for their graduation year would be nonsense, so the
+  // two blocks swap rather than stacking.
+  const studentFields = document.getElementById('studentFields');
+  const orgFields = document.getElementById('orgFields');
+
+  function isStudentSignup() {
+    return !fields.accountRole || fields.accountRole.value === 'student';
+  }
+
+  function syncRoleFields() {
+    const student = isStudentSignup();
+    if (studentFields) studentFields.hidden = !student;
+    if (orgFields) orgFields.hidden = student;
+    // Hidden required inputs would block submit with an invisible error.
+    [fields.college, fields.degree, fields.branch, fields.gradYear].forEach((el) => {
+      if (el) el.required = student;
+    });
+  }
+
+  fields.accountRole?.addEventListener('change', syncRoleFields);
+  syncRoleFields();
 
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -192,32 +220,54 @@ if (registerForm) {
       setFieldError(fields.confirmPassword, errors.confirmPassword, 'Passwords do not match'); valid = false;
     } else setFieldError(fields.confirmPassword, errors.confirmPassword, '');
 
-    if (!fields.college.value.trim()) { setFieldError(fields.college, errors.college, 'College is required'); valid = false; }
-    else setFieldError(fields.college, errors.college, '');
+    if (isStudentSignup()) {
+      if (!fields.college.value.trim()) { setFieldError(fields.college, errors.college, 'College is required'); valid = false; }
+      else setFieldError(fields.college, errors.college, '');
 
-    if (!fields.degree.value) { setFieldError(fields.degree, errors.degree, 'Please select a degree'); valid = false; }
-    else setFieldError(fields.degree, errors.degree, '');
+      if (!fields.degree.value) { setFieldError(fields.degree, errors.degree, 'Please select a degree'); valid = false; }
+      else setFieldError(fields.degree, errors.degree, '');
 
-    if (!fields.branch.value.trim()) { setFieldError(fields.branch, errors.branch, 'Branch is required'); valid = false; }
-    else setFieldError(fields.branch, errors.branch, '');
+      if (!fields.branch.value.trim()) { setFieldError(fields.branch, errors.branch, 'Branch is required'); valid = false; }
+      else setFieldError(fields.branch, errors.branch, '');
 
-    if (!fields.gradYear.value) { setFieldError(fields.gradYear, errors.gradYear, 'Please select a graduation year'); valid = false; }
-    else setFieldError(fields.gradYear, errors.gradYear, '');
+      if (!fields.gradYear.value) { setFieldError(fields.gradYear, errors.gradYear, 'Please select a graduation year'); valid = false; }
+      else setFieldError(fields.gradYear, errors.gradYear, '');
+    } else if (!fields.orgName.value.trim()) {
+      setFieldError(fields.orgName, errors.orgName, 'Organisation is required');
+      valid = false;
+    } else {
+      setFieldError(fields.orgName, errors.orgName, '');
+    }
 
     if (!valid) return;
 
     submitBtn.disabled = true;
     submitText.innerHTML = '<span class="spinner"></span> Creating account...';
     try {
+      const role = fields.accountRole ? fields.accountRole.value : 'student';
       const payload = {
         full_name: fields.fullName.value.trim(),
         email: fields.regEmail.value.trim(),
         password: fields.regPassword.value,
-        college: fields.college.value.trim(),
-        degree: fields.degree.value,
-        branch: fields.branch.value.trim(),
-        graduation_year: Number(fields.gradYear.value),
+        role,
       };
+      if (isStudentSignup()) {
+        Object.assign(payload, {
+          college: fields.college.value.trim(),
+          degree: fields.degree.value,
+          branch: fields.branch.value.trim(),
+          graduation_year: Number(fields.gradYear.value),
+        });
+      } else {
+        Object.assign(payload, {
+          org_name: fields.orgName.value.trim(),
+          designation: fields.designation.value.trim(),
+          department: fields.department.value.trim(),
+          // Faculty and institution accounts belong to a college; the
+          // analytics and verification queue are scoped by this.
+          college: role === 'recruiter' ? '' : fields.orgName.value.trim(),
+        });
+      }
       const { token, student } = await api.register(payload);
       localStorage.setItem('cn_token', token);
       localStorage.setItem('cn_student_name', student.full_name);

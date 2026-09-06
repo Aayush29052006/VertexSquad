@@ -4,22 +4,82 @@
  * loading/empty/error state builders. Loaded on every authenticated page.
  */
 
+/* The four stakeholder types from the problem statement, plus the platform
+   operator. Every nav item declares which of them may see it — but that is
+   only cosmetic: the backend re-checks the role on every single request. */
+const ROLES = {
+  STUDENT: 'student',
+  FACULTY: 'faculty',
+  RECRUITER: 'recruiter',
+  INSTITUTION: 'institution',
+  ADMIN: 'admin',
+};
+
+const ALL_ROLES = Object.values(ROLES);
+const STAFF = [ROLES.FACULTY, ROLES.RECRUITER, ROLES.INSTITUTION, ROLES.ADMIN];
+
 const NAV_ITEMS = [
-  { href: 'dashboard.html', icon: '📊', label: 'Dashboard' },
-  { href: 'profile.html', icon: '👤', label: 'My Profile' },
-  { href: 'resume.html', icon: '📄', label: 'Resume' },
-  { href: 'internships.html', icon: '💼', label: 'Internships' },
-  { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap' },
-  { href: 'applications.html', icon: '📋', label: 'Applications' },
-  { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis' },
-  { href: 'add-internship.html', icon: '🏢', label: 'Post Internship' },
-  // Admin-only. Rendered only when localStorage.cn_role === 'admin'; the
-  // backend enforces the real check on every /api/admin/* call.
-  { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', adminOnly: true },
+  { href: 'dashboard.html', icon: '📊', label: 'Dashboard', roles: ALL_ROLES },
+
+  // --- The student journey, in the order a student actually walks it:
+  // assess -> see the gap -> learn -> find a role -> apply -> track -> portfolio.
+  { href: 'assessment.html', icon: '📝', label: 'Skill Assessment', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'profile.html', icon: '👤', label: 'My Profile', roles: ALL_ROLES },
+  { href: 'resume.html', icon: '📄', label: 'Resume', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
+  { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
+  { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'documents.html', icon: '🗂️', label: 'My Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
+  { href: 'portfolio.html', icon: '🏅', label: 'My Portfolio', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+
+  // --- Shared across academia and industry.
+  { href: 'collaborations.html', icon: '🤝', label: 'Collaborations', roles: ALL_ROLES },
+
+  // --- Industry.
+  { href: 'recruiter.html', icon: '🏢', label: 'Recruiter Portal', roles: [ROLES.RECRUITER, ROLES.ADMIN] },
+  { href: 'post-opportunity.html', icon: '➕', label: 'Post Opportunity', roles: STAFF },
+
+  // --- Academia.
+  { href: 'faculty.html', icon: '🎒', label: 'Faculty Portal', roles: [ROLES.FACULTY, ROLES.ADMIN] },
+  { href: 'verify.html', icon: '✅', label: 'Verify Students', roles: STAFF },
+  { href: 'institution.html', icon: '📈', label: 'Institution Analytics', roles: [ROLES.INSTITUTION, ROLES.FACULTY, ROLES.ADMIN] },
+
+  // --- Platform operator only.
+  { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', roles: [ROLES.ADMIN] },
 ];
 
+function currentRole() {
+  return localStorage.getItem('cn_role') || ROLES.STUDENT;
+}
+
 function isAdmin() {
-  return localStorage.getItem('cn_role') === 'admin';
+  return currentRole() === ROLES.ADMIN;
+}
+
+function isStudent() {
+  return currentRole() === ROLES.STUDENT;
+}
+
+/* True when the signed-in user is one of the roles listed. Admin passes
+   every check — the platform operator can reach every portal. */
+function hasRole(...roles) {
+  const role = currentRole();
+  return role === ROLES.ADMIN || roles.includes(role);
+}
+
+const ROLE_LABELS = {
+  student: 'Student',
+  faculty: 'Faculty',
+  recruiter: 'Recruiter',
+  institution: 'Institution',
+  admin: 'Admin',
+};
+
+function roleLabel(role) {
+  return ROLE_LABELS[role || currentRole()] || 'Student';
 }
 
 function themeToggleHtml() {
@@ -44,8 +104,9 @@ function renderAppShell(activeHref, studentName) {
     .join('')
     .toUpperCase();
 
+  const role = currentRole();
   const links = NAV_ITEMS
-    .filter((item) => !item.adminOnly || isAdmin())
+    .filter((item) => item.roles.includes(role))
     .map(
       (item) => `
       <a class="sidebar-link${item.href === (activeHref || page) ? ' active' : ''}" href="${item.href}">
@@ -209,6 +270,21 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
+}
+
+/* Make a URL safe to use as an href.
+   escapeHtml is not enough on its own: "javascript:alert(1)" contains no
+   HTML characters, so it survives escaping intact and then runs when the
+   link is clicked. Anything that is not plain http(s) is dropped. */
+function safeUrl(url) {
+  const raw = (url ?? '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw, window.location.origin);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : '';
+  } catch (_) {
+    return ''; // unparseable — treat as no link at all
+  }
 }
 
 /* ---------- Internship card ---------- */

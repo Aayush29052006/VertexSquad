@@ -148,6 +148,17 @@ def verify_password(password: str, stored: str) -> bool:
 def needs_rehash(stored: str) -> bool:
     return not (stored or "").startswith("pbkdf2_sha256$")
 
+
+def new_id(prefix: str) -> str:
+    """A collision-proof primary key.
+
+    A plain second-resolution timestamp is not unique: two people signing up
+    in the same second, or one student submitting two assessments in a row,
+    both produce the same id and the insert fails on the primary key. The
+    millisecond clock plus random bytes removes that whole class of bug.
+    """
+    return f"{prefix}_{int(datetime.datetime.now().timestamp() * 1000)}{secrets.token_hex(3)}"
+
 # --- DB MODELS ---
 
 class StudentModel(Base):
@@ -157,10 +168,17 @@ class StudentModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
-    # "student" or "admin". Admin unlocks the /api/admin/* endpoints and the
-    # admin panel in the frontend. Never settable from a normal signup — only
-    # promoted by another admin or by the ADMIN_EMAILS bootstrap on startup.
+    # One of: student, faculty, recruiter, institution, admin — the four
+    # stakeholder types the problem statement names, plus the platform
+    # operator. Admin unlocks the /api/admin/* endpoints and the admin panel.
+    # Never settable from a normal signup — only promoted by another admin or
+    # by the ADMIN_EMAILS bootstrap on startup.
     role = Column(String, nullable=False, default="student")
+    # Organisation identity. A recruiter belongs to a company; a faculty
+    # member and an institution account belong to a college.
+    org_name = Column(String, nullable=True, default="")
+    department = Column(String, nullable=True, default="")
+    designation = Column(String, nullable=True, default="")
     # Deactivated accounts keep their data but cannot log in or call the API.
     is_active = Column(Integer, nullable=False, default=1)
     phone = Column(String, nullable=True)
@@ -186,6 +204,13 @@ class StudentModel(Base):
 
 
 class InternshipModel(Base):
+    """Every opportunity on the platform, whatever its shape.
+
+    One table carries internships, full-time jobs, apprenticeships and live
+    projects for students, and faculty internships, industrial training and
+    FDPs for academicians. `opportunity_type` and `audience` are what tell
+    them apart — the matching engine is identical for all of them.
+    """
     __tablename__ = "internships"
 
     id = Column(String, primary_key=True, index=True)
@@ -197,6 +222,13 @@ class InternshipModel(Base):
     duration = Column(String, nullable=True)
     deadline = Column(String, nullable=True)
     required_skills = Column(Text, default="[]")  # JSON string
+    # internship | job | apprenticeship | project | fdp | training
+    opportunity_type = Column(String, nullable=True, default="internship")
+    audience = Column(String, nullable=True, default="student")  # student | faculty
+    description = Column(Text, nullable=True, default="")
+    min_cgpa = Column(Float, nullable=True, default=0.0)
+    openings = Column(Integer, nullable=True, default=1)
+    posted_by = Column(String, nullable=True)  # students.id of the publisher
 
 
 class ApplicationModel(Base):
@@ -220,6 +252,132 @@ class ResumeModel(Base):
     status = Column(String, default="processed")
     extracted_skills = Column(Text, default="[]")  # JSON string list
 
+
+class AssessmentModel(Base):
+    """One completed skill assessment.
+
+    Every attempt is kept so a student can see improvement over time; the
+    most recent one is what drives their skill profile and gap analysis.
+    """
+    __tablename__ = "assessments"
+
+    id = Column(String, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.id"), nullable=False, index=True)
+    submitted_at = Column(String, nullable=False)
+    technical_score = Column(Integer, default=0)   # 0-100
+    soft_score = Column(Integer, default=0)        # 0-100
+    aptitude_score = Column(Integer, default=0)    # 0-100
+    overall_score = Column(Integer, default=0)     # 0-100
+    category_scores = Column(Text, default="{}")   # {"Web Development": 66, ...}
+    answers = Column(Text, default="{}")           # {question_id: answer}
+
+
+class LearningProgramModel(Base):
+    """A course, certification, workshop or mentorship offer.
+
+    Industry partners publish these; students meet them attached to the
+    exact skill gap the program closes.
+    """
+    __tablename__ = "learning_programs"
+
+    id = Column(String, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    program_type = Column(String, nullable=False, default="course")  # course|certification|workshop|mentorship
+    description = Column(Text, default="")
+    skills_covered = Column(Text, default="[]")   # JSON list
+    url = Column(String, default="")
+    duration = Column(String, default="")
+    cost = Column(String, default="Free")
+    audience = Column(String, default="student")  # student|faculty|both
+    posted_by = Column(String, nullable=True)
+    created_at = Column(String, nullable=False)
+
+
+class CollaborationModel(Base):
+    """Industry-academia collaboration calls: guest lectures, workshops,
+    live projects, innovation challenges, consultancy and joint research."""
+    __tablename__ = "collaborations"
+
+    id = Column(String, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    organisation = Column(String, nullable=False)
+    collab_type = Column(String, nullable=False, default="workshop")
+    description = Column(Text, default="")
+    skills_involved = Column(Text, default="[]")
+    mode = Column(String, default="Hybrid")
+    location = Column(String, default="")
+    starts_on = Column(String, default="")
+    seats = Column(Integer, default=0)            # 0 = unlimited
+    audience = Column(String, default="both")     # student|faculty|both
+    posted_by = Column(String, nullable=True)
+    created_at = Column(String, nullable=False)
+
+
+class CollabInterestModel(Base):
+    """A student or faculty member registering for a collaboration."""
+    __tablename__ = "collab_interests"
+
+    id = Column(String, primary_key=True, index=True)
+    collab_id = Column(String, ForeignKey("collaborations.id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("students.id"), nullable=False, index=True)
+    registered_at = Column(String, nullable=False)
+    note = Column(Text, default="")
+
+
+class ProgressLogModel(Base):
+    """Weekly internship progress. The intern writes the entry; the mentor
+    (whoever posted the role) adds feedback and a rating."""
+    __tablename__ = "progress_logs"
+
+    id = Column(String, primary_key=True, index=True)
+    application_id = Column(String, ForeignKey("applications.id"), nullable=False, index=True)
+    week = Column(Integer, default=1)
+    summary = Column(Text, default="")
+    hours = Column(Integer, default=0)
+    created_at = Column(String, nullable=False)
+    mentor_feedback = Column(Text, default="")
+    mentor_rating = Column(Integer, default=0)    # 0 = not yet reviewed, else 1-5
+    reviewed_at = Column(String, nullable=True)
+
+
+class VerificationModel(Base):
+    """A verification stamp on one portfolio item.
+
+    This is what makes the portfolio *verified* rather than self-claimed: a
+    faculty member, the institution, or the company that hosted the
+    internship signs off on a skill, certificate, project or placement.
+    """
+    __tablename__ = "verifications"
+
+    id = Column(String, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.id"), nullable=False, index=True)
+    item_type = Column(String, nullable=False)    # skill|certification|project|internship
+    item_key = Column(String, nullable=False)     # skill name / cert title / project title / application id
+    verified_by = Column(String, nullable=True)
+    verifier_name = Column(String, default="")
+    verifier_role = Column(String, default="")
+    verified_at = Column(String, nullable=False)
+    note = Column(Text, default="")
+
+
+class DocumentModel(Base):
+    """Secure document store for certificates, internship reports and
+    academic records. Bytes live in the row so a fresh clone needs no
+    object storage; only the owner and staff can read one back."""
+    __tablename__ = "documents"
+
+    id = Column(String, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.id"), nullable=False, index=True)
+    doc_type = Column(String, nullable=False, default="certificate")
+    title = Column(String, nullable=False)
+    file_name = Column(String, nullable=False)
+    content_type = Column(String, default="application/pdf")
+    size_kb = Column(Integer, default=0)
+    uploaded_at = Column(String, nullable=False)
+    data_b64 = Column(Text, default="")
+
+
 # Create tables
 Base.metadata.create_all(bind=engine)
 
@@ -233,6 +391,16 @@ def run_migrations():
     add_columns = [
         ("students", "role", "VARCHAR DEFAULT 'student'"),
         ("students", "is_active", "INTEGER DEFAULT 1"),
+        # Added with the multi-stakeholder build.
+        ("students", "org_name", "VARCHAR DEFAULT ''"),
+        ("students", "department", "VARCHAR DEFAULT ''"),
+        ("students", "designation", "VARCHAR DEFAULT ''"),
+        ("internships", "opportunity_type", "VARCHAR DEFAULT 'internship'"),
+        ("internships", "audience", "VARCHAR DEFAULT 'student'"),
+        ("internships", "description", "TEXT DEFAULT ''"),
+        ("internships", "min_cgpa", "FLOAT DEFAULT 0"),
+        ("internships", "openings", "INTEGER DEFAULT 1"),
+        ("internships", "posted_by", "VARCHAR"),
     ]
     with engine.connect() as conn:
         for table, column, ddl in add_columns:
@@ -246,12 +414,17 @@ def run_migrations():
             except Exception:
                 conn.rollback()  # column already exists
         # Normalise any NULLs left over from the ALTER.
-        try:
-            conn.execute(text("UPDATE students SET role = 'student' WHERE role IS NULL"))
-            conn.execute(text("UPDATE students SET is_active = 1 WHERE is_active IS NULL"))
-            conn.commit()
-        except Exception:
-            conn.rollback()
+        for stmt in (
+            "UPDATE students SET role = 'student' WHERE role IS NULL",
+            "UPDATE students SET is_active = 1 WHERE is_active IS NULL",
+            "UPDATE internships SET opportunity_type = 'internship' WHERE opportunity_type IS NULL",
+            "UPDATE internships SET audience = 'student' WHERE audience IS NULL",
+        ):
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
 
 run_migrations()
@@ -447,6 +620,47 @@ def get_current_admin(student: StudentModel = Depends(get_current_student)) -> S
         raise HTTPException(status_code=403, detail="Admin access required")
     return student
 
+
+# --- ROLES ---
+# A person holds exactly one role. The first four are the stakeholder types
+# the problem statement names; "admin" is the platform operator, who can do
+# anything any of the others can.
+ROLE_STUDENT = "student"
+ROLE_FACULTY = "faculty"
+ROLE_RECRUITER = "recruiter"
+ROLE_INSTITUTION = "institution"
+ROLE_ADMIN = "admin"
+VALID_ROLES = {ROLE_STUDENT, ROLE_FACULTY, ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_ADMIN}
+
+# Who may publish opportunities, learning programs and collaboration calls.
+POSTER_ROLES = {ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY, ROLE_ADMIN}
+# Who may stamp a portfolio item as verified. Deliberately excludes the
+# student themselves — a self-signed verification would be worthless.
+VERIFIER_ROLES = {ROLE_FACULTY, ROLE_INSTITUTION, ROLE_RECRUITER, ROLE_ADMIN}
+
+
+def require_roles(*allowed: str):
+    """Build a dependency that admits only the listed roles.
+
+    Admin is always admitted. Like get_current_admin, this is the real wall —
+    hiding a link in the frontend is only cosmetic.
+    """
+    allowed_set = set(allowed) | {ROLE_ADMIN}
+
+    def _dep(user: StudentModel = Depends(get_current_student)) -> StudentModel:
+        if (user.role or ROLE_STUDENT) not in allowed_set:
+            raise HTTPException(
+                status_code=403,
+                detail=f"This action is available to: {', '.join(sorted(allowed))}",
+            )
+        return user
+
+    return _dep
+
+
+def user_role(user: StudentModel) -> str:
+    return user.role or ROLE_STUDENT
+
 # --- PAIRED ALGORITHMS ---
 
 def calculate_match_score_breakdown(student: StudentModel, internship: InternshipModel):
@@ -554,6 +768,12 @@ class RegisterPayload(BaseModel):
     current_year: Optional[str] = ""
     graduation_year: Optional[int] = datetime.datetime.now().year + 2
     cgpa: Optional[float] = 0.0
+    # Which stakeholder is signing up. "admin" is deliberately not accepted
+    # here — see the check in register().
+    role: Optional[str] = "student"
+    org_name: Optional[str] = ""
+    department: Optional[str] = ""
+    designation: Optional[str] = ""
 
 class ProfileUpdatePayload(BaseModel):
     full_name: Optional[str] = None
@@ -574,6 +794,9 @@ class ProfileUpdatePayload(BaseModel):
     preferred_locations: Optional[List[str]] = None
     work_mode: Optional[str] = None
     duration: Optional[str] = None
+    org_name: Optional[str] = None
+    department: Optional[str] = None
+    designation: Optional[str] = None
 
 class ConfirmSkillsPayload(BaseModel):
     skills: List[str] = []
@@ -613,6 +836,9 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
         "full_name": student.full_name,
         "email": student.email,
         "role": student.role or "student",
+        "org_name": student.org_name or "",
+        "department": student.department or "",
+        "designation": student.designation or "",
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
@@ -646,12 +872,29 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    student_id = f"stu_{int(datetime.datetime.now().timestamp())}"
+    # Anyone may sign up as a student, faculty member, recruiter or
+    # institution. Admin is never self-assignable — it is granted only by an
+    # existing admin or the ADMIN_EMAILS bootstrap, so an open signup form can
+    # never be used to mint a platform operator.
+    requested_role = (payload.role or "student").strip().lower()
+    if requested_role == "admin" or requested_role not in {
+        "student",
+        "faculty",
+        "recruiter",
+        "institution",
+    }:
+        requested_role = "student"
+
+    student_id = new_id("stu")
     student = StudentModel(
         id=student_id,
         email=payload.email,
         password_hash=hash_password(payload.password),
         full_name=payload.full_name,
+        role=requested_role,
+        org_name=(payload.org_name or "").strip(),
+        department=(payload.department or "").strip(),
+        designation=(payload.designation or "").strip(),
         college=payload.college or "",
         branch=payload.branch or "",
         current_year=payload.current_year or "",
@@ -686,6 +929,9 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
         "full_name": student.full_name,
         "email": student.email,
         "role": student.role or "student",
+        "org_name": student.org_name or "",
+        "department": student.department or "",
+        "designation": student.designation or "",
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
@@ -774,7 +1020,7 @@ def google_login(payload: GooglePayload, db: Session = Depends(get_db)):
     student = db.query(StudentModel).filter(StudentModel.email == email).first()
     if student is None:
         student = StudentModel(
-            id=f"stu_{int(datetime.datetime.now().timestamp())}",
+            id=new_id("stu"),
             email=email,
             password_hash="google_oauth",  # no local password for Google accounts
             full_name=claims.get("name") or email.split("@")[0].title(),
@@ -814,6 +1060,9 @@ def get_profile(student: StudentModel = Depends(get_current_student)):
         "full_name": student.full_name,
         "email": student.email,
         "role": student.role or "student",
+        "org_name": student.org_name or "",
+        "department": student.department or "",
+        "designation": student.designation or "",
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
@@ -853,6 +1102,9 @@ def update_profile(payload: ProfileUpdatePayload, student: StudentModel = Depend
     if payload.cgpa is not None: student.cgpa = payload.cgpa
     if payload.work_mode is not None: student.work_mode = payload.work_mode
     if payload.duration is not None: student.duration = payload.duration
+    if payload.org_name is not None: student.org_name = payload.org_name
+    if payload.department is not None: student.department = payload.department
+    if payload.designation is not None: student.designation = payload.designation
 
     # Update list properties (serialized as JSON strings)
     if payload.skills is not None: student.skills = json.dumps(payload.skills)
@@ -1228,7 +1480,7 @@ def apply_to_internship(internship_id: str, student: StudentModel = Depends(get_
 
     score_details = calculate_match_score_breakdown(student, internship)
     
-    app_id = f"app_{int(datetime.datetime.now().timestamp())}"
+    app_id = new_id("app")
     applied_on = datetime.datetime.now().strftime("%Y-%m-%d")
     
     new_app = ApplicationModel(
@@ -1450,7 +1702,7 @@ def create_internship(payload: NewInternshipPayload, student: StudentModel = Dep
         raise HTTPException(status_code=400, detail="At least one required skill is needed")
 
     internship = InternshipModel(
-        id=f"int_{int(datetime.datetime.now().timestamp())}",
+        id=new_id("int"),
         title=title,
         company=company,
         location=payload.location.strip() or "Not specified",
@@ -1533,7 +1785,7 @@ class AdminInternshipUpsert(BaseModel):
     required_skills: List[str] = []
 
 
-VALID_APP_STATUSES = {"applied", "shortlisted", "under_review", "rejected"}
+VALID_APP_STATUSES = {"applied", "shortlisted", "under_review", "rejected", "completed"}
 
 
 @app.get("/api/admin/stats")
@@ -1684,7 +1936,7 @@ def admin_create_internship(payload: AdminInternshipUpsert, admin: StudentModel 
     if not skills:
         raise HTTPException(status_code=400, detail="At least one required skill is needed")
     i = InternshipModel(
-        id=f"int_{int(datetime.datetime.now().timestamp())}",
+        id=new_id("int"),
         title=title,
         company=company,
         location=payload.location.strip() or "Not specified",
@@ -1787,6 +2039,2553 @@ def admin_update_application(
     db.commit()
     return {"id": a.id, "status": a.status}
 
+
+# =====================================================================
+# SKILL ASSESSMENT
+# ---------------------------------------------------------------------
+# The problem statement opens with "students complete a questionnaire to
+# evaluate their technical and soft skills". This is that questionnaire:
+# scored technical MCQs, a self-rated soft-skill section, and an aptitude
+# section. Correct answers never leave the server — the browser only ever
+# receives the questions and options.
+# =====================================================================
+
+LIKERT_OPTIONS = [
+    "Strongly disagree",
+    "Disagree",
+    "Neutral",
+    "Agree",
+    "Strongly agree",
+]
+
+QUESTION_BANK = [
+    # --- Technical: Programming Fundamentals ---
+    {
+        "id": "t_prog_1",
+        "section": "technical",
+        "category": "Programming Fundamentals",
+        "question": "What is the length of the list produced by [1, 2, 3][::2]?",
+        "options": ["1", "3", "2", "It raises an error"],
+        "answer": 2,
+        "skills": ["Python"],
+    },
+    {
+        "id": "t_prog_2",
+        "section": "technical",
+        "category": "Programming Fundamentals",
+        "question": "Which data structure gives average O(1) lookup by key?",
+        "options": ["List", "Dictionary", "Tuple", "Linked list"],
+        "answer": 1,
+        "skills": ["Python"],
+    },
+    {
+        "id": "t_prog_3",
+        "section": "technical",
+        "category": "Programming Fundamentals",
+        "question": "In Python, what does a function return if it has no return statement?",
+        "options": ["0", "An empty string", "It raises an error", "None"],
+        "answer": 3,
+        "skills": ["Python"],
+    },
+    # --- Technical: Web Development ---
+    {
+        "id": "t_web_1",
+        "section": "technical",
+        "category": "Web Development",
+        "question": "Which HTTP status code means a resource was created successfully?",
+        "options": ["301", "200", "201", "204"],
+        "answer": 2,
+        "skills": ["JavaScript", "HTML"],
+    },
+    {
+        "id": "t_web_2",
+        "section": "technical",
+        "category": "Web Development",
+        "question": "In a React function component, how should state be updated?",
+        "options": [
+            "Call the setter returned by useState",
+            "Mutate the state variable directly",
+            "Assign to this.state",
+            "Reload the page",
+        ],
+        "answer": 0,
+        "skills": ["React", "JavaScript"],
+    },
+    {
+        "id": "t_web_3",
+        "section": "technical",
+        "category": "Web Development",
+        "question": "Which CSS property controls the space inside an element's border?",
+        "options": ["margin", "gap", "border-spacing", "padding"],
+        "answer": 3,
+        "skills": ["CSS", "HTML"],
+    },
+    # --- Technical: Databases ---
+    {
+        "id": "t_db_1",
+        "section": "technical",
+        "category": "Databases",
+        "question": "Which SQL clause filters rows after GROUP BY has been applied?",
+        "options": ["WHERE", "HAVING", "ORDER BY", "LIMIT"],
+        "answer": 1,
+        "skills": ["SQL"],
+    },
+    {
+        "id": "t_db_2",
+        "section": "technical",
+        "category": "Databases",
+        "question": "What does adding an index to a column primarily improve?",
+        "options": [
+            "Write throughput",
+            "Disk space used",
+            "Lookup speed on that column",
+            "Data integrity",
+        ],
+        "answer": 2,
+        "skills": ["SQL", "PostgreSQL"],
+    },
+    {
+        "id": "t_db_3",
+        "section": "technical",
+        "category": "Databases",
+        "question": "Which join returns every row from the left table, matched or not?",
+        "options": ["LEFT JOIN", "INNER JOIN", "CROSS JOIN", "SELF JOIN"],
+        "answer": 0,
+        "skills": ["SQL"],
+    },
+    # --- Technical: Data & Analytics ---
+    {
+        "id": "t_data_1",
+        "section": "technical",
+        "category": "Data & Analytics",
+        "question": "The median is preferred over the mean when the data is...",
+        "options": [
+            "Normally distributed",
+            "Already sorted",
+            "Purely categorical",
+            "Skewed by outliers",
+        ],
+        "answer": 3,
+        "skills": ["Excel", "Python"],
+    },
+    {
+        "id": "t_data_2",
+        "section": "technical",
+        "category": "Data & Analytics",
+        "question": "Which Excel function looks up a value and returns a value from another column?",
+        "options": ["TRIM", "VLOOKUP", "CONCAT", "LEN"],
+        "answer": 1,
+        "skills": ["Excel"],
+    },
+    {
+        "id": "t_data_3",
+        "section": "technical",
+        "category": "Data & Analytics",
+        "question": "Which chart best shows how parts make up a whole at a single point in time?",
+        "options": ["Line chart", "Scatter plot", "Stacked bar chart", "Histogram"],
+        "answer": 2,
+        "skills": ["Power BI", "Excel"],
+    },
+    # --- Technical: Cloud & DevOps ---
+    {
+        "id": "t_cloud_1",
+        "section": "technical",
+        "category": "Cloud & DevOps",
+        "question": "What does a Docker image contain?",
+        "options": [
+            "Only the application source code",
+            "Only configuration files",
+            "A full virtual machine with its own kernel",
+            "The application plus its dependencies and runtime",
+        ],
+        "answer": 3,
+        "skills": ["Docker"],
+    },
+    {
+        "id": "t_cloud_2",
+        "section": "technical",
+        "category": "Cloud & DevOps",
+        "question": "Which Git command creates a new branch and switches to it in one step?",
+        "options": ["git merge feature", "git clone feature", "git checkout -b feature", "git branch feature"],
+        "answer": 2,
+        "skills": ["Git"],
+    },
+    {
+        "id": "t_cloud_3",
+        "section": "technical",
+        "category": "Cloud & DevOps",
+        "question": 'In cloud pricing, "pay as you go" means you are billed for...',
+        "options": [
+            "The resources you actually consume",
+            "A fixed annual licence",
+            "The number of developers on the team",
+            "Lines of code deployed",
+        ],
+        "answer": 0,
+        "skills": ["AWS"],
+    },
+    # --- Aptitude ---
+    {
+        "id": "a_1",
+        "section": "aptitude",
+        "category": "Aptitude",
+        "question": "A train covers 120 km in 1.5 hours. What is its average speed?",
+        "options": ["60 km/h", "70 km/h", "80 km/h", "90 km/h"],
+        "answer": 2,
+        "skills": [],
+    },
+    {
+        "id": "a_2",
+        "section": "aptitude",
+        "category": "Aptitude",
+        "question": "What comes next in the series 2, 6, 12, 20, 30, ...?",
+        "options": ["36", "42", "40", "48"],
+        "answer": 1,
+        "skills": [],
+    },
+    {
+        "id": "a_3",
+        "section": "aptitude",
+        "category": "Aptitude",
+        "question": "A shirt costs Rs. 800 after a 20% discount. What was the original price?",
+        "options": ["Rs. 960", "Rs. 1024", "Rs. 1000", "Rs. 1200"],
+        "answer": 2,
+        "skills": [],
+    },
+    {
+        "id": "a_4",
+        "section": "aptitude",
+        "category": "Aptitude",
+        "question": "If A is greater than B, and B is greater than C, which must be true?",
+        "options": ["C is greater than A", "A equals C", "A is greater than C", "Cannot be determined"],
+        "answer": 2,
+        "skills": [],
+    },
+    {
+        "id": "a_5",
+        "section": "aptitude",
+        "category": "Aptitude",
+        "question": "Which number is the odd one out: 4, 9, 16, 20, 25?",
+        "options": ["9", "16", "25", "20"],
+        "answer": 3,
+        "skills": [],
+    },
+    # --- Soft skills (self-rated, no wrong answer) ---
+    {
+        "id": "s_comm",
+        "section": "soft",
+        "category": "Communication",
+        "question": "I can explain a technical idea clearly to someone outside my field.",
+        "options": LIKERT_OPTIONS,
+        "answer": None,
+        "skills": ["Communication"],
+    },
+    {
+        "id": "s_team",
+        "section": "soft",
+        "category": "Teamwork",
+        "question": "I contribute reliably to group work and support teammates who fall behind.",
+        "options": LIKERT_OPTIONS,
+        "answer": None,
+        "skills": ["Teamwork"],
+    },
+    {
+        "id": "s_lead",
+        "section": "soft",
+        "category": "Leadership",
+        "question": "I take ownership of a task's outcome without being asked to.",
+        "options": LIKERT_OPTIONS,
+        "answer": None,
+        "skills": ["Leadership"],
+    },
+    {
+        "id": "s_solve",
+        "section": "soft",
+        "category": "Problem Solving",
+        "question": "When I meet an unfamiliar problem I break it down before searching for an answer.",
+        "options": LIKERT_OPTIONS,
+        "answer": None,
+        "skills": ["Problem Solving"],
+    },
+    {
+        "id": "s_time",
+        "section": "soft",
+        "category": "Time Management",
+        "question": "I plan my work and meet deadlines without a last-minute rush.",
+        "options": LIKERT_OPTIONS,
+        "answer": None,
+        "skills": ["Time Management"],
+    },
+    {
+        "id": "s_adapt",
+        "section": "soft",
+        "category": "Adaptability",
+        "question": "I adjust quickly when requirements or tools change mid-project.",
+        "options": LIKERT_OPTIONS,
+        "answer": None,
+        "skills": ["Adaptability"],
+    },
+]
+
+QUESTIONS_BY_ID = {q["id"]: q for q in QUESTION_BANK}
+
+
+class AssessmentSubmission(BaseModel):
+    # {question_id: selected_option_index}
+    answers: dict = {}
+
+
+@app.get("/api/assessment/questions")
+def get_assessment_questions(student: StudentModel = Depends(get_current_student)):
+    """The questionnaire, with the correct answers stripped out.
+
+    Never include `answer` here — the whole score is worthless if the
+    browser can read the key.
+    """
+    sections = {"technical": [], "aptitude": [], "soft": []}
+    for q in QUESTION_BANK:
+        sections[q["section"]].append(
+            {
+                "id": q["id"],
+                "category": q["category"],
+                "question": q["question"],
+                "options": q["options"],
+                "scored": q["answer"] is not None,
+            }
+        )
+    return {
+        "sections": [
+            {
+                "key": "technical",
+                "title": "Technical Skills",
+                "hint": "Multiple choice. Pick the single best answer.",
+                "questions": sections["technical"],
+            },
+            {
+                "key": "aptitude",
+                "title": "Aptitude & Reasoning",
+                "hint": "Quantitative and logical reasoning.",
+                "questions": sections["aptitude"],
+            },
+            {
+                "key": "soft",
+                "title": "Soft Skills",
+                "hint": "Rate yourself honestly — there is no right answer here.",
+                "questions": sections["soft"],
+            },
+        ],
+        "total_questions": len(QUESTION_BANK),
+    }
+
+
+def _score_assessment(answers: dict):
+    """Turn raw answers into scores, a per-category breakdown and a skill split.
+
+    Technical and aptitude questions are marked against the key. Soft-skill
+    answers are self-ratings on a 1-5 Likert scale, converted to a percentage.
+    """
+    cat_correct, cat_total = {}, {}
+    proven_skills, weak_skills = set(), set()
+    tech_correct = tech_total = 0
+    apt_correct = apt_total = 0
+    soft_points = soft_max = 0
+
+    for q in QUESTION_BANK:
+        raw = answers.get(q["id"])
+        cat = q["category"]
+        cat_total[cat] = cat_total.get(cat, 0) + 1
+
+        if q["section"] == "soft":
+            # Likert index 0-4 -> 1-5 points.
+            value = (int(raw) + 1) if isinstance(raw, int) and 0 <= raw <= 4 else 0
+            soft_points += value
+            soft_max += 5
+            cat_correct[cat] = cat_correct.get(cat, 0) + (1 if value >= 4 else 0)
+            if value >= 4:
+                proven_skills.update(q["skills"])
+            elif value:
+                weak_skills.update(q["skills"])
+            continue
+
+        is_right = isinstance(raw, int) and raw == q["answer"]
+        cat_correct[cat] = cat_correct.get(cat, 0) + (1 if is_right else 0)
+        if q["section"] == "technical":
+            tech_total += 1
+            tech_correct += 1 if is_right else 0
+            (proven_skills if is_right else weak_skills).update(q["skills"])
+        else:
+            apt_total += 1
+            apt_correct += 1 if is_right else 0
+
+    def pct(num, den):
+        return round(num * 100 / den) if den else 0
+
+    technical_score = pct(tech_correct, tech_total)
+    aptitude_score = pct(apt_correct, apt_total)
+    soft_score = pct(soft_points, soft_max)
+    # Technical carries the most weight because it is what employers filter on.
+    overall = round(technical_score * 0.5 + soft_score * 0.25 + aptitude_score * 0.25)
+
+    category_scores = {c: pct(cat_correct.get(c, 0), n) for c, n in cat_total.items()}
+
+    # A skill proven by one question but missed in another still counts as a
+    # gap — partial knowledge is exactly what we want to surface.
+    weak_skills -= {s for s in proven_skills if s not in weak_skills}
+
+    return {
+        "technical_score": technical_score,
+        "soft_score": soft_score,
+        "aptitude_score": aptitude_score,
+        "overall_score": overall,
+        "category_scores": category_scores,
+        "proven_skills": sorted(proven_skills),
+        "weak_skills": sorted(weak_skills),
+    }
+
+
+@app.post("/api/assessment/submit")
+def submit_assessment(
+    payload: AssessmentSubmission,
+    student: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Score the questionnaire and fold the result into the skill profile.
+
+    Skills the student demonstrated are added to their profile, which then
+    feeds straight into match scores and the gap analysis. Nothing is ever
+    removed — a missed question marks a gap, it does not delete a skill.
+    """
+    if not payload.answers:
+        raise HTTPException(status_code=400, detail="No answers were submitted")
+
+    result = _score_assessment(payload.answers)
+
+    record = AssessmentModel(
+        id=new_id("asm"),
+        student_id=student.id,
+        submitted_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        technical_score=result["technical_score"],
+        soft_score=result["soft_score"],
+        aptitude_score=result["aptitude_score"],
+        overall_score=result["overall_score"],
+        category_scores=json.dumps(result["category_scores"]),
+        answers=json.dumps(payload.answers),
+    )
+    db.add(record)
+
+    # Merge the demonstrated technical skills into the profile.
+    existing = json.loads(student.skills or "[]")
+    lower = {s.lower() for s in existing}
+    for skill in result["proven_skills"]:
+        if skill.lower() not in lower and skill not in SOFT_KEYWORDS:
+            existing.append(skill)
+            lower.add(skill.lower())
+    student.skills = json.dumps(existing)
+
+    existing_soft = json.loads(student.soft_skills or "[]")
+    soft_lower = {s.lower() for s in existing_soft}
+    for skill in result["proven_skills"]:
+        if skill in SOFT_KEYWORDS and skill.lower() not in soft_lower:
+            existing_soft.append(skill)
+            soft_lower.add(skill.lower())
+    student.soft_skills = json.dumps(existing_soft)
+
+    # A completed assessment is a real signal of placement readiness.
+    student.placement_readiness = max(student.placement_readiness or 0, result["overall_score"])
+    student.profile_completion = min(100, (student.profile_completion or 0) + 10)
+
+    db.commit()
+
+    return {
+        **result,
+        "id": record.id,
+        "submitted_at": record.submitted_at,
+        "skills_added": result["proven_skills"],
+    }
+
+
+@app.get("/api/assessment/result")
+def get_assessment_result(student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
+    """The latest assessment, plus every earlier attempt for the trend line."""
+    rows = (
+        db.query(AssessmentModel)
+        .filter(AssessmentModel.student_id == student.id)
+        .order_by(AssessmentModel.submitted_at.desc())
+        .all()
+    )
+    if not rows:
+        return {"has_assessment": False, "history": []}
+
+    latest = rows[0]
+    return {
+        "has_assessment": True,
+        "id": latest.id,
+        "submitted_at": latest.submitted_at,
+        "technical_score": latest.technical_score,
+        "soft_score": latest.soft_score,
+        "aptitude_score": latest.aptitude_score,
+        "overall_score": latest.overall_score,
+        "category_scores": json.loads(latest.category_scores or "{}"),
+        "attempts": len(rows),
+        "history": [
+            {"submitted_at": r.submitted_at, "overall_score": r.overall_score}
+            for r in reversed(rows)
+        ],
+    }
+
+
+# =====================================================================
+# LEARNING PROGRAMS & PERSONALISED RECOMMENDATIONS
+# =====================================================================
+
+# A curated fallback catalogue so a fresh install still has something to
+# recommend before any industry partner has published a program. Every URL
+# is a stable course-catalogue landing page rather than a deep link, which
+# would rot between semesters.
+CURATED_LEARNING = {
+    "Python": [
+        ("Programming, Data Structures and Algorithms using Python", "NPTEL", "certification", "https://nptel.ac.in/courses", "12 weeks"),
+        ("Python for Everybody", "SWAYAM", "course", "https://swayam.gov.in", "8 weeks"),
+    ],
+    "JavaScript": [
+        ("JavaScript Algorithms and Data Structures", "freeCodeCamp", "certification", "https://www.freecodecamp.org/learn/", "Self-paced"),
+    ],
+    "React": [
+        ("Front End Development Libraries", "freeCodeCamp", "certification", "https://www.freecodecamp.org/learn/", "Self-paced"),
+    ],
+    "HTML": [
+        ("Responsive Web Design", "freeCodeCamp", "certification", "https://www.freecodecamp.org/learn/", "Self-paced"),
+    ],
+    "CSS": [
+        ("Responsive Web Design", "freeCodeCamp", "certification", "https://www.freecodecamp.org/learn/", "Self-paced"),
+    ],
+    "SQL": [
+        ("Database Management System", "NPTEL", "certification", "https://nptel.ac.in/courses", "12 weeks"),
+        ("Relational Databases", "SWAYAM", "course", "https://swayam.gov.in", "8 weeks"),
+    ],
+    "PostgreSQL": [
+        ("Database Management System", "NPTEL", "certification", "https://nptel.ac.in/courses", "12 weeks"),
+    ],
+    "Docker": [
+        ("Docker Get Started", "Docker", "course", "https://docs.docker.com/get-started/", "Self-paced"),
+    ],
+    "AWS": [
+        ("AWS Cloud Practitioner Essentials", "AWS Skill Builder", "certification", "https://skillbuilder.aws/", "Self-paced"),
+    ],
+    "Git": [
+        ("Introduction to Git and GitHub", "Microsoft Learn", "course", "https://learn.microsoft.com/training/", "Self-paced"),
+    ],
+    "Power BI": [
+        ("Microsoft Power BI Data Analyst", "Microsoft Learn", "certification", "https://learn.microsoft.com/training/", "Self-paced"),
+    ],
+    "Excel": [
+        ("Excel for Data Analysis", "Microsoft Learn", "course", "https://learn.microsoft.com/training/", "Self-paced"),
+    ],
+    "Figma": [
+        ("Figma Learn — Design Basics", "Figma", "course", "https://help.figma.com/hc/en-us/categories/360002051613", "Self-paced"),
+    ],
+    "TypeScript": [
+        ("TypeScript Handbook", "Microsoft Learn", "course", "https://learn.microsoft.com/training/", "Self-paced"),
+    ],
+    "Node.js": [
+        ("Back End Development and APIs", "freeCodeCamp", "certification", "https://www.freecodecamp.org/learn/", "Self-paced"),
+    ],
+    "MongoDB": [
+        ("MongoDB Basics", "MongoDB University", "certification", "https://learn.mongodb.com/", "Self-paced"),
+    ],
+    "FastAPI": [
+        ("FastAPI Official Tutorial", "FastAPI", "course", "https://fastapi.tiangolo.com/tutorial/", "Self-paced"),
+    ],
+    "Communication": [
+        ("Developing Soft Skills and Personality", "NPTEL", "certification", "https://nptel.ac.in/courses", "8 weeks"),
+    ],
+    "Leadership": [
+        ("Leadership and Team Effectiveness", "SWAYAM", "course", "https://swayam.gov.in", "8 weeks"),
+    ],
+}
+
+
+def _program_out(p: LearningProgramModel) -> dict:
+    return {
+        "id": p.id,
+        "title": p.title,
+        "provider": p.provider,
+        "program_type": p.program_type,
+        "description": p.description or "",
+        "skills_covered": json.loads(p.skills_covered or "[]"),
+        "url": p.url or "",
+        "duration": p.duration or "",
+        "cost": p.cost or "Free",
+        "audience": p.audience or "student",
+        "source": "industry",
+    }
+
+
+class LearningProgramPayload(BaseModel):
+    title: str
+    provider: str
+    program_type: str = "course"
+    description: Optional[str] = ""
+    skills_covered: List[str] = []
+    url: Optional[str] = ""
+    duration: Optional[str] = ""
+    cost: Optional[str] = "Free"
+    audience: Optional[str] = "student"
+
+
+VALID_PROGRAM_TYPES = {"course", "certification", "workshop", "mentorship"}
+
+
+def clean_public_url(url: str) -> str:
+    """Accept only http(s) links, and drop anything else silently.
+
+    A program URL is rendered as a link for every student who sees it, so a
+    "javascript:" or "data:" URL here would be stored XSS: the browser runs
+    it in the reader's session the moment they click. HTML-escaping does not
+    help — those URLs contain no HTML characters. The frontend checks this
+    too; this is the authoritative one.
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    return raw if raw.lower().startswith(("http://", "https://")) else ""
+
+
+@app.get("/api/learning/programs")
+def list_learning_programs(
+    audience: Optional[str] = Query(None),
+    skill: Optional[str] = Query(None),
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Everything industry partners have published, newest first."""
+    q = db.query(LearningProgramModel)
+    rows = q.order_by(LearningProgramModel.created_at.desc()).all()
+    out = [_program_out(p) for p in rows]
+
+    # Default to the caller's own track so a student never has to wade past
+    # faculty development programmes. Staff see everything unless they ask
+    # for a specific audience.
+    role = user_role(user)
+    if not audience and role in (ROLE_STUDENT, ROLE_FACULTY):
+        audience = ROLE_FACULTY if role == ROLE_FACULTY else "student"
+    if audience:
+        out = [p for p in out if p["audience"] in (audience, "both")]
+    if skill:
+        out = [p for p in out if any(s.lower() == skill.lower() for s in p["skills_covered"])]
+    return out
+
+
+@app.post("/api/learning/programs", status_code=201)
+def create_learning_program(
+    payload: LearningProgramPayload,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    if not payload.title.strip() or not payload.provider.strip():
+        raise HTTPException(status_code=400, detail="Title and provider are required")
+    if payload.program_type not in VALID_PROGRAM_TYPES:
+        raise HTTPException(status_code=400, detail=f"program_type must be one of {sorted(VALID_PROGRAM_TYPES)}")
+
+    program = LearningProgramModel(
+        id=new_id("lp"),
+        title=payload.title.strip(),
+        provider=payload.provider.strip(),
+        program_type=payload.program_type,
+        description=(payload.description or "").strip(),
+        skills_covered=json.dumps([s.strip() for s in payload.skills_covered if s and s.strip()]),
+        url=clean_public_url(payload.url),
+        duration=(payload.duration or "").strip(),
+        cost=(payload.cost or "Free").strip(),
+        audience=payload.audience or "student",
+        posted_by=user.id,
+        created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    )
+    db.add(program)
+    db.commit()
+    return _program_out(program)
+
+
+@app.delete("/api/learning/programs/{program_id}", status_code=204)
+def delete_learning_program(
+    program_id: str,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    p = db.query(LearningProgramModel).filter(LearningProgramModel.id == program_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Program not found")
+    # You can only take down what you published — unless you are the admin.
+    if p.posted_by != user.id and user_role(user) != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="You can only remove programs you published")
+    db.delete(p)
+    db.commit()
+    return None
+
+
+@app.get("/api/learning/recommendations")
+def learning_recommendations(student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
+    """Courses aimed squarely at this student's actual gaps.
+
+    A gap is any skill an open opportunity asks for that the student does
+    not have. Gaps are ranked by how many opportunities want that skill, so
+    the first recommendation is always the one that unlocks the most doors.
+    """
+    have = {s.lower() for s in json.loads(student.skills or "[]")}
+    have |= {s.lower() for s in json.loads(student.soft_skills or "[]")}
+
+    audience = ROLE_FACULTY if user_role(student) == ROLE_FACULTY else "student"
+    opportunities = (
+        db.query(InternshipModel)
+        .filter((InternshipModel.audience == audience) | (InternshipModel.audience.is_(None)))
+        .all()
+    )
+
+    demand = {}
+    for opp in opportunities:
+        for skill in json.loads(opp.required_skills or "[]"):
+            if skill.lower() not in have:
+                demand[skill] = demand.get(skill, 0) + 1
+
+    ranked = sorted(demand.items(), key=lambda kv: kv[1], reverse=True)
+
+    # Only programs aimed at this reader. A faculty development programme is
+    # not a useful recommendation for an undergraduate, and vice versa.
+    industry = [
+        p
+        for p in db.query(LearningProgramModel).all()
+        if (p.audience or "student") in (audience, "both")
+    ]
+
+    recommendations = []
+    for skill, count in ranked:
+        programs = []
+        # Industry-published programs come first — they are the ones with a
+        # hiring partner attached.
+        for p in industry:
+            if any(s.lower() == skill.lower() for s in json.loads(p.skills_covered or "[]")):
+                programs.append(_program_out(p))
+        for title, provider, ptype, url, duration in CURATED_LEARNING.get(skill, []):
+            programs.append(
+                {
+                    "id": f"curated_{skill}_{provider}".replace(" ", "_").lower(),
+                    "title": title,
+                    "provider": provider,
+                    "program_type": ptype,
+                    "description": "",
+                    "skills_covered": [skill],
+                    "url": url,
+                    "duration": duration,
+                    "cost": "Free",
+                    "audience": "student",
+                    "source": "curated",
+                }
+            )
+        if programs:
+            recommendations.append(
+                {
+                    "skill": skill,
+                    "opportunities_unlocked": count,
+                    "priority": "HIGH" if count >= 3 else "MEDIUM" if count == 2 else "LOW",
+                    "programs": programs,
+                }
+            )
+
+    return {
+        "gaps_found": len(ranked),
+        "recommendations": recommendations,
+    }
+
+
+# =====================================================================
+# OPPORTUNITIES  (internships, jobs, apprenticeships, projects, FDPs)
+# ---------------------------------------------------------------------
+# The same matching engine drives all of them; only the type and audience
+# filters differ. Students see student-facing roles, faculty see faculty
+# internships, industrial training and FDPs.
+# =====================================================================
+
+VALID_OPPORTUNITY_TYPES = {"internship", "job", "apprenticeship", "project", "fdp", "training"}
+FACULTY_TYPES = {"fdp", "training", "project"}
+
+
+def _opportunity_out(i: InternshipModel, score_details: Optional[dict] = None) -> dict:
+    out = {
+        "id": i.id,
+        "title": i.title,
+        "company": i.company,
+        "location": i.location,
+        "work_mode": i.work_mode,
+        "stipend": i.stipend or "",
+        "duration": i.duration or "",
+        "deadline": i.deadline or "",
+        "description": i.description or "",
+        "opportunity_type": i.opportunity_type or "internship",
+        "audience": i.audience or "student",
+        "min_cgpa": i.min_cgpa or 0.0,
+        "openings": i.openings or 1,
+        "required_skills": json.loads(i.required_skills or "[]"),
+    }
+    if score_details:
+        out.update(
+            {
+                "match_score": score_details["match_score"],
+                "matched_skills": score_details["matched_skills"],
+                "missing_skills": score_details["missing_skills"],
+                "breakdown": score_details["breakdown"],
+            }
+        )
+    return out
+
+
+@app.get("/api/opportunities")
+def list_opportunities(
+    opportunity_type: Optional[str] = Query(None),
+    work_mode: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Every opportunity this user is eligible to see, ranked by match.
+
+    Faculty accounts see the faculty track (FDPs, industrial training,
+    research projects); everyone else sees the student track.
+    """
+    audience = ROLE_FACULTY if user_role(user) == ROLE_FACULTY else "student"
+
+    q = db.query(InternshipModel)
+    if opportunity_type:
+        q = q.filter(InternshipModel.opportunity_type == opportunity_type)
+    if work_mode:
+        q = q.filter(InternshipModel.work_mode.ilike(work_mode))
+    if location:
+        q = q.filter(InternshipModel.location.ilike(f"%{location}%"))
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            InternshipModel.title.ilike(like)
+            | InternshipModel.company.ilike(like)
+            | InternshipModel.required_skills.ilike(like)
+        )
+
+    results = []
+    for opp in q.all():
+        # Rows created before the audience column existed default to student.
+        if (opp.audience or "student") != audience:
+            continue
+        results.append(_opportunity_out(opp, calculate_match_score_breakdown(user, opp)))
+
+    results.sort(key=lambda x: x["match_score"], reverse=True)
+    return results
+
+
+class OpportunityPayload(BaseModel):
+    title: str
+    company: str
+    location: str
+    work_mode: str
+    opportunity_type: str = "internship"
+    audience: str = "student"
+    description: Optional[str] = ""
+    stipend: Optional[str] = ""
+    duration: Optional[str] = ""
+    deadline: Optional[str] = ""
+    min_cgpa: Optional[float] = 0.0
+    openings: Optional[int] = 1
+    required_skills: List[str] = []
+
+
+@app.post("/api/opportunities", status_code=201)
+def create_opportunity(
+    payload: OpportunityPayload,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """Publish an internship, job, apprenticeship, project, FDP or training."""
+    if not payload.title.strip() or not payload.company.strip():
+        raise HTTPException(status_code=400, detail="Title and organisation are required")
+    if payload.opportunity_type not in VALID_OPPORTUNITY_TYPES:
+        raise HTTPException(
+            status_code=400, detail=f"opportunity_type must be one of {sorted(VALID_OPPORTUNITY_TYPES)}"
+        )
+    skills = [s.strip() for s in payload.required_skills if s and s.strip()]
+    if not skills:
+        raise HTTPException(status_code=400, detail="At least one required skill is needed")
+
+    audience = ROLE_FACULTY if payload.audience == ROLE_FACULTY else "student"
+
+    opp = InternshipModel(
+        id=new_id("opp"),
+        title=payload.title.strip(),
+        company=payload.company.strip(),
+        location=payload.location.strip() or "Not specified",
+        work_mode=payload.work_mode.strip() or "Remote",
+        stipend=(payload.stipend or "").strip(),
+        duration=(payload.duration or "").strip(),
+        deadline=(payload.deadline or "").strip(),
+        description=(payload.description or "").strip(),
+        opportunity_type=payload.opportunity_type,
+        audience=audience,
+        min_cgpa=payload.min_cgpa or 0.0,
+        openings=payload.openings or 1,
+        posted_by=user.id,
+        required_skills=json.dumps(skills),
+    )
+    db.add(opp)
+    db.commit()
+    db.refresh(opp)
+    return _opportunity_out(opp)
+
+
+# =====================================================================
+# RECRUITER PORTAL
+# ---------------------------------------------------------------------
+# What a company sees: the roles it posted, who applied, how well each
+# applicant matches, and the controls to shortlist or reject them.
+# =====================================================================
+
+@app.get("/api/recruiter/postings")
+def recruiter_postings(
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """Every opportunity this account published, with its applicant count."""
+    q = db.query(InternshipModel)
+    if user_role(user) != ROLE_ADMIN:
+        q = q.filter(InternshipModel.posted_by == user.id)
+    rows = q.all()
+
+    out = []
+    for opp in rows:
+        apps = db.query(ApplicationModel).filter(ApplicationModel.internship_id == opp.id).all()
+        record = _opportunity_out(opp)
+        record["applicants"] = len(apps)
+        record["shortlisted"] = sum(1 for a in apps if a.status == "shortlisted")
+        out.append(record)
+    out.sort(key=lambda x: x["applicants"], reverse=True)
+    return out
+
+
+@app.get("/api/recruiter/applicants")
+def recruiter_applicants(
+    opportunity_id: Optional[str] = Query(None),
+    min_match: int = Query(0),
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """Candidate shortlisting: applicants ranked by skill compatibility.
+
+    Only applicants to this account's own postings are ever returned, so one
+    company can never browse another company's pipeline.
+    """
+    own = db.query(InternshipModel)
+    if user_role(user) != ROLE_ADMIN:
+        own = own.filter(InternshipModel.posted_by == user.id)
+    own_ids = {o.id: o for o in own.all()}
+    if opportunity_id:
+        if opportunity_id not in own_ids:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        own_ids = {opportunity_id: own_ids[opportunity_id]}
+    if not own_ids:
+        return []
+
+    apps = (
+        db.query(ApplicationModel)
+        .filter(ApplicationModel.internship_id.in_(list(own_ids.keys())))
+        .all()
+    )
+
+    out = []
+    for a in apps:
+        applicant = db.query(StudentModel).filter(StudentModel.id == a.student_id).first()
+        if not applicant:
+            continue
+        opp = own_ids[a.internship_id]
+        details = calculate_match_score_breakdown(applicant, opp)
+        if details["match_score"] < min_match:
+            continue
+        eligible = (applicant.cgpa or 0) >= (opp.min_cgpa or 0)
+        out.append(
+            {
+                "application_id": a.id,
+                "status": a.status,
+                "applied_on": a.applied_on,
+                "opportunity_id": opp.id,
+                "opportunity_title": opp.title,
+                "student_id": applicant.id,
+                "student_name": applicant.full_name,
+                "email": applicant.email,
+                "college": applicant.college or "",
+                "branch": applicant.branch or "",
+                "cgpa": applicant.cgpa or 0.0,
+                "graduation_year": applicant.graduation_year or 0,
+                "match_score": details["match_score"],
+                "matched_skills": details["matched_skills"],
+                "missing_skills": details["missing_skills"],
+                "meets_cgpa": eligible,
+            }
+        )
+    out.sort(key=lambda x: x["match_score"], reverse=True)
+    return out
+
+
+@app.patch("/api/recruiter/applications/{application_id}")
+def recruiter_update_application(
+    application_id: str,
+    payload: AdminApplicationUpdate,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """Shortlist, reject or advance an applicant to one of your own postings."""
+    a = db.query(ApplicationModel).filter(ApplicationModel.id == application_id).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Application not found")
+    if payload.status not in VALID_APP_STATUSES:
+        raise HTTPException(status_code=400, detail=f"status must be one of {sorted(VALID_APP_STATUSES)}")
+
+    opp = db.query(InternshipModel).filter(InternshipModel.id == a.internship_id).first()
+    if user_role(user) != ROLE_ADMIN and (not opp or opp.posted_by != user.id):
+        raise HTTPException(status_code=403, detail="This application is not for one of your postings")
+
+    a.status = payload.status
+    db.commit()
+    return {"id": a.id, "status": a.status}
+
+
+# =====================================================================
+# INTERNSHIP PROGRESS TRACKING & MENTOR FEEDBACK
+# =====================================================================
+
+class ProgressLogPayload(BaseModel):
+    week: int = 1
+    summary: str
+    hours: Optional[int] = 0
+
+
+class MentorFeedbackPayload(BaseModel):
+    mentor_feedback: str
+    mentor_rating: int = 0
+
+
+def _progress_out(p: ProgressLogModel) -> dict:
+    return {
+        "id": p.id,
+        "application_id": p.application_id,
+        "week": p.week,
+        "summary": p.summary or "",
+        "hours": p.hours or 0,
+        "created_at": p.created_at,
+        "mentor_feedback": p.mentor_feedback or "",
+        "mentor_rating": p.mentor_rating or 0,
+        "reviewed_at": p.reviewed_at or "",
+    }
+
+
+def _application_or_404(application_id: str, db: Session) -> ApplicationModel:
+    a = db.query(ApplicationModel).filter(ApplicationModel.id == application_id).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return a
+
+
+def _can_see_application(user: StudentModel, a: ApplicationModel, db: Session) -> bool:
+    """The intern, the mentor who posted the role, and admins. Nobody else."""
+    if a.student_id == user.id or user_role(user) == ROLE_ADMIN:
+        return True
+    opp = db.query(InternshipModel).filter(InternshipModel.id == a.internship_id).first()
+    return bool(opp and opp.posted_by == user.id)
+
+
+@app.get("/api/applications/{application_id}/progress")
+def list_progress(
+    application_id: str,
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    a = _application_or_404(application_id, db)
+    if not _can_see_application(user, a, db):
+        raise HTTPException(status_code=403, detail="You cannot view this internship log")
+
+    rows = (
+        db.query(ProgressLogModel)
+        .filter(ProgressLogModel.application_id == application_id)
+        .order_by(ProgressLogModel.week)
+        .all()
+    )
+    reviewed = [r for r in rows if r.mentor_rating]
+    return {
+        "application_id": application_id,
+        "status": a.status,
+        "weeks_logged": len(rows),
+        "total_hours": sum(r.hours or 0 for r in rows),
+        "average_rating": round(sum(r.mentor_rating for r in reviewed) / len(reviewed), 1) if reviewed else 0,
+        "logs": [_progress_out(r) for r in rows],
+    }
+
+
+@app.post("/api/applications/{application_id}/progress", status_code=201)
+def add_progress(
+    application_id: str,
+    payload: ProgressLogPayload,
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """The intern logs a week's work. Only the intern can write these."""
+    a = _application_or_404(application_id, db)
+    if a.student_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the intern can add a progress entry")
+    if not payload.summary.strip():
+        raise HTTPException(status_code=400, detail="Write a short summary of the week's work")
+
+    existing = (
+        db.query(ProgressLogModel)
+        .filter(ProgressLogModel.application_id == application_id, ProgressLogModel.week == payload.week)
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Week {payload.week} has already been logged")
+
+    log = ProgressLogModel(
+        id=new_id("plog"),
+        application_id=application_id,
+        week=max(1, payload.week),
+        summary=payload.summary.strip(),
+        hours=max(0, payload.hours or 0),
+        created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    )
+    db.add(log)
+    db.commit()
+    return _progress_out(log)
+
+
+@app.patch("/api/progress/{log_id}/feedback")
+def add_mentor_feedback(
+    log_id: str,
+    payload: MentorFeedbackPayload,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """The mentor reviews one weekly entry."""
+    log = db.query(ProgressLogModel).filter(ProgressLogModel.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Progress entry not found")
+    if not 0 <= payload.mentor_rating <= 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+
+    a = _application_or_404(log.application_id, db)
+    opp = db.query(InternshipModel).filter(InternshipModel.id == a.internship_id).first()
+    if user_role(user) != ROLE_ADMIN and (not opp or opp.posted_by != user.id):
+        raise HTTPException(status_code=403, detail="You are not the mentor for this internship")
+
+    log.mentor_feedback = payload.mentor_feedback.strip()
+    log.mentor_rating = payload.mentor_rating
+    log.reviewed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    db.commit()
+    return _progress_out(log)
+
+
+@app.post("/api/applications/{application_id}/complete")
+def complete_internship(
+    application_id: str,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """Mark an internship finished and issue the verified completion record.
+
+    This is the moment a line on a CV stops being a claim and becomes
+    something a future employer can check: the company that hosted the
+    internship signs it, and it lands in the student's portfolio.
+    """
+    a = _application_or_404(application_id, db)
+    opp = db.query(InternshipModel).filter(InternshipModel.id == a.internship_id).first()
+    if user_role(user) != ROLE_ADMIN and (not opp or opp.posted_by != user.id):
+        raise HTTPException(status_code=403, detail="You did not host this internship")
+
+    a.status = "completed"
+
+    already = (
+        db.query(VerificationModel)
+        .filter(
+            VerificationModel.student_id == a.student_id,
+            VerificationModel.item_type == "internship",
+            VerificationModel.item_key == a.id,
+        )
+        .first()
+    )
+    if not already:
+        db.add(
+            VerificationModel(
+                id=new_id("ver"),
+                student_id=a.student_id,
+                item_type="internship",
+                item_key=a.id,
+                verified_by=user.id,
+                verifier_name=user.full_name,
+                verifier_role=user_role(user),
+                verified_at=datetime.datetime.now().strftime("%Y-%m-%d"),
+                note=f"Completed {opp.title} at {opp.company}" if opp else "Internship completed",
+            )
+        )
+
+    db.commit()
+    return {"id": a.id, "status": a.status, "verified": True}
+
+
+# =====================================================================
+# VERIFIED DIGITAL PORTFOLIO
+# =====================================================================
+
+class VerifyPayload(BaseModel):
+    student_id: str
+    item_type: str      # skill | certification | project | internship
+    item_key: str
+    note: Optional[str] = ""
+
+
+VALID_ITEM_TYPES = {"skill", "certification", "project", "internship"}
+
+
+def _verification_index(student_id: str, db: Session) -> dict:
+    """{(item_type, lowercased key): verification dict} for quick lookups."""
+    index = {}
+    for v in db.query(VerificationModel).filter(VerificationModel.student_id == student_id).all():
+        index[(v.item_type, v.item_key.lower())] = {
+            "verified_by": v.verifier_name or "",
+            "verifier_role": v.verifier_role or "",
+            "verified_at": v.verified_at,
+            "note": v.note or "",
+        }
+    return index
+
+
+def _build_portfolio(s: StudentModel, db: Session) -> dict:
+    """Assemble the portfolio, marking every item verified or self-declared."""
+    index = _verification_index(s.id, db)
+
+    def stamp(item_type, key):
+        return index.get((item_type, str(key).lower()))
+
+    skills = [
+        {"name": name, "verification": stamp("skill", name)}
+        for name in json.loads(s.skills or "[]")
+    ]
+    certifications = [
+        {**c, "verification": stamp("certification", c.get("title", ""))}
+        for c in json.loads(s.certifications or "[]")
+    ]
+    projects = [
+        {**p, "verification": stamp("project", p.get("title", ""))}
+        for p in json.loads(s.projects or "[]")
+    ]
+
+    internships = []
+    for a in db.query(ApplicationModel).filter(ApplicationModel.student_id == s.id).all():
+        if a.status not in ("completed", "shortlisted"):
+            continue
+        opp = db.query(InternshipModel).filter(InternshipModel.id == a.internship_id).first()
+        if not opp:
+            continue
+        logs = db.query(ProgressLogModel).filter(ProgressLogModel.application_id == a.id).all()
+        reviewed = [x for x in logs if x.mentor_rating]
+        internships.append(
+            {
+                "title": opp.title,
+                "company": opp.company,
+                "duration": opp.duration or "",
+                "status": a.status,
+                "weeks_logged": len(logs),
+                "total_hours": sum(x.hours or 0 for x in logs),
+                "mentor_rating": round(sum(x.mentor_rating for x in reviewed) / len(reviewed), 1) if reviewed else 0,
+                "verification": stamp("internship", a.id),
+            }
+        )
+
+    latest = (
+        db.query(AssessmentModel)
+        .filter(AssessmentModel.student_id == s.id)
+        .order_by(AssessmentModel.submitted_at.desc())
+        .first()
+    )
+
+    verified_count = sum(
+        1
+        for group in (skills, certifications, projects, internships)
+        for item in group
+        if item.get("verification")
+    )
+    total_items = len(skills) + len(certifications) + len(projects) + len(internships)
+
+    return {
+        "student": {
+            "id": s.id,
+            "full_name": s.full_name,
+            "college": s.college or "",
+            "degree": s.degree or "",
+            "branch": s.branch or "",
+            "graduation_year": s.graduation_year or 0,
+            "location": s.location or "",
+            "photo_url": s.photo_url or "",
+        },
+        "skills": skills,
+        "soft_skills": json.loads(s.soft_skills or "[]"),
+        "certifications": certifications,
+        "projects": projects,
+        "internships": internships,
+        "assessment": (
+            {
+                "overall_score": latest.overall_score,
+                "technical_score": latest.technical_score,
+                "soft_score": latest.soft_score,
+                "aptitude_score": latest.aptitude_score,
+                "submitted_at": latest.submitted_at,
+            }
+            if latest
+            else None
+        ),
+        "verified_items": verified_count,
+        "total_items": total_items,
+        "credibility": round(verified_count * 100 / total_items) if total_items else 0,
+    }
+
+
+@app.get("/api/portfolio/me")
+def my_portfolio(student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
+    return _build_portfolio(student, db)
+
+
+@app.get("/api/portfolio/{student_id}")
+def public_portfolio(student_id: str, db: Session = Depends(get_db)):
+    """The shareable version — no authentication, so a recruiter can open it
+    from a link. Deliberately excludes email, phone, CGPA and every other
+    contact detail; a portfolio proves competence, it is not a directory."""
+    s = db.query(StudentModel).filter(StudentModel.id == student_id).first()
+    if not s or not s.is_active:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    return _build_portfolio(s, db)
+
+
+@app.post("/api/portfolio/verify", status_code=201)
+def verify_portfolio_item(
+    payload: VerifyPayload,
+    user: StudentModel = Depends(require_roles(ROLE_FACULTY, ROLE_INSTITUTION, ROLE_RECRUITER)),
+    db: Session = Depends(get_db),
+):
+    """Sign off on one portfolio item.
+
+    A student can never verify their own work — that is the entire point of
+    the stamp, and it is enforced here rather than in the UI.
+    """
+    if payload.item_type not in VALID_ITEM_TYPES:
+        raise HTTPException(status_code=400, detail=f"item_type must be one of {sorted(VALID_ITEM_TYPES)}")
+    if payload.student_id == user.id:
+        raise HTTPException(status_code=403, detail="You cannot verify your own portfolio")
+
+    target = db.query(StudentModel).filter(StudentModel.id == payload.student_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    existing = (
+        db.query(VerificationModel)
+        .filter(
+            VerificationModel.student_id == payload.student_id,
+            VerificationModel.item_type == payload.item_type,
+            VerificationModel.item_key == payload.item_key,
+        )
+        .first()
+    )
+    if existing:
+        return {"id": existing.id, "already_verified": True}
+
+    v = VerificationModel(
+        id=new_id("ver"),
+        student_id=payload.student_id,
+        item_type=payload.item_type,
+        item_key=payload.item_key,
+        verified_by=user.id,
+        verifier_name=user.full_name,
+        verifier_role=user_role(user),
+        verified_at=datetime.datetime.now().strftime("%Y-%m-%d"),
+        note=(payload.note or "").strip(),
+    )
+    db.add(v)
+    db.commit()
+    return {"id": v.id, "already_verified": False}
+
+
+@app.delete("/api/portfolio/verify/{verification_id}", status_code=204)
+def revoke_verification(
+    verification_id: str,
+    user: StudentModel = Depends(require_roles(ROLE_FACULTY, ROLE_INSTITUTION, ROLE_RECRUITER)),
+    db: Session = Depends(get_db),
+):
+    v = db.query(VerificationModel).filter(VerificationModel.id == verification_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Verification not found")
+    if v.verified_by != user.id and user_role(user) != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Only the verifier can revoke this")
+    db.delete(v)
+    db.commit()
+    return None
+
+
+@app.get("/api/verify/pending")
+def pending_verifications(
+    user: StudentModel = Depends(require_roles(ROLE_FACULTY, ROLE_INSTITUTION, ROLE_RECRUITER)),
+    db: Session = Depends(get_db),
+):
+    """Students whose claims are still unverified, so a verifier has a queue
+    to work through instead of having to go looking."""
+    out = []
+    for s in db.query(StudentModel).filter(StudentModel.role == ROLE_STUDENT).all():
+        if not s.is_active:
+            continue
+        # An institution account only sees its own college's students.
+        if user_role(user) == ROLE_INSTITUTION and user.org_name and not _same_institution(s.college, user.org_name):
+            continue
+        index = _verification_index(s.id, db)
+        pending = []
+        for name in json.loads(s.skills or "[]"):
+            if ("skill", name.lower()) not in index:
+                pending.append({"item_type": "skill", "item_key": name, "label": name})
+        for c in json.loads(s.certifications or "[]"):
+            title = c.get("title", "")
+            if title and ("certification", title.lower()) not in index:
+                pending.append({"item_type": "certification", "item_key": title, "label": f"{title} — {c.get('issuer', '')}"})
+        for p in json.loads(s.projects or "[]"):
+            title = p.get("title", "")
+            if title and ("project", title.lower()) not in index:
+                pending.append({"item_type": "project", "item_key": title, "label": title})
+        if pending:
+            out.append(
+                {
+                    "student_id": s.id,
+                    "student_name": s.full_name,
+                    "college": s.college or "",
+                    "branch": s.branch or "",
+                    "pending_count": len(pending),
+                    "items": pending,
+                }
+            )
+    out.sort(key=lambda x: x["pending_count"], reverse=True)
+    return out
+
+
+# =====================================================================
+# INDUSTRY-ACADEMIA COLLABORATION
+# =====================================================================
+
+VALID_COLLAB_TYPES = {
+    "guest_lecture",
+    "workshop",
+    "live_project",
+    "innovation_challenge",
+    "mentorship",
+    "research",
+    "consultancy",
+}
+
+
+class CollaborationPayload(BaseModel):
+    title: str
+    organisation: str
+    collab_type: str = "workshop"
+    description: Optional[str] = ""
+    skills_involved: List[str] = []
+    mode: Optional[str] = "Hybrid"
+    location: Optional[str] = ""
+    starts_on: Optional[str] = ""
+    seats: Optional[int] = 0
+    audience: Optional[str] = "both"
+
+
+class CollabInterestPayload(BaseModel):
+    note: Optional[str] = ""
+
+
+def _collab_out(c: CollaborationModel, registered: int = 0, mine: bool = False) -> dict:
+    return {
+        "id": c.id,
+        "title": c.title,
+        "organisation": c.organisation,
+        "collab_type": c.collab_type,
+        "description": c.description or "",
+        "skills_involved": json.loads(c.skills_involved or "[]"),
+        "mode": c.mode or "",
+        "location": c.location or "",
+        "starts_on": c.starts_on or "",
+        "seats": c.seats or 0,
+        "audience": c.audience or "both",
+        "created_at": c.created_at,
+        "registered": registered,
+        "seats_left": max(0, (c.seats or 0) - registered) if c.seats else None,
+        "i_registered": mine,
+    }
+
+
+@app.get("/api/collaborations")
+def list_collaborations(
+    collab_type: Optional[str] = Query(None),
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    role = user_role(user)
+    audience = ROLE_FACULTY if role == ROLE_FACULTY else "student"
+
+    q = db.query(CollaborationModel)
+    if collab_type:
+        q = q.filter(CollaborationModel.collab_type == collab_type)
+    rows = q.order_by(CollaborationModel.created_at.desc()).all()
+
+    my_ids = {
+        i.collab_id
+        for i in db.query(CollabInterestModel).filter(CollabInterestModel.user_id == user.id).all()
+    }
+
+    out = []
+    for c in rows:
+        # Staff see everything; students and faculty see their own track.
+        if role in (ROLE_STUDENT, ROLE_FACULTY) and (c.audience or "both") not in (audience, "both"):
+            continue
+        count = db.query(CollabInterestModel).filter(CollabInterestModel.collab_id == c.id).count()
+        out.append(_collab_out(c, count, c.id in my_ids))
+    return out
+
+
+@app.post("/api/collaborations", status_code=201)
+def create_collaboration(
+    payload: CollaborationPayload,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    if not payload.title.strip() or not payload.organisation.strip():
+        raise HTTPException(status_code=400, detail="Title and organisation are required")
+    if payload.collab_type not in VALID_COLLAB_TYPES:
+        raise HTTPException(status_code=400, detail=f"collab_type must be one of {sorted(VALID_COLLAB_TYPES)}")
+
+    c = CollaborationModel(
+        id=new_id("col"),
+        title=payload.title.strip(),
+        organisation=payload.organisation.strip(),
+        collab_type=payload.collab_type,
+        description=(payload.description or "").strip(),
+        skills_involved=json.dumps([s.strip() for s in payload.skills_involved if s and s.strip()]),
+        mode=(payload.mode or "Hybrid").strip(),
+        location=(payload.location or "").strip(),
+        starts_on=(payload.starts_on or "").strip(),
+        seats=max(0, payload.seats or 0),
+        audience=payload.audience or "both",
+        posted_by=user.id,
+        created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    )
+    db.add(c)
+    db.commit()
+    return _collab_out(c)
+
+
+@app.post("/api/collaborations/{collab_id}/register", status_code=201)
+def register_for_collaboration(
+    collab_id: str,
+    payload: CollabInterestPayload,
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    c = db.query(CollaborationModel).filter(CollaborationModel.id == collab_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Collaboration not found")
+
+    existing = (
+        db.query(CollabInterestModel)
+        .filter(CollabInterestModel.collab_id == collab_id, CollabInterestModel.user_id == user.id)
+        .first()
+    )
+    if existing:
+        return {"id": existing.id, "already_registered": True}
+
+    if c.seats:
+        taken = db.query(CollabInterestModel).filter(CollabInterestModel.collab_id == collab_id).count()
+        if taken >= c.seats:
+            raise HTTPException(status_code=400, detail="This session is full")
+
+    i = CollabInterestModel(
+        id=new_id("ci"),
+        collab_id=collab_id,
+        user_id=user.id,
+        registered_at=datetime.datetime.now().strftime("%Y-%m-%d"),
+        note=(payload.note or "").strip(),
+    )
+    db.add(i)
+    db.commit()
+    return {"id": i.id, "already_registered": False}
+
+
+@app.get("/api/collaborations/{collab_id}/registrations")
+def collaboration_registrations(
+    collab_id: str,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    c = db.query(CollaborationModel).filter(CollaborationModel.id == collab_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Collaboration not found")
+    if c.posted_by != user.id and user_role(user) != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="You did not publish this collaboration")
+
+    out = []
+    for i in db.query(CollabInterestModel).filter(CollabInterestModel.collab_id == collab_id).all():
+        p = db.query(StudentModel).filter(StudentModel.id == i.user_id).first()
+        if p:
+            out.append(
+                {
+                    "name": p.full_name,
+                    "email": p.email,
+                    "role": p.role or ROLE_STUDENT,
+                    "college": p.college or p.org_name or "",
+                    "registered_at": i.registered_at,
+                    "note": i.note or "",
+                }
+            )
+    return out
+
+
+# =====================================================================
+# SECURE DOCUMENT MANAGEMENT
+# ---------------------------------------------------------------------
+# Certificates, internship reports and academic records. Files are held as
+# base64 in the row: no object storage to configure, and a fresh clone
+# works offline. A document is readable only by its owner and by staff.
+# =====================================================================
+
+import base64
+
+VALID_DOC_TYPES = {"certificate", "report", "academic_record", "other"}
+MAX_DOC_BYTES = 5 * 1024 * 1024  # 5 MB
+
+# What may be stored at all. Staff open other people's documents, and the
+# frontend hands the bytes to the browser as a blob URL — which inherits the
+# app's own origin. An uploaded .html or .svg would therefore run script with
+# access to the viewer's session, so those types never reach the database.
+ALLOWED_DOC_MIME = {
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+}
+ALLOWED_DOC_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp")
+
+
+@app.get("/api/documents")
+def list_documents(student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
+    rows = (
+        db.query(DocumentModel)
+        .filter(DocumentModel.student_id == student.id)
+        .order_by(DocumentModel.uploaded_at.desc())
+        .all()
+    )
+    # The bytes themselves are never included in a listing.
+    return [
+        {
+            "id": d.id,
+            "doc_type": d.doc_type,
+            "title": d.title,
+            "file_name": d.file_name,
+            "size_kb": d.size_kb,
+            "uploaded_at": d.uploaded_at,
+        }
+        for d in rows
+    ]
+
+
+@app.post("/api/documents", status_code=201)
+async def upload_document(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    doc_type: str = Form("certificate"),
+    student: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    if doc_type not in VALID_DOC_TYPES:
+        raise HTTPException(status_code=400, detail=f"doc_type must be one of {sorted(VALID_DOC_TYPES)}")
+
+    declared = (file.content_type or "").split(";")[0].strip().lower()
+    name = (file.filename or "").lower()
+    # Check both, because either one alone is trivial for a client to lie about.
+    if declared not in ALLOWED_DOC_MIME or not name.endswith(ALLOWED_DOC_EXTENSIONS):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF and image files (PNG, JPG, GIF, WebP) can be uploaded",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="The file is empty")
+    if len(content) > MAX_DOC_BYTES:
+        raise HTTPException(status_code=400, detail="Files must be 5 MB or smaller")
+
+    doc = DocumentModel(
+        id=new_id("doc"),
+        student_id=student.id,
+        doc_type=doc_type,
+        title=title.strip() or file.filename,
+        file_name=file.filename,
+        content_type=declared,
+        size_kb=max(1, len(content) // 1024),
+        uploaded_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        data_b64=base64.b64encode(content).decode("ascii"),
+    )
+    db.add(doc)
+    db.commit()
+    return {
+        "id": doc.id,
+        "doc_type": doc.doc_type,
+        "title": doc.title,
+        "file_name": doc.file_name,
+        "size_kb": doc.size_kb,
+        "uploaded_at": doc.uploaded_at,
+    }
+
+
+@app.get("/api/documents/{document_id}")
+def download_document(
+    document_id: str,
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Read a document back. Owner and staff only — never another student."""
+    d = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+    if not d:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if d.student_id != user.id and user_role(user) not in VERIFIER_ROLES:
+        raise HTTPException(status_code=403, detail="You cannot read this document")
+    return {
+        "id": d.id,
+        "title": d.title,
+        "file_name": d.file_name,
+        "content_type": d.content_type,
+        "data_b64": d.data_b64,
+    }
+
+
+@app.delete("/api/documents/{document_id}", status_code=204)
+def delete_document(
+    document_id: str,
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    d = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+    if not d:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if d.student_id != user.id and user_role(user) != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="You can only delete your own documents")
+    db.delete(d)
+    db.commit()
+    return None
+
+
+# =====================================================================
+# INSTITUTION ANALYTICS
+# ---------------------------------------------------------------------
+# What a college needs to answer: are our students placement-ready, which
+# skills are we not teaching, and where is the cohort stuck?
+# =====================================================================
+
+# Students type their college by hand, so the same institution turns up as
+# "ssbt coet", "ssbt coet jalgaon" and the full legal name. An exact string
+# comparison would report a cohort of zero for a college that actually has
+# dozens of students, so match on a normalised form and accept either name
+# containing the other.
+_INSTITUTION_NOISE = {
+    "college", "of", "engineering", "and", "technology", "institute",
+    "the", "trust", "trusts", "s",
+}
+
+
+def _institution_words(name: str) -> list:
+    """Every word of the name, lowercased, punctuation stripped, in order."""
+    cleaned = "".join(ch.lower() if (ch.isalnum() or ch.isspace()) else " " for ch in (name or ""))
+    return [w for w in cleaned.split() if w]
+
+
+def _institution_key(name: str) -> set:
+    return {w for w in _institution_words(name) if w not in _INSTITUTION_NOISE}
+
+
+def _institution_acronym(name: str) -> str:
+    """First letters of the full name, e.g. the Jalgaon college -> "ssbtcoetj".
+
+    Built from the raw words, noise included, because the noise words are
+    exactly the ones the acronym is made of: the COET in "SSBT COET" is
+    College Of Engineering and Technology.
+    """
+    return "".join(w[0] for w in _institution_words(name) if w not in ("and", "the"))
+
+
+def _same_institution(a: str, b: str) -> bool:
+    """Do these two free-text college names refer to the same institution?
+
+    Students type their college by hand, so one college arrives as "ssbt
+    coet", "ssbt coet jalgaon" and its full legal name. An exact comparison
+    reports a cohort of zero for a college that actually has dozens of
+    students, so match on a normalised form.
+    """
+    ka, kb = _institution_key(a), _institution_key(b)
+    if not ka or not kb:
+        return False
+
+    # One name's words being a subset of the other's covers the plain
+    # shortening case, without matching two genuinely different colleges
+    # that happen to share a single word.
+    if ka <= kb or kb <= ka:
+        return True
+
+    # Indian colleges are usually written as an acronym, and an acronym
+    # shares no whole words with the name it stands for. Treat the shorter
+    # name as a match when each of its parts is either a word of the longer
+    # name or a run of initials inside it — "ssbt coet" against
+    # "Shram Sadhana Bombay Trust's College of Engineering & Technology".
+    short, long_ = (a, b) if len(_institution_words(a)) <= len(_institution_words(b)) else (b, a)
+    short_tokens = _institution_key(short)
+    long_words = set(_institution_words(long_))
+    acronym = _institution_acronym(long_)
+    # A single letter or two would match almost anything; require some length.
+    return all(
+        t in long_words or (len(t) >= 3 and t in acronym)
+        for t in short_tokens
+    )
+
+
+@app.get("/api/institution/analytics")
+def institution_analytics(
+    user: StudentModel = Depends(require_roles(ROLE_INSTITUTION, ROLE_FACULTY)),
+    db: Session = Depends(get_db),
+):
+    """Cohort-level analytics, scoped to the caller's own college.
+
+    An institution account with no org_name set (or an admin) sees the whole
+    platform; otherwise the numbers cover that college only.
+    """
+    students = [s for s in db.query(StudentModel).filter(StudentModel.role == ROLE_STUDENT).all() if s.is_active]
+    scope = user.org_name or (user.college if user_role(user) == ROLE_FACULTY else "")
+    if scope and user_role(user) != ROLE_ADMIN:
+        students = [s for s in students if _same_institution(s.college, scope)]
+
+    total = len(students)
+    if not total:
+        return {
+            "scope": scope or "All institutions",
+            "students_total": 0,
+            "message": "No student records for this institution yet.",
+        }
+
+    student_ids = {s.id for s in students}
+    apps = [a for a in db.query(ApplicationModel).all() if a.student_id in student_ids]
+    assessed_ids = {
+        a.student_id for a in db.query(AssessmentModel).filter(AssessmentModel.student_id.in_(list(student_ids))).all()
+    }
+
+    # Placement readiness bands.
+    bands = {"ready": 0, "developing": 0, "at_risk": 0}
+    for s in students:
+        r = s.placement_readiness or 0
+        bands["ready" if r >= 70 else "developing" if r >= 40 else "at_risk"] += 1
+
+    by_status = {}
+    for a in apps:
+        by_status[a.status] = by_status.get(a.status, 0) + 1
+
+    applied_ids = {a.student_id for a in apps}
+    placed_ids = {a.student_id for a in apps if a.status in ("shortlisted", "completed")}
+
+    # Which skills is the cohort short of, weighted by industry demand.
+    demand = {}
+    for opp in db.query(InternshipModel).all():
+        for sk in json.loads(opp.required_skills or "[]"):
+            demand[sk] = demand.get(sk, 0) + 1
+
+    curriculum_gaps = []
+    for skill, wanted_by in demand.items():
+        lacking = sum(
+            1 for s in students if skill.lower() not in {x.lower() for x in json.loads(s.skills or "[]")}
+        )
+        curriculum_gaps.append(
+            {
+                "skill": skill,
+                "students_missing": lacking,
+                "pct_missing": round(lacking * 100 / total),
+                "openings_requiring": wanted_by,
+                # High impact = lots of students short of a skill lots of
+                # employers want. That is the one to add to the syllabus.
+                "impact": round(lacking * wanted_by / total, 1),
+            }
+        )
+    curriculum_gaps.sort(key=lambda g: g["impact"], reverse=True)
+
+    # Branch is free text, so the same branch arrives as "Computer
+    # Engineering" and "Computer engineering". Group case-insensitively and
+    # label each group with its most common spelling, so one branch is not
+    # split across three rows. Genuinely different text stays separate —
+    # guessing that "computer" means "Computer Engineering" is not this
+    # function's job.
+    by_branch = {}
+    for s in students:
+        label = (s.branch or "").strip() or "Unspecified"
+        key = label.lower()
+        entry = by_branch.setdefault(
+            key, {"students": 0, "readiness_sum": 0, "applied": 0, "labels": {}}
+        )
+        entry["students"] += 1
+        entry["readiness_sum"] += s.placement_readiness or 0
+        entry["labels"][label] = entry["labels"].get(label, 0) + 1
+        if s.id in applied_ids:
+            entry["applied"] += 1
+    branch_rows = [
+        {
+            "branch": max(e["labels"].items(), key=lambda kv: kv[1])[0],
+            "students": e["students"],
+            "avg_readiness": round(e["readiness_sum"] / e["students"]),
+            "applied": e["applied"],
+            "participation_pct": round(e["applied"] * 100 / e["students"]),
+        }
+        for e in by_branch.values()
+    ]
+    branch_rows.sort(key=lambda r: r["avg_readiness"], reverse=True)
+
+    return {
+        "scope": scope or "All institutions",
+        "students_total": total,
+        "assessments_completed": len(assessed_ids),
+        "assessment_coverage_pct": round(len(assessed_ids) * 100 / total),
+        "avg_readiness": round(sum(s.placement_readiness or 0 for s in students) / total),
+        "avg_cgpa": round(sum(s.cgpa or 0 for s in students) / total, 2),
+        "readiness_bands": bands,
+        "applications_total": len(apps),
+        "applications_by_status": by_status,
+        "students_applied": len(applied_ids),
+        "participation_pct": round(len(applied_ids) * 100 / total),
+        "students_placed": len(placed_ids),
+        "placement_pct": round(len(placed_ids) * 100 / total),
+        "curriculum_gaps": curriculum_gaps[:12],
+        "by_branch": branch_rows,
+    }
+
+
+# =====================================================================
+# SEED DATA FOR THE NEW SURFACES
+# ---------------------------------------------------------------------
+# A fresh clone should demo the whole platform, not an empty shell. These
+# only run when the relevant table is empty, so they never overwrite real
+# data or duplicate themselves on restart.
+# =====================================================================
+
+# The student account the login page pre-fills. Kept next to the seeding code
+# so the two can never drift apart; frontend/js/demo-accounts.js must match.
+DEMO_STUDENT_EMAIL = "demo.student@careernexus.example.com"
+
+
+def seed_platform_v2():
+    db = SessionLocal()
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    try:
+        # --- One account per stakeholder role, so every portal is reachable.
+        demo_accounts = [
+            {
+                "id": "rec_2001",
+                "email": "recruiter@technova.example.com",
+                "full_name": "Priya Nair",
+                "role": ROLE_RECRUITER,
+                "org_name": "TechNova",
+                "designation": "Campus Hiring Lead",
+                "location": "Pune, Maharashtra",
+            },
+            {
+                "id": "fac_3001",
+                "email": "faculty@sscoetjalgaon.example.com",
+                "full_name": "Dr. Rajesh Deshmukh",
+                "role": ROLE_FACULTY,
+                "org_name": "Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon",
+                "college": "Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon",
+                "department": "Computer Engineering",
+                "designation": "Associate Professor",
+                "location": "Jalgaon, Maharashtra",
+            },
+            {
+                "id": "ins_4001",
+                "email": "tpo@sscoetjalgaon.example.com",
+                "full_name": "Placement Cell",
+                "role": ROLE_INSTITUTION,
+                "org_name": "Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon",
+                "college": "Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon",
+                "designation": "Training & Placement Officer",
+                "location": "Jalgaon, Maharashtra",
+            },
+        ]
+        # The login page offers one-click sign-in for each stakeholder, so a
+        # student account has to exist wherever the app runs — including a
+        # shared Postgres, where the ten-student demo cohort below is
+        # deliberately skipped. This is one clearly-labelled demo login, not
+        # fabricated cohort data.
+        if db.query(StudentModel).filter(StudentModel.email == DEMO_STUDENT_EMAIL).first() is None:
+            db.add(
+                StudentModel(
+                    id="stu_demo",
+                    email=DEMO_STUDENT_EMAIL,
+                    password_hash=hash_password("demo1234"),
+                    full_name="Demo Student",
+                    role=ROLE_STUDENT,
+                    is_active=1,
+                    phone="",
+                    location="Jalgaon, Maharashtra",
+                    college="Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon",
+                    degree="B.Tech",
+                    branch="Computer Engineering",
+                    current_year="3rd Year",
+                    graduation_year=2027,
+                    cgpa=8.4,
+                    skills=json.dumps(["Python", "JavaScript", "React", "SQL", "Git", "HTML", "CSS"]),
+                    soft_skills=json.dumps(["Communication", "Teamwork"]),
+                    projects=json.dumps([
+                        {
+                            "id": 1,
+                            "title": "Campus Placement Tracker",
+                            "description": "A web app that tracks student applications and placement outcomes for a college placement cell.",
+                            "tech": ["React", "Python", "SQL"],
+                            "link": "",
+                        }
+                    ]),
+                    certifications=json.dumps([
+                        {"id": 1, "title": "Responsive Web Design", "issuer": "freeCodeCamp", "year": 2025}
+                    ]),
+                    experience=json.dumps([]),
+                    preferred_roles=json.dumps(["Frontend Developer", "Full Stack Developer"]),
+                    preferred_locations=json.dumps(["Pune", "Bengaluru", "Remote"]),
+                    work_mode="Hybrid",
+                    duration="3-6 months",
+                    profile_completion=78,
+                    placement_readiness=72,
+                )
+            )
+            db.commit()
+
+        for acc in demo_accounts:
+            if db.query(StudentModel).filter(StudentModel.email == acc["email"]).first():
+                continue
+            db.add(
+                StudentModel(
+                    id=acc["id"],
+                    email=acc["email"],
+                    # Demo password for all three portal accounts: demo1234
+                    password_hash=hash_password("demo1234"),
+                    full_name=acc["full_name"],
+                    role=acc["role"],
+                    is_active=1,
+                    org_name=acc.get("org_name", ""),
+                    department=acc.get("department", ""),
+                    designation=acc.get("designation", ""),
+                    college=acc.get("college", ""),
+                    location=acc.get("location", ""),
+                    skills=json.dumps([]),
+                    soft_skills=json.dumps([]),
+                    projects=json.dumps([]),
+                    certifications=json.dumps([]),
+                    experience=json.dumps([]),
+                    preferred_roles=json.dumps([]),
+                    preferred_locations=json.dumps([]),
+                    work_mode="Hybrid",
+                    duration="",
+                    profile_completion=90,
+                    placement_readiness=0,
+                )
+            )
+        db.commit()
+
+        # Attribute the original seed internships to the demo recruiter so the
+        # recruiter portal has a pipeline to show on first run.
+        for opp in db.query(InternshipModel).filter(InternshipModel.posted_by.is_(None)).all():
+            opp.posted_by = "rec_2001"
+            if not opp.opportunity_type:
+                opp.opportunity_type = "internship"
+            if not opp.audience:
+                opp.audience = "student"
+        db.commit()
+
+        # --- Full-time jobs and apprenticeships (the placement half of the PS).
+        if db.query(InternshipModel).filter(InternshipModel.id == "opp_job_1").first() is None:
+            db.add_all(
+                [
+                    InternshipModel(
+                        id="opp_job_1",
+                        title="Graduate Software Engineer",
+                        company="FinEdge Solutions",
+                        location="Bengaluru",
+                        work_mode="Hybrid",
+                        stipend="Rs. 8,00,000/year",
+                        duration="Full-time",
+                        deadline="2026-11-30",
+                        description="Entry-level engineering role on the payments platform. Open to 2026 and 2027 graduates.",
+                        opportunity_type="job",
+                        audience="student",
+                        min_cgpa=7.0,
+                        openings=12,
+                        posted_by="rec_2001",
+                        required_skills=json.dumps(["Python", "SQL", "Git", "FastAPI", "Docker"]),
+                    ),
+                    InternshipModel(
+                        id="opp_job_2",
+                        title="Associate Data Analyst",
+                        company="InsightWorks",
+                        location="Remote",
+                        work_mode="Remote",
+                        stipend="Rs. 6,50,000/year",
+                        duration="Full-time",
+                        deadline="2026-10-20",
+                        description="Own reporting for one business line end to end, from SQL through to the dashboard.",
+                        opportunity_type="job",
+                        audience="student",
+                        min_cgpa=6.5,
+                        openings=5,
+                        posted_by="rec_2001",
+                        required_skills=json.dumps(["SQL", "Excel", "Power BI", "Python"]),
+                    ),
+                    InternshipModel(
+                        id="opp_app_1",
+                        title="Cloud Support Apprentice (NAPS)",
+                        company="CloudSprint",
+                        location="Hyderabad",
+                        work_mode="On-site",
+                        stipend="Rs. 14,000/month",
+                        duration="12 months",
+                        deadline="2026-10-05",
+                        description="Twelve-month apprenticeship under the National Apprenticeship Promotion Scheme, with a full-time offer on successful completion.",
+                        opportunity_type="apprenticeship",
+                        audience="student",
+                        min_cgpa=6.0,
+                        openings=20,
+                        posted_by="rec_2001",
+                        required_skills=json.dumps(["AWS", "Docker", "Git", "Communication"]),
+                    ),
+                    # --- The faculty track.
+                    InternshipModel(
+                        id="opp_fdp_1",
+                        title="FDP: Applied Machine Learning for Engineering Faculty",
+                        company="TechNova",
+                        location="Pune",
+                        work_mode="Hybrid",
+                        stipend="Sponsored",
+                        duration="2 weeks",
+                        deadline="2026-10-15",
+                        description="AICTE-aligned Faculty Development Programme covering applied ML with an industry case study. Certificate on completion.",
+                        opportunity_type="fdp",
+                        audience="faculty",
+                        openings=40,
+                        posted_by="rec_2001",
+                        required_skills=json.dumps(["Python", "Communication"]),
+                    ),
+                    InternshipModel(
+                        id="opp_fac_1",
+                        title="Faculty Summer Internship — Platform Engineering",
+                        company="FinEdge Solutions",
+                        location="Bengaluru",
+                        work_mode="On-site",
+                        stipend="Rs. 60,000/month",
+                        duration="6 weeks",
+                        deadline="2026-11-10",
+                        description="Six weeks embedded with a production engineering team, so what you teach next semester matches what the industry actually runs.",
+                        opportunity_type="training",
+                        audience="faculty",
+                        openings=6,
+                        posted_by="rec_2001",
+                        required_skills=json.dumps(["Python", "SQL", "Docker"]),
+                    ),
+                    InternshipModel(
+                        id="opp_proj_1",
+                        title="Live Industry Project — Campus Placement Analytics",
+                        company="InsightWorks",
+                        location="Remote",
+                        work_mode="Remote",
+                        stipend="Rs. 1,50,000 consultancy grant",
+                        duration="4 months",
+                        deadline="2026-10-25",
+                        description="Joint consultancy project with a faculty lead and a student team building a placement-prediction model on anonymised data.",
+                        opportunity_type="project",
+                        audience="faculty",
+                        openings=3,
+                        posted_by="rec_2001",
+                        required_skills=json.dumps(["Python", "SQL", "Power BI"]),
+                    ),
+                ]
+            )
+            db.commit()
+
+        # --- A real student cohort.
+        # Institution analytics, the curriculum-gap ranking and the
+        # verification queue are all cohort-level views: with a single
+        # student on the platform they render a page of zeroes. These are
+        # spread across branches, CGPA bands and skill levels so the
+        # analytics show a realistic distribution.
+        #
+        # Only ever on a local SQLite file — i.e. a fresh clone someone just
+        # ran start_first_time.bat on. A shared Postgres database has real
+        # accounts in it, and injecting ten fabricated students into a team's
+        # live data would corrupt everyone's analytics. Set
+        # SEED_DEMO_COHORT=true to force it on anyway.
+        wants_cohort = os.environ.get("SEED_DEMO_COHORT", "").strip().lower() in ("1", "true", "yes")
+        local_sqlite = DATABASE_URL.startswith("sqlite")
+        if (local_sqlite or wants_cohort) and db.query(StudentModel).filter(
+            StudentModel.role == ROLE_STUDENT
+        ).count() < 5:
+            college = "Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon"
+            cohort = [
+                ("Sneha Jadhav", "Computer Engineering", 8.9, ["Python", "JavaScript", "React", "SQL", "Git", "HTML", "CSS"], ["Communication", "Teamwork"], 88),
+                ("Rohan Patil", "Computer Engineering", 7.8, ["Python", "SQL", "Git", "HTML"], ["Teamwork"], 64),
+                ("Aditi Kulkarni", "Information Technology", 9.1, ["Python", "JavaScript", "SQL", "Docker", "AWS", "Git"], ["Leadership", "Communication", "Problem Solving"], 92),
+                ("Vikram Shinde", "Information Technology", 6.4, ["HTML", "CSS"], [], 32),
+                ("Neha Bhosale", "Electronics & Telecommunication", 8.2, ["Python", "Excel", "SQL"], ["Communication"], 71),
+                ("Karan Mehta", "Computer Engineering", 7.1, ["Java", "SQL", "Git"], ["Teamwork", "Adaptability"], 58),
+                ("Pooja Sawant", "Information Technology", 8.6, ["Python", "Power BI", "Excel", "SQL"], ["Problem Solving", "Communication"], 79),
+                ("Arjun Deshpande", "Mechanical Engineering", 6.9, ["Excel", "Python"], ["Teamwork"], 41),
+                ("Ishita Rane", "Computer Engineering", 9.3, ["Python", "React", "JavaScript", "TypeScript", "Node.js", "SQL", "Git", "Docker"], ["Leadership", "Communication", "Creativity"], 95),
+                ("Sahil Wagh", "Electronics & Telecommunication", 5.8, ["C++"], [], 24),
+            ]
+            for idx, (name, branch, cgpa, skills, soft, readiness) in enumerate(cohort, start=1):
+                handle = name.split()[0].lower() + "." + name.split()[-1].lower()
+                email = f"{handle}@sscoetjalgaon.example.com"
+                if db.query(StudentModel).filter(StudentModel.email == email).first():
+                    continue
+                db.add(
+                    StudentModel(
+                        id=f"stu_20{idx:03d}",
+                        email=email,
+                        # Demo cohort password: demo1234
+                        password_hash=hash_password("demo1234"),
+                        full_name=name,
+                        role=ROLE_STUDENT,
+                        is_active=1,
+                        college=college,
+                        degree="B.Tech",
+                        branch=branch,
+                        current_year="3rd Year" if idx % 2 else "Final Year",
+                        graduation_year=2027 if idx % 2 else 2026,
+                        cgpa=cgpa,
+                        location="Jalgaon, Maharashtra",
+                        skills=json.dumps(skills),
+                        soft_skills=json.dumps(soft),
+                        projects=json.dumps([]),
+                        certifications=json.dumps([]),
+                        experience=json.dumps([]),
+                        preferred_roles=json.dumps(["Software Developer"]),
+                        preferred_locations=json.dumps(["Pune", "Bengaluru", "Remote"]),
+                        work_mode="Hybrid",
+                        duration="3-6 months",
+                        profile_completion=min(100, 40 + len(skills) * 6),
+                        placement_readiness=readiness,
+                    )
+                )
+            db.commit()
+
+            # Give the cohort an application history, so participation and
+            # placement percentages are real numbers rather than zeroes.
+            seeded_apps = [
+                ("stu_20001", "int_1", "shortlisted"),
+                ("stu_20001", "opp_job_1", "under_review"),
+                ("stu_20003", "opp_job_1", "shortlisted"),
+                ("stu_20003", "int_2", "completed"),
+                ("stu_20005", "int_3", "applied"),
+                ("stu_20007", "opp_job_2", "shortlisted"),
+                ("stu_20007", "int_3", "under_review"),
+                ("stu_20009", "int_1", "completed"),
+                ("stu_20009", "opp_job_1", "shortlisted"),
+                ("stu_20002", "int_4", "rejected"),
+                ("stu_20006", "opp_app_1", "applied"),
+            ]
+            for n, (sid, oid, st) in enumerate(seeded_apps, start=100):
+                if db.query(ApplicationModel).filter(
+                    ApplicationModel.student_id == sid, ApplicationModel.internship_id == oid
+                ).first():
+                    continue
+                learner = db.query(StudentModel).filter(StudentModel.id == sid).first()
+                opp = db.query(InternshipModel).filter(InternshipModel.id == oid).first()
+                if not learner or not opp:
+                    continue
+                db.add(
+                    ApplicationModel(
+                        id=f"app_{n}",
+                        student_id=sid,
+                        internship_id=oid,
+                        applied_on="2026-08-%02d" % (10 + (n % 18)),
+                        status=st,
+                        match_score=calculate_match_score_breakdown(learner, opp)["match_score"],
+                    )
+                )
+            db.commit()
+
+        # --- Industry learning programs.
+        if db.query(LearningProgramModel).filter(LearningProgramModel.id == "lp_seed_1").first() is None:
+            db.add_all(
+                [
+                    LearningProgramModel(
+                        id="lp_seed_1",
+                        title="TechNova Frontend Bootcamp",
+                        provider="TechNova",
+                        program_type="workshop",
+                        description="Four weekends of React and TypeScript taught by the engineers who run our web platform. Top performers are fast-tracked to interview.",
+                        skills_covered=json.dumps(["React", "TypeScript", "JavaScript", "CSS"]),
+                        url="https://www.freecodecamp.org/learn/",
+                        duration="4 weekends",
+                        cost="Free",
+                        audience="student",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                    LearningProgramModel(
+                        id="lp_seed_2",
+                        title="CloudSprint Cloud Foundations Certification",
+                        provider="CloudSprint",
+                        program_type="certification",
+                        description="Prepares you for the AWS Cloud Practitioner exam. Exam voucher sponsored for students who complete every module.",
+                        skills_covered=json.dumps(["AWS", "Docker"]),
+                        url="https://skillbuilder.aws/",
+                        duration="6 weeks",
+                        cost="Free (sponsored voucher)",
+                        audience="student",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                    LearningProgramModel(
+                        id="lp_seed_3",
+                        title="FinEdge Data Mentorship",
+                        provider="FinEdge Solutions",
+                        program_type="mentorship",
+                        description="Eight weeks paired one-to-one with a senior data analyst. Fortnightly calls and one portfolio project reviewed in detail.",
+                        skills_covered=json.dumps(["SQL", "Python", "Power BI", "Communication"]),
+                        url="https://learn.microsoft.com/training/",
+                        duration="8 weeks",
+                        cost="Free",
+                        audience="student",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                    LearningProgramModel(
+                        id="lp_seed_4",
+                        title="Teaching Modern Backend Engineering",
+                        provider="TechNova",
+                        program_type="workshop",
+                        description="A faculty-facing workshop on bringing containers, CI and API design into an undergraduate syllabus.",
+                        skills_covered=json.dumps(["Docker", "FastAPI", "Git"]),
+                        url="https://docs.docker.com/get-started/",
+                        duration="3 days",
+                        cost="Free",
+                        audience="faculty",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                ]
+            )
+            db.commit()
+
+        # --- Collaboration calls.
+        if db.query(CollaborationModel).filter(CollaborationModel.id == "col_seed_1").first() is None:
+            db.add_all(
+                [
+                    CollaborationModel(
+                        id="col_seed_1",
+                        title="Guest Lecture: What a Production Codebase Actually Looks Like",
+                        organisation="TechNova",
+                        collab_type="guest_lecture",
+                        description="A working engineer walks through a real repository — reviews, tests, deploys and all — for final-year students.",
+                        skills_involved=json.dumps(["Git", "Python", "Communication"]),
+                        mode="On-site",
+                        location="Jalgaon",
+                        starts_on="2026-10-12",
+                        seats=120,
+                        audience="both",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                    CollaborationModel(
+                        id="col_seed_2",
+                        title="Innovation Challenge: Rural Healthcare Access",
+                        organisation="InsightWorks",
+                        collab_type="innovation_challenge",
+                        description="Six-week challenge open to student teams of three to five. Winning team gets a paid pilot and internship offers.",
+                        skills_involved=json.dumps(["Python", "SQL", "Problem Solving"]),
+                        mode="Remote",
+                        location="Remote",
+                        starts_on="2026-10-20",
+                        seats=0,
+                        audience="student",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                    CollaborationModel(
+                        id="col_seed_3",
+                        title="Joint Research: Skill-Demand Forecasting for Tier-2 Campuses",
+                        organisation="FinEdge Solutions",
+                        collab_type="research",
+                        description="Co-authored research with a faculty lead on predicting regional skill demand. Data and compute provided.",
+                        skills_involved=json.dumps(["Python", "SQL"]),
+                        mode="Hybrid",
+                        location="Bengaluru",
+                        starts_on="2026-11-01",
+                        seats=4,
+                        audience="faculty",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                    CollaborationModel(
+                        id="col_seed_4",
+                        title="Live Project: Campus Energy Dashboard",
+                        organisation="CloudSprint",
+                        collab_type="live_project",
+                        description="Build and ship a real dashboard for campus energy use, mentored by a CloudSprint engineer. Counts as a verified portfolio project.",
+                        skills_involved=json.dumps(["React", "Power BI", "SQL"]),
+                        mode="Hybrid",
+                        location="Jalgaon",
+                        starts_on="2026-10-08",
+                        seats=15,
+                        audience="student",
+                        posted_by="rec_2001",
+                        created_at=now,
+                    ),
+                ]
+            )
+            db.commit()
+
+        # Give the demo student a small application history and one verified
+        # skill, so the account the login page pre-fills opens onto a populated
+        # dashboard rather than a set of empty states.
+        demo_student = db.query(StudentModel).filter(StudentModel.email == DEMO_STUDENT_EMAIL).first()
+        if demo_student:
+            for n, (oid, st) in enumerate([("int_1", "shortlisted"), ("int_3", "applied")], start=1):
+                if db.query(ApplicationModel).filter(
+                    ApplicationModel.student_id == demo_student.id,
+                    ApplicationModel.internship_id == oid,
+                ).first():
+                    continue
+                opp = db.query(InternshipModel).filter(InternshipModel.id == oid).first()
+                if not opp:
+                    continue
+                db.add(
+                    ApplicationModel(
+                        id=f"app_demo_{n}",
+                        student_id=demo_student.id,
+                        internship_id=oid,
+                        applied_on="2026-08-2%d" % n,
+                        status=st,
+                        match_score=calculate_match_score_breakdown(demo_student, opp)["match_score"],
+                    )
+                )
+            if not db.query(VerificationModel).filter(
+                VerificationModel.student_id == demo_student.id
+            ).first():
+                db.add(
+                    VerificationModel(
+                        id="ver_demo_1",
+                        student_id=demo_student.id,
+                        item_type="skill",
+                        item_key="Python",
+                        verified_by="fac_3001",
+                        verifier_name="Dr. Rajesh Deshmukh",
+                        verifier_role=ROLE_FACULTY,
+                        verified_at="2026-08-24",
+                        note="Demonstrated in the Data Structures lab.",
+                    )
+                )
+            db.commit()
+
+        # --- A worked example of the progress + verification chain, so the
+        # portfolio has something verified on it the first time it opens.
+        demo = db.query(StudentModel).filter(StudentModel.id == "stu_1001").first()
+        first_app = db.query(ApplicationModel).filter(ApplicationModel.id == "app_1").first()
+        # Guard on this block's own rows, not a global count: another seed
+        # step may already have inserted a row of the same type, and a global
+        # count would then silently skip everything here.
+        if demo and first_app and db.query(ProgressLogModel).filter(
+            ProgressLogModel.id == "plog_seed_1"
+        ).first() is None:
+            db.add_all(
+                [
+                    ProgressLogModel(
+                        id="plog_seed_1",
+                        application_id="app_1",
+                        week=1,
+                        summary="Set up the development environment and shipped my first component — a filterable table for the internal dashboard.",
+                        hours=38,
+                        created_at="2026-08-25 18:00",
+                        mentor_feedback="Strong start. Picked up the codebase conventions quickly and asked good questions in review.",
+                        mentor_rating=4,
+                        reviewed_at="2026-08-26 10:00",
+                    ),
+                    ProgressLogModel(
+                        id="plog_seed_2",
+                        application_id="app_1",
+                        week=2,
+                        summary="Added keyboard navigation and screen-reader labels to the table, and wrote the first tests for it.",
+                        hours=40,
+                        created_at="2026-09-01 18:00",
+                        mentor_feedback="Accessibility work was thorough and unprompted. Next: focus on writing tests before the implementation.",
+                        mentor_rating=5,
+                        reviewed_at="2026-09-02 09:30",
+                    ),
+                ]
+            )
+            db.commit()
+
+        if db.query(VerificationModel).filter(VerificationModel.id == "ver_seed_1").first() is None:
+            db.add_all(
+                [
+                    VerificationModel(
+                        id="ver_seed_1",
+                        student_id="stu_1001",
+                        item_type="skill",
+                        item_key="Python",
+                        verified_by="fac_3001",
+                        verifier_name="Dr. Rajesh Deshmukh",
+                        verifier_role=ROLE_FACULTY,
+                        verified_at="2026-08-20",
+                        note="Demonstrated in the Data Structures lab and the semester project.",
+                    ),
+                    VerificationModel(
+                        id="ver_seed_2",
+                        student_id="stu_1001",
+                        item_type="skill",
+                        item_key="React",
+                        verified_by="rec_2001",
+                        verifier_name="Priya Nair",
+                        verifier_role=ROLE_RECRUITER,
+                        verified_at="2026-09-02",
+                        note="Shipped production React components during the TechNova internship.",
+                    ),
+                    VerificationModel(
+                        id="ver_seed_3",
+                        student_id="stu_1001",
+                        item_type="project",
+                        item_key="Campus Skill Tracker",
+                        verified_by="fac_3001",
+                        verifier_name="Dr. Rajesh Deshmukh",
+                        verifier_role=ROLE_FACULTY,
+                        verified_at="2026-08-20",
+                        note="Reviewed the repository and the live deployment. The work is the student's own.",
+                    ),
+                    VerificationModel(
+                        id="ver_seed_4",
+                        student_id="stu_1001",
+                        item_type="certification",
+                        item_key="Google Data Analytics Certificate",
+                        verified_by="ins_4001",
+                        verifier_name="Placement Cell",
+                        verifier_role=ROLE_INSTITUTION,
+                        verified_at="2026-08-22",
+                        note="Certificate ID checked against the issuer's register.",
+                    ),
+                ]
+            )
+            db.commit()
+    finally:
+        db.close()
+
+
+seed_platform_v2()
 
 if __name__ == "__main__":
     import uvicorn

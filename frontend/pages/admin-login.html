@@ -7,10 +7,11 @@
 <meta name="robots" content="noindex, nofollow" />
 <title>Team Sign In — CareerNexus</title>
 <link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
-<link rel="stylesheet" href="../css/global.css?v=20260905b" />
-<link rel="stylesheet" href="../css/components.css?v=20260905b" />
-<link rel="stylesheet" href="../css/auth.css?v=20260905b" />
-<link rel="stylesheet" href="../css/responsive.css?v=20260905b" />
+<link rel="stylesheet" href="../css/global.css?v=20260906b" />
+<link rel="stylesheet" href="../css/components.css?v=20260906b" />
+<link rel="stylesheet" href="../css/platform.css?v=20260906b" />
+<link rel="stylesheet" href="../css/auth.css?v=20260906b" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260906b" />
 <style>
   .admin-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
   .admin-login-card { width: 100%; max-width: 400px; }
@@ -36,6 +37,9 @@
       <h1 class="text-page-heading">Team Sign In</h1>
       <p class="text-body mt-2">Restricted to authorized team members. Student accounts have no access here.</p>
 
+      <!-- Prefill for the seeded admin demo account. -->
+      <div id="demoAccounts"></div>
+
       <form id="adminLoginForm" class="mt-5" novalidate>
         <div class="form-group">
           <label class="form-label" for="email">Work email</label>
@@ -60,11 +64,21 @@
   </div>
 </div>
 
-<script src="../js/config.js?v=20260905b"></script>
-<script src="../js/mock-data.js?v=20260905b"></script>
-<script src="../js/api.js?v=20260905b"></script>
-<script src="../js/ui.js?v=20260905b"></script>
-<script src="../js/theme.js?v=20260905b"></script>
-<script src="../js/admin-auth.js?v=20260905b"></script>
+<script src="../js/config.js?v=20260906b"></script>
+<script src="../js/mock-data.js?v=20260906b"></script>
+<script src="../js/api.js?v=20260906b"></script>
+<script src="../js/ui.js?v=20260906b"></script>
+<script src="../js/theme.js?v=20260906b"></script>
+<script src="../js/demo-accounts.js?v=20260906b"></script>
+<script src="../js/admin-auth.js?v=20260906b"></script>
+<script>
+  mountDemoAccounts({
+    mountId: 'demoAccounts',
+    roles: ['admin'],
+    emailId: 'email',
+    passwordId: 'password',
+    title: 'Demo admin account',
+  });
+</script>
 </body>
 </html>

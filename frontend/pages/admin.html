@@ -6,10 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin Panel — CareerNexus</title>
 <link rel="icon" type="image/png" href="../assets/logos/careernexus-logo.png" />
-<link rel="stylesheet" href="../css/global.css?v=20260905b" />
-<link rel="stylesheet" href="../css/components.css?v=20260905b" />
-<link rel="stylesheet" href="../css/dashboard.css?v=20260905b" />
-<link rel="stylesheet" href="../css/responsive.css?v=20260905b" />
+<link rel="stylesheet" href="../css/global.css?v=20260906b" />
+<link rel="stylesheet" href="../css/components.css?v=20260906b" />
+<link rel="stylesheet" href="../css/platform.css?v=20260906b" />
+<link rel="stylesheet" href="../css/dashboard.css?v=20260906b" />
+<link rel="stylesheet" href="../css/responsive.css?v=20260906b" />
 <style>
   /* The admin panel uses the full content width — no 1400px cap. */
   .main-content .page-body { max-width: none; }
@@ -18,49 +19,19 @@
   .admin-tab { background: none; border: none; padding: var(--space-3) var(--space-4); font-size: 0.92rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
   .admin-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-  .admin-table { width: 100%; border-collapse: collapse; }
-  .admin-table th { text-align: left; padding: 10px 12px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
-  .admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.88rem; }
-  .admin-table tr:last-child td { border-bottom: none; }
-  .admin-table tbody tr:hover { background: rgba(127, 127, 127, 0.06); }
-  .table-wrap { overflow-x: auto; }               /* horizontal scroll only kicks in on small screens */
-  .admin-table--wide { min-width: 900px; }
-  .col-num { text-align: right; font-variant-numeric: tabular-nums; }
-  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .row-actions .btn { padding: 4px 10px; font-size: 0.78rem; }
-
-  .admin-toolbar { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4); }
-  .admin-toolbar .form-input, .admin-toolbar select.form-input { max-width: 260px; }
-
-  /* Skill-shortage bars — colour by how urgent the gap is (kept soft) */
-  .bar-row { display: grid; grid-template-columns: minmax(120px, 190px) 1fr auto; align-items: center; gap: 16px; margin-bottom: 15px; font-size: 0.9rem; }
-  .bar-skill { font-weight: 600; }
-  .bar-track { background: rgba(127, 127, 127, 0.12); border-radius: 999px; height: 8px; overflow: hidden; display: block; }
-  .bar-fill { display: block; height: 100%; border-radius: 999px; min-width: 3px; opacity: 0.82; transition: width 0.5s ease; }
-  .bar-fill.gap-high { background: #d9707a; }
-  .bar-fill.gap-med  { background: #d69a52; }
-  .bar-fill.gap-low  { background: #4faf82; }
-  .bar-meta { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .bar-meta b { font-size: 0.92rem; }
-  .bar-meta span { color: var(--text-muted); font-size: 0.8rem; margin-left: 6px; }
-  .gap-legend { display: flex; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); font-size: 0.82rem; color: var(--text-muted); }
-  .gap-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: middle; opacity: 0.82; }
-  .gap-legend i.gap-high { background: #d9707a; }
-  .gap-legend i.gap-med  { background: #d69a52; }
-  .gap-legend i.gap-low  { background: #4faf82; }
-
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: var(--space-4); z-index: 50; }
-  .modal { background: var(--bg-elevated, var(--bg-card, #14181f)); border: 1px solid var(--border); border-radius: var(--radius-lg, 14px); padding: var(--space-6); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+  /* The data table, toolbar, skill-gap bars and modal now live in
+     platform.css — the recruiter, institution and verification pages use
+     the same primitives, so there is one copy rather than four. */
 </style>
 </head>
 <body>
 <div class="app-shell" id="appShell"></div>
 
-<script src="../js/config.js?v=20260905b"></script>
-<script src="../js/mock-data.js?v=20260905b"></script>
-<script src="../js/api.js?v=20260905b"></script>
-<script src="../js/ui.js?v=20260905b"></script>
-<script src="../js/theme.js?v=20260905b"></script>
-<script src="../js/admin.js?v=20260905b"></script>
+<script src="../js/config.js?v=20260906b"></script>
+<script src="../js/mock-data.js?v=20260906b"></script>
+<script src="../js/api.js?v=20260906b"></script>
+<script src="../js/ui.js?v=20260906b"></script>
+<script src="../js/theme.js?v=20260906b"></script>
+<script src="../js/admin.js?v=20260906b"></script>
 </body>
 </html>

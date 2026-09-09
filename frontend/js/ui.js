@@ -53,6 +53,46 @@ const NAV_ITEMS = [
   { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', roles: [ROLES.ADMIN] },
 ];
 
+/* ---------- Opened straight from the hard disk? ----------
+   Double-clicking an .html file loads it over file://, and the app cannot
+   work that way:
+
+     * the browser sends "Origin: null", which is not in the backend's
+       allowlist, so every API call is blocked before it is sent
+     * the login session lives in localStorage on the http://localhost:5500
+       origin, and file:// gets its own empty one
+
+   The symptom is a blank white page with nothing in the console to explain
+   it, so say what happened and how to fix it instead. Widening the CORS
+   allowlist to accept "null" would silence this, but it would also let any
+   HTML file on the machine call the API, so we don't. */
+(function warnIfOpenedAsFile() {
+  if (window.location.protocol !== 'file:') return;
+
+  const served = 'http://localhost:5500' + window.location.pathname.replace(/^.*\/frontend/, '');
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.innerHTML = `
+      <div style="max-width:640px;margin:14vh auto;padding:32px;font:15px/1.6 system-ui,sans-serif;
+                  color:#1a1d24;background:#fff;border:1px solid #dfe3ea;border-radius:14px;">
+        <h1 style="margin:0 0 12px;font-size:1.4rem;">Open CareerNexus through the local server</h1>
+        <p style="margin:0 0 16px;">
+          This page was opened directly from a folder, so the browser is treating it as a
+          local file. CareerNexus needs its server running: opened this way the page cannot
+          reach the API or see that you are signed in, which is why it looks empty.
+        </p>
+        <p style="margin:0 0 8px;font-weight:600;">Do this instead</p>
+        <ol style="margin:0 0 18px;padding-left:20px;">
+          <li>Run <code style="background:#eef1f6;padding:1px 6px;border-radius:4px;">start.bat</code></li>
+          <li>Open <a href="${served}" style="color:#0a7f6b;font-weight:600;">${served}</a></li>
+        </ol>
+        <p style="margin:0;color:#5b6472;font-size:0.9rem;">
+          The address bar should start with <strong>http://localhost:5500</strong>, never
+          <strong>file:///</strong>.
+        </p>
+      </div>`;
+  });
+})();
+
 function currentRole() {
   return localStorage.getItem('cn_role') || ROLES.STUDENT;
 }

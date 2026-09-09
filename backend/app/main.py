@@ -1,5 +1,7 @@
 import os
+import re
 import json
+import pathlib
 import jwt
 import datetime
 from typing import List, Optional
@@ -5025,6 +5027,96 @@ EXTERNAL_LEARNING = [
         "certificate": 1,
     },
     {
+        "id": "ext_lp_google_ml_crash",
+        "title": "Machine Learning Crash Course",
+        "provider": "Google for Developers",
+        "program_type": "course",
+        "url": "https://developers.google.com/machine-learning/crash-course",
+        "description": "Google's own introduction to machine learning: supervised learning, model fitting, generalisation and neural networks, with interactive exercises in Python.",
+        "skills_covered": ["Python", "Problem Solving"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Basic Python and algebra",
+        "certificate": 0,
+        "source_type": "official",
+        "audience": "both",
+    },
+    {
+        "id": "ext_lp_elements_of_ai",
+        "title": "Elements of AI",
+        "provider": "University of Helsinki & MinnaLearn",
+        "program_type": "course",
+        "url": "https://www.elementsofai.com",
+        "description": "A university-built introduction to artificial intelligence for non-specialists: what AI can and cannot do, machine learning basics, neural networks and the societal implications.",
+        "skills_covered": ["Problem Solving", "Communication"],
+        "duration": "Self-paced, about 30 hours",
+        "cost": "Free",
+        "eligibility": "Open to all, no programming required",
+        "certificate": 1,
+        "source_type": "official",
+        "audience": "both",
+    },
+    {
+        "id": "ext_lp_aws_mlu",
+        "title": "AWS Machine Learning University",
+        "provider": "Amazon Web Services",
+        "program_type": "course",
+        "url": "https://aws.amazon.com/machine-learning/mlu/",
+        "description": "The machine learning curriculum Amazon uses to train its own scientists and engineers, released publicly: tabular data, computer vision, natural language processing and decision trees.",
+        "skills_covered": ["Python", "AWS", "SQL"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Python fundamentals recommended",
+        "certificate": 0,
+        "source_type": "official",
+        "audience": "both",
+    },
+    {
+        "id": "ext_lp_ibm_ai",
+        "title": "IBM Artificial Intelligence Training",
+        "provider": "IBM Training",
+        "program_type": "certification",
+        "url": "https://www.ibm.com/training/artificial-intelligence",
+        "description": "IBM's own AI and data science learning tracks, including generative AI and watsonx, with paid certification paths alongside free introductory content.",
+        "skills_covered": ["Python", "SQL", "Problem Solving"],
+        "duration": "Varies by track",
+        "cost": "Free and paid tracks",
+        "eligibility": "Open to all",
+        "certificate": 1,
+        "source_type": "official",
+        "audience": "both",
+    },
+    {
+        "id": "ext_lp_mdn_learn",
+        "title": "MDN Web Docs — Learn Web Development",
+        "provider": "Mozilla",
+        "program_type": "course",
+        "url": "https://developer.mozilla.org/en-US/docs/Learn",
+        "description": "Mozilla's structured curriculum for web development, from HTML and CSS through JavaScript, accessibility and tooling. The reference the web platform is documented against.",
+        "skills_covered": ["HTML", "CSS", "JavaScript", "Git"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 0,
+        "source_type": "official",
+        "audience": "both",
+    },
+    {
+        "id": "ext_lp_webdev_learn",
+        "title": "web.dev Learn",
+        "provider": "Google Chrome Developers",
+        "program_type": "course",
+        "url": "https://web.dev/learn",
+        "description": "Google's courses on modern web development: CSS, HTML, responsive design, performance, accessibility and privacy, written by the Chrome team.",
+        "skills_covered": ["HTML", "CSS", "JavaScript"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 0,
+        "source_type": "official",
+        "audience": "both",
+    },
+    {
         "id": "ext_lp_swayam",
         "title": "SWAYAM",
         "provider": "Ministry of Education, Government of India",
@@ -5414,7 +5506,62 @@ seed_external_catalogue()
 #     the student can fall back to.
 # =====================================================================
 
-AIIA_SITE = "https://aiia.gov.in"
+# =====================================================================
+# CENTRAL WEBSITE REGISTER
+# ---------------------------------------------------------------------
+# Every external destination CareerNexus points at lives in one file:
+#
+#     frontend/data/website-links.json
+#
+# It sits under frontend/ rather than at the repo root for one practical
+# reason: frontend/serve.py serves that directory, so the browser can
+# fetch the same file the backend reads. A repo-root data/ folder would
+# be unreachable from the page and we would be back to two copies.
+#
+# Editing that file is all it takes to change a URL — this module reads
+# it at import instead of hard-coding aiia.gov.in in a second place.
+# =====================================================================
+
+WEBSITE_LINKS_PATH = (
+    pathlib.Path(__file__).resolve().parent.parent.parent / "frontend" / "data" / "website-links.json"
+)
+
+
+def _load_website_links() -> List[dict]:
+    """Read the register, or fall back to an empty list.
+
+    A missing or malformed file must never stop the API booting: the
+    lookups below all carry their own defaults, so the worst case is
+    that a link falls back to the value it used to be hard-coded as.
+    """
+    try:
+        with open(WEBSITE_LINKS_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        sites = data.get("websites", [])
+        return [w for w in sites if isinstance(w, dict) and clean_public_url(w.get("url", ""))]
+    except (OSError, ValueError) as exc:
+        print(f"Website links: could not read {WEBSITE_LINKS_PATH.name} ({exc}); using built-in defaults")
+        return []
+
+
+WEBSITE_LINKS = _load_website_links()
+_WEBSITE_LINKS_BY_ID = {w["id"]: w for w in WEBSITE_LINKS if w.get("id")}
+
+
+def site_url(link_id: str, default: str = "") -> str:
+    """The registered URL for `link_id`, or `default` if it is not listed."""
+    entry = _WEBSITE_LINKS_BY_ID.get(link_id)
+    return clean_public_url(entry["url"]) if entry else default
+
+
+if WEBSITE_LINKS:
+    print(f"Website links: {len(WEBSITE_LINKS)} external destinations loaded from the central register")
+
+# Read from the register, with the previously hard-coded value as the
+# fallback so a missing file degrades quietly rather than breaking links.
+AIIA_SITE = site_url("aiia_delhi", "https://aiia.gov.in")
+AIIA_GOA_SITE = site_url("aiia_goa", "https://aiiagoa.org")
+AYUSH_SITE = site_url("ministry_ayush", "https://ayush.gov.in")
 AIIA_ORG = "All India Institute of Ayurveda"
 AIIA_MINISTRY = "Ministry of Ayush, Government of India"
 AIIA_LOCATION = "AIIA, New Delhi"
@@ -5497,7 +5644,7 @@ AIIA_SECTIONS = [
              "note": "What the institute is charged with"},
             {"label": "Institute Hospital", "url": f"{AIIA_SITE}/#/institutehospital",
              "note": "Clinical services and departments"},
-            {"label": "Ministry of Ayush", "url": "https://ayush.gov.in",
+            {"label": "Ministry of Ayush", "url": AYUSH_SITE,
              "note": "The parent ministry"},
         ],
     },
@@ -5716,7 +5863,7 @@ def aiia_hub(user: StudentModel = Depends(get_current_student)):
         "ministry": AIIA_MINISTRY,
         "location": AIIA_LOCATION,
         "website": AIIA_SITE,
-        "ministry_website": "https://ayush.gov.in",
+        "ministry_website": AYUSH_SITE,
         "programmes": programmes,
         "categories": [{"name": k, "count": v} for k, v in sorted(by_category.items())],
         "sections": AIIA_SECTIONS,
@@ -6103,6 +6250,26 @@ def trigger_feed_sync(admin: StudentModel = Depends(get_current_admin)):
     }
 
 
+@app.get("/api/website-links")
+def website_links(category: Optional[str] = Query(None)):
+    """The central register of external websites.
+
+    Public on purpose: it is a list of official public URLs with nothing
+    user-specific in it, and the landing page needs it before anyone has
+    signed in. Served from frontend/data/website-links.json so there is a
+    single copy for the whole project to read.
+    """
+    sites = WEBSITE_LINKS
+    if category:
+        wanted = category.strip().lower()
+        sites = [w for w in sites if (w.get("category") or "").lower() == wanted]
+    return {
+        "total": len(sites),
+        "categories": sorted({w.get("category", "") for w in WEBSITE_LINKS if w.get("category")}),
+        "websites": sites,
+    }
+
+
 @app.get("/api/deadlines")
 def upcoming_deadlines(
     within_days: int = Query(30),
@@ -6151,6 +6318,468 @@ def upcoming_deadlines(
         "closing_this_week": sum(1 for d in out if d["days_left"] <= 7),
         "deadlines": out,
     }
+
+
+# =====================================================================
+# UNIFIED OPPORTUNITY SEARCH
+# ---------------------------------------------------------------------
+# One endpoint over everything the platform already holds, so the search
+# page and the header search box do not each grow their own copy of the
+# catalogue:
+#
+#   * internships table  - recruiter postings AND the verified official
+#                          catalogue (source_type == "external")
+#   * learning_programs  - official learning platforms and industry courses
+#   * AIIA_PROGRAMMES    - the institute's own announced programmes
+#   * feed_items         - whatever the official feeds have pulled in
+#
+# The scope is CareerNexus's own verified collection: every row traces
+# back to an official source that was checked, and the external URLs all
+# come from the central register (frontend/data/website-links.json).
+# Searching the live internet is a separate feature that has deliberately
+# not been built — no search API, no crawler, nothing fabricated. The
+# response states the scope in `index_note` and the UI repeats it.
+#
+# Ranking is a small explainable score, not a black box: a title hit beats
+# an organisation hit, which beats a description hit, and an open deadline
+# lifts a row above a closed one. Synonym and intent expansion happens on
+# the client (js/search-core.js) so the header box can rank local pages
+# with exactly the same vocabulary.
+# =====================================================================
+
+SEARCH_INDEX_NOTE = (
+    "Showing results from CareerNexus's verified collection of official "
+    "opportunities - government portals, company career pages, official "
+    "learning platforms and AIIA's own listings."
+)
+
+# Shown wherever the official source simply does not publish a field. The
+# frontend uses the identical string (js/aiia-data.js), so the two never
+# drift into "N/A" here and "Not specified" there.
+SEARCH_UNSPECIFIED = "Not specified by the official source"
+
+# Which filter bucket each row belongs to. The UI's Category filter uses
+# exactly these strings.
+SEARCH_CATEGORIES = [
+    "Courses", "Internships", "Certifications", "Jobs",
+    "Training", "Research", "Government", "AIIA",
+]
+
+_GOV_MARKERS = (
+    # NPTEL and SWAYAM are deliberately absent: they are government-funded
+    # but a student filtering by "University" is looking for exactly them.
+    "ministry", "government of india", "govt", "aicte", "isro",
+    "drdo", "national", "council", "commission", "department of",
+    "skill india", "mygov", "nsdc", "ayush",
+)
+
+
+def _is_government(org: str) -> bool:
+    low = (org or "").lower()
+    return any(m in low for m in _GOV_MARKERS)
+
+
+def _search_provider_kind(org: str, official: bool) -> str:
+    """Provider bucket for the filter.
+
+    government | university | platform | aiia | company
+    """
+    low = (org or "").lower()
+    if "all india institute of ayurveda" in low or "aiia" in low:
+        return "aiia"
+    if _is_government(low):
+        return "government"
+    if any(m in low for m in ("iit", "iisc", "university", "college", "institute", "nptel", "swayam")):
+        return "university"
+    if official or any(
+        m in low for m in ("coursera", "edx", "udacity", "microsoft", "aws", "google", "ibm")
+    ):
+        return "platform"
+    return "company"
+
+
+def _fee_kind(text: str) -> str:
+    """free | paid | unknown - never guessed from an empty field."""
+    low = (text or "").strip().lower()
+    if not low:
+        return "unknown"
+    if "free trial" in low:
+        return "paid"
+    if "free" in low or low in ("0", "nil", "no fee", "no cost"):
+        return "free"
+    if "rs" in low or "inr" in low or any(ch.isdigit() for ch in low):
+        return "paid"
+    return "unknown"
+
+
+def _search_skills(raw: str) -> List[str]:
+    """Skill lists are stored as JSON text; a malformed one must not take
+    the whole search down."""
+    try:
+        value = json.loads(raw or "[]")
+        return [str(v) for v in value] if isinstance(value, list) else []
+    except (ValueError, TypeError):
+        return []
+
+
+def _status_from_deadline(deadline: str) -> str:
+    """open | closed | unknown, derived on read so it cannot go stale."""
+    left = days_until(deadline or "")
+    if left is None:
+        return "unknown"
+    return "closed" if left < 0 else "open"
+
+
+def _search_row(
+    rid, title, organisation, category, description="", eligibility="",
+    location="", mode="", fee="", deadline="", source_name="",
+    official_url="", internal_url="", skills=None, verified=True, duration="",
+):
+    """One result, in the single shape every caller renders."""
+    url = clean_public_url(official_url)
+    return {
+        "id": rid,
+        "title": title or "",
+        "organisation": organisation or "",
+        "category": category,
+        "description": description or "",
+        "eligibility": eligibility or SEARCH_UNSPECIFIED,
+        "location": location or SEARCH_UNSPECIFIED,
+        "mode": mode or SEARCH_UNSPECIFIED,
+        "duration": duration or SEARCH_UNSPECIFIED,
+        "fee": fee or SEARCH_UNSPECIFIED,
+        "fee_kind": _fee_kind(fee),
+        "deadline": deadline or "",
+        "status": _status_from_deadline(deadline),
+        "days_left": days_until(deadline or ""),
+        "source_name": source_name or organisation or "",
+        "official_url": url,
+        # Set only for rows that really do have a page inside CareerNexus.
+        "internal_url": internal_url or "",
+        "provider_kind": _search_provider_kind(organisation, bool(url)),
+        "skills": skills or [],
+        "verified": bool(verified),
+    }
+
+
+_OPP_TYPE_TO_CATEGORY = {
+    "internship": "Internships",
+    "job": "Jobs",
+    "apprenticeship": "Training",
+    "project": "Research",
+    "fdp": "Training",
+    "training": "Training",
+}
+
+
+def _build_search_index(db: Session, role: str = ROLE_STUDENT) -> List[dict]:
+    """Every searchable row, in one flat list.
+
+    Rebuilt per request rather than cached: the catalogue is a few hundred
+    rows, and a stale index that hides a posting a recruiter published two
+    minutes ago is a worse bug than the milliseconds this costs.
+    """
+    rows: List[dict] = []
+
+    # Faculty see the faculty track (FDPs, industrial training, faculty
+    # internships); everyone else sees the student track. Without this a
+    # student searching "python internship" got faculty programmes back --
+    # the same audience bug /api/opportunities already guards against.
+    audience = ROLE_FACULTY if role == ROLE_FACULTY else "student"
+    all_audiences = role in (ROLE_ADMIN, ROLE_INSTITUTION, ROLE_RECRUITER)
+
+    # ---- Opportunities: recruiter postings + official catalogue --------
+    for opp in db.query(InternshipModel).all():
+        if not all_audiences and (opp.audience or "student") != audience:
+            continue
+        otype = opp.opportunity_type or "internship"
+        category = _OPP_TYPE_TO_CATEGORY.get(otype, "Internships")
+        organisation = opp.company or ""
+        if _is_government(organisation) and category in ("Internships", "Jobs"):
+            category = "Government"
+        external = (opp.source_type or "platform") == "external"
+        rows.append(_search_row(
+            opp.id,
+            opp.title,
+            organisation,
+            category,
+            description=opp.description or "",
+            eligibility=opp.eligibility or "",
+            location=opp.location or "",
+            mode=opp.work_mode or "",
+            duration=opp.duration or "",
+            fee=opp.stipend or "",
+            deadline=opp.deadline or "",
+            source_name=opp.source_name or organisation,
+            official_url=opp.official_url or "",
+            internal_url="" if external else "internship-details.html?id=" + str(opp.id),
+            skills=_search_skills(opp.required_skills),
+            verified=external,
+        ))
+
+    # ---- Courses, certifications and workshops -------------------------
+    for prog in db.query(LearningProgramModel).all():
+        if not all_audiences and (prog.audience or "student") not in (audience, "both"):
+            continue
+        ptype = prog.program_type or "course"
+        if ptype == "certification":
+            category = "Certifications"
+        elif ptype == "workshop":
+            category = "Training"
+        else:
+            category = "Courses"
+        rows.append(_search_row(
+            prog.id,
+            prog.title,
+            prog.provider or "",
+            category,
+            description=prog.description or "",
+            eligibility=prog.eligibility or "",
+            location="Online",
+            mode="Online",
+            duration=prog.duration or "",
+            fee=prog.cost or "",
+            source_name=prog.provider or "",
+            official_url=prog.url or "",
+            internal_url="learning.html",
+            skills=_search_skills(prog.skills_covered),
+            verified=(prog.source_type or "industry") == "official",
+        ))
+
+    # ---- AIIA's own announced programmes -------------------------------
+    for item in AIIA_PROGRAMMES:
+        rows.append(_search_row(
+            item["id"],
+            item["title"],
+            item.get("department") or AIIA_ORG,
+            "AIIA",
+            description=item.get("description", ""),
+            eligibility=item.get("eligibility", ""),
+            location=item.get("location", ""),
+            mode=item.get("mode", ""),
+            duration=item.get("duration", ""),
+            fee=item.get("fees", ""),
+            deadline=item.get("deadline", ""),
+            source_name=AIIA_ORG,
+            official_url=item.get("url", ""),
+            internal_url="aiia.html",
+            verified=True,
+        ))
+
+    # ---- Whatever the official feeds have collected ---------------------
+    for row in db.query(FeedItemModel).all():
+        org = row.organisation or AIIA_ORG
+        rows.append(_search_row(
+            row.id,
+            row.title,
+            org,
+            "AIIA" if "ayurveda" in org.lower() else "Government",
+            deadline=row.deadline or "",
+            source_name=org,
+            official_url=row.official_url or "",
+            internal_url="updates.html",
+            verified=True,
+        ))
+
+    return rows
+
+
+def _score_row(row: dict, terms: List[str], raw_query: str = "") -> float:
+    """Field-weighted term matching.
+
+    A hit in the title is what the user almost always meant, so it is worth
+    far more than the same word buried in a description. A row is only
+    dropped when it matches nothing at all.
+    """
+    if not terms:
+        return 1.0
+
+    title = row["title"].lower()
+    org = row["organisation"].lower()
+    cat = row["category"].lower()
+    skills = " ".join(row.get("skills") or []).lower()
+    desc = " ".join([row["description"], row["eligibility"], row["location"]]).lower()
+
+    score = 0.0
+    hits = 0
+    for term in terms:
+        # Short terms are matched as whole words only. As a substring "ai"
+        # hits "Trainer" and "Ayurveda", which is exactly how a Yoga course
+        # came to top the results for "AI course".
+        word_only = len(term) <= 3
+        pattern = re.compile(r"\b" + re.escape(term) + r"\b")
+
+        def contains(haystack, _p=pattern, _w=word_only, _t=term):
+            return bool(_p.search(haystack)) if _w else (_t in haystack)
+
+        matched = False
+        if contains(title):
+            # A whole word still outscores a bare substring for longer
+            # terms: "AI for Everyone" should beat "Aircraft Maintenance".
+            score += 12.0 if pattern.search(title) else 6.0
+            matched = True
+        if contains(skills):
+            score += 5.0
+            matched = True
+        if contains(org):
+            score += 4.0
+            matched = True
+        if contains(cat):
+            score += 3.0
+            matched = True
+        if contains(desc):
+            score += 1.5
+            matched = True
+        if matched:
+            hits += 1
+
+    # The whole phrase appearing in the title is the strongest signal
+    # there is, and no tally of individual word hits should outrank it.
+    if raw_query and len(raw_query) > 4 and raw_query in title:
+        score += 18.0
+
+    if not hits:
+        return 0.0
+
+    # Reward rows that matched more of what was typed, so "python
+    # internship" prefers a Python internship over any Python course.
+    score *= 1.0 + 0.6 * (hits - 1)
+    if row["status"] == "open":
+        score += 2.0
+    elif row["status"] == "closed":
+        score -= 3.0
+    if row["verified"]:
+        score += 0.5
+    if row["official_url"]:
+        score += 0.5
+    return score
+
+
+# Words that describe the *kind* of thing wanted rather than the subject.
+# "AI course" is a request for AI; matching only "course" and returning a
+# Yoga course is the search lying about what it found. So when a query
+# carries a subject word, a row has to match the subject - not merely the
+# shape.
+_SEARCH_GENERIC_TERMS = {
+    "course", "courses", "certification", "certificate", "certifications",
+    "internship", "internships", "intern", "job", "jobs", "training",
+    "programme", "program", "programmes", "programs", "workshop",
+    "workshops", "placement", "opportunity", "opportunities", "vacancy",
+    "vacancies", "position", "positions", "online", "offline",
+}
+
+
+def _distinctive_terms(terms: List[str]) -> List[str]:
+    return [t for t in terms if t not in _SEARCH_GENERIC_TERMS]
+
+
+class SearchQuery(BaseModel):
+    q: str = ""
+    # The client's expanded vocabulary ("cv" -> resume, "ml" -> machine
+    # learning). Optional: the server splits `q` itself when it is absent.
+    terms: List[str] = []
+    category: str = ""
+    mode: str = ""
+    location: str = ""
+    provider: str = ""
+    status: str = ""
+    fee: str = ""
+    sort: str = "relevance"          # relevance | deadline | title
+    limit: int = 24
+    offset: int = 0
+
+
+@app.post("/api/search")
+def unified_search(
+    payload: SearchQuery,
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Search courses, internships and official programmes in one place."""
+    rows = _build_search_index(db, user_role(user))
+
+    raw = (payload.q or "").strip().lower()
+    terms = [t.strip().lower() for t in (payload.terms or []) if t.strip()]
+    if not terms and raw:
+        terms = [t for t in re.split(r"[^a-z0-9+#.]+", raw) if len(t) > 1]
+
+    def keep(row: dict) -> bool:
+        if payload.category and row["category"] != payload.category:
+            return False
+        if payload.mode and (row["mode"] or "").lower() != payload.mode.lower():
+            return False
+        if payload.provider and row["provider_kind"] != payload.provider:
+            return False
+        if payload.status and row["status"] != payload.status:
+            return False
+        if payload.fee and row["fee_kind"] != payload.fee:
+            return False
+        if payload.location:
+            want = payload.location.strip().lower()
+            have = (row["location"] or "").lower()
+            if want == "remote":
+                if "remote" not in have and (row["mode"] or "").lower() != "online":
+                    return False
+            elif want == "india":
+                # Every source in this index is Indian or open to India, so
+                # the only thing this excludes is a remote-only listing.
+                if have.strip() == "remote":
+                    return False
+            elif want not in have:
+                return False
+        return True
+
+    # If the query named a subject, a row must match that subject. Without
+    # this, "AI course" matched every row containing the word "course".
+    subject = _distinctive_terms(terms)
+
+    scored = []
+    for row in rows:
+        if not keep(row):
+            continue
+        if subject and _score_row(row, subject) <= 0:
+            continue
+        s = _score_row(row, terms, raw)
+        if terms and s <= 0:
+            continue
+        scored.append((s, row))
+
+    if payload.sort == "deadline":
+        # Real deadlines first, soonest at the top; undated rows last.
+        scored.sort(key=lambda p: (
+            p[1]["days_left"] is None,
+            p[1]["days_left"] if p[1]["days_left"] is not None else 0,
+        ))
+    elif payload.sort == "title":
+        scored.sort(key=lambda p: p[1]["title"].lower())
+    else:
+        scored.sort(key=lambda p: -p[0])
+
+    total = len(scored)
+    offset = max(0, payload.offset)
+    limit = max(1, min(60, payload.limit))
+    page = [r for _, r in scored[offset:offset + limit]]
+
+    # Counts across the whole result set, so the category chips can show
+    # how many of each the query found - not just what fits on this page.
+    by_category = {c: 0 for c in SEARCH_CATEGORIES}
+    for _, row in scored:
+        if row["category"] in by_category:
+            by_category[row["category"]] += 1
+
+    return {
+        "query": payload.q,
+        "terms": terms,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + limit < total,
+        "by_category": by_category,
+        "index_size": len(rows),
+        "index_note": SEARCH_INDEX_NOTE,
+        "results": page,
+    }
+
 
 
 start_feed_scheduler()

@@ -426,6 +426,30 @@ const api = {
     return apiRequest('/aiia');
   },
 
+  // ---------- Unified search ----------
+  // One call covers courses, internships, jobs, government schemes and
+  // AIIA programmes: the backend searches the same rows those pages use,
+  // so there is no second catalogue to keep in step.
+  // `terms` is the client-expanded vocabulary from js/search-core.js.
+  search(params = {}) {
+    return apiRequest('/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        q: params.q || '',
+        terms: params.terms || [],
+        category: params.category || '',
+        mode: params.mode || '',
+        location: params.location || '',
+        provider: params.provider || '',
+        status: params.status || '',
+        fee: params.fee || '',
+        sort: params.sort || 'relevance',
+        limit: params.limit || 24,
+        offset: params.offset || 0,
+      }),
+    });
+  },
+
   // ---------- Institution analytics ----------
   getInstitutionAnalytics() {
     return apiRequest('/institution/analytics');

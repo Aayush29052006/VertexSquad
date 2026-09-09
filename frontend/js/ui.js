@@ -20,6 +20,8 @@ const STAFF = [ROLES.FACULTY, ROLES.RECRUITER, ROLES.INSTITUTION, ROLES.ADMIN];
 
 const NAV_ITEMS = [
   { href: 'dashboard.html', icon: '📊', label: 'Dashboard', roles: ALL_ROLES },
+  // Discovery across every verified source in one place.
+  { href: 'search.html', icon: '🔍', label: 'Search Opportunities', roles: ALL_ROLES },
 
   // --- The student journey, in the order a student actually walks it:
   // assess -> see the gap -> learn -> find a role -> apply -> track -> portfolio.
@@ -139,6 +141,160 @@ function currentPageName() {
   return parts[parts.length - 1] || 'dashboard.html';
 }
 
+/* =====================================================================
+   Resizable sidebar
+   ---------------------------------------------------------------------
+   The width lives in one custom property, --sidebar-width. Everything
+   downstream already adapts: .app-shell is a flex row and .main-content
+   is `flex: 1; min-width: 0`, so widening the sidebar narrows the content
+   column and nothing overflows.
+
+   The chosen width is remembered per device in localStorage. It is
+   re-clamped on every load and on every window resize, so a width picked
+   on a 27" monitor cannot leave a laptop with a sliver of content.
+   Below the 768px breakpoint the sidebar becomes an off-canvas drawer and
+   resizing is switched off entirely.
+   ===================================================================== */
+
+const SIDEBAR_WIDTH_KEY = 'cn_sidebar_width';
+const SIDEBAR_DEFAULT = 260;
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 420;
+/* Below this the sidebar is a drawer (see responsive.css) — no resizing. */
+const SIDEBAR_DRAWER_BREAKPOINT = 768;
+
+/* The widest the sidebar may be *right now*. On a narrow laptop the cap
+   comes down so the content column always keeps roughly two thirds. */
+function sidebarMaxWidth() {
+  const viewport = window.innerWidth || SIDEBAR_MAX * 3;
+  return Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, Math.round(viewport * 0.34)));
+}
+
+function clampSidebarWidth(px) {
+  const n = Number(px);
+  if (!Number.isFinite(n)) return SIDEBAR_DEFAULT;
+  return Math.round(Math.min(sidebarMaxWidth(), Math.max(SIDEBAR_MIN, n)));
+}
+
+function storedSidebarWidth() {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    return raw ? clampSidebarWidth(raw) : SIDEBAR_DEFAULT;
+  } catch (_) {
+    return SIDEBAR_DEFAULT; // private mode / storage disabled
+  }
+}
+
+function applySidebarWidth(px, persist) {
+  const width = clampSidebarWidth(px);
+  document.documentElement.style.setProperty('--sidebar-width', width + 'px');
+  const handle = document.getElementById('sidebarResizer');
+  if (handle) {
+    handle.setAttribute('aria-valuenow', String(width));
+    handle.setAttribute('aria-valuemax', String(sidebarMaxWidth()));
+    handle.setAttribute('aria-valuetext', width + ' pixels');
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width));
+    } catch (_) {
+      /* not being able to remember the width is not worth an error */
+    }
+  }
+  return width;
+}
+
+function initSidebarResize() {
+  const shell = document.querySelector('.app-shell');
+  const sidebar = document.getElementById('sidebar');
+  const handle = document.getElementById('sidebarResizer');
+  if (!shell || !sidebar || !handle) return;
+
+  applySidebarWidth(storedSidebarWidth(), false);
+
+  let dragging = false;   // pointer is down on the handle
+  let moved = false;      // ...and has travelled far enough to be a drag
+  let frame = 0;
+  let pending = 0;
+  let startX = 0;
+  /* A press that never travels is a click, not a drag. Without this
+     threshold, clicking the handle snapped the sidebar to wherever the
+     cursor happened to be, and the first half of a double-click did that
+     before the reset could run. */
+  const DRAG_THRESHOLD = 3;
+
+  const commit = () => {
+    frame = 0;
+    applySidebarWidth(pending, false);
+  };
+
+  const onMove = (e) => {
+    if (!dragging) return;
+    if (!moved) {
+      if (Math.abs(e.clientX - startX) < DRAG_THRESHOLD) return;
+      moved = true;
+      shell.classList.add('is-resizing');
+    }
+    // Measured from the sidebar's own left edge, so the width follows the
+    // pointer exactly however the page is scrolled.
+    pending = e.clientX - sidebar.getBoundingClientRect().left;
+    // One update per frame: pointermove fires far faster than the browser
+    // can relayout, and reflowing the whole content column on every event
+    // is what makes a drag feel like it is lagging behind the cursor.
+    if (!frame) frame = requestAnimationFrame(commit);
+  };
+
+  const stop = () => {
+    if (!dragging) return;
+    dragging = false;
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+    shell.classList.remove('is-resizing');
+    // Persist only a real drag; a click leaves the width exactly as it was.
+    if (moved) applySidebarWidth(pending, true);
+    moved = false;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', stop);
+    window.removeEventListener('pointercancel', stop);
+  };
+
+  handle.addEventListener('pointerdown', (e) => {
+    if (window.innerWidth <= SIDEBAR_DRAWER_BREAKPOINT) return;
+    e.preventDefault();
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    pending = sidebar.getBoundingClientRect().width;
+    // .is-resizing is added on first movement, not here, so a click does
+    // not flash the drag styling.
+    // Listening on window, not the handle, so the drag survives the
+    // pointer outrunning an 8px target.
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  });
+
+  // Double-click the handle to go back to the default width.
+  handle.addEventListener('dblclick', () => applySidebarWidth(SIDEBAR_DEFAULT, true));
+
+  // Keyboard equivalent — a drag handle that only responds to a mouse is
+  // unusable for anyone navigating by keyboard.
+  handle.addEventListener('keydown', (e) => {
+    const current = sidebar.getBoundingClientRect().width;
+    const step = e.shiftKey ? 40 : 12;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); applySidebarWidth(current - step, true); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); applySidebarWidth(current + step, true); }
+    else if (e.key === 'Home') { e.preventDefault(); applySidebarWidth(SIDEBAR_MIN, true); }
+    else if (e.key === 'End') { e.preventDefault(); applySidebarWidth(sidebarMaxWidth(), true); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); applySidebarWidth(SIDEBAR_DEFAULT, true); }
+  });
+
+  // Re-clamp when the window changes size: the maximum depends on it.
+  window.addEventListener('resize', () => {
+    if (dragging) return;
+    applySidebarWidth(storedSidebarWidth(), false);
+  });
+}
+
 function renderAppShell(activeHref, studentName) {
   const page = currentPageName();
   const initials = (studentName || 'S')
@@ -177,11 +333,25 @@ function renderAppShell(activeHref, studentName) {
         <a class="sidebar-link${page === 'settings.html' ? ' active' : ''}" href="settings.html"><span class="icon" aria-hidden="true">⚙️</span><span>Settings</span></a>
         <a class="sidebar-link" href="#" id="logoutBtn"><span class="icon" aria-hidden="true">🚪</span><span>Logout</span></a>
       </div>
+      <div class="sidebar-resizer" id="sidebarResizer" role="separator"
+           aria-orientation="vertical" aria-label="Resize sidebar"
+           title="Drag to resize · double-click to reset"
+           tabindex="0" aria-valuemin="${SIDEBAR_MIN}" aria-valuemax="${SIDEBAR_MAX}"></div>
     </aside>
     <div class="main-content">
       <header class="topbar">
         <button class="mobile-menu-btn btn btn-ghost btn-icon" id="menuToggle" aria-label="Open menu">☰</button>
-        <div></div>
+        <!-- Global search. Understands intent rather than exact text:
+             "make my cv" reaches the Resume page. Pages are ranked here,
+             catalogue rows by POST /api/search. -->
+        <div class="global-search" id="globalSearch">
+          <span class="global-search-icon" aria-hidden="true">🔍</span>
+          <input class="global-search-input" id="globalSearchInput" type="search"
+                 placeholder="Search pages, courses, internships, AIIA…"
+                 autocomplete="off" role="combobox" aria-expanded="false"
+                 aria-controls="globalSearchPanel" aria-label="Search CareerNexus" />
+          <div class="global-search-panel" id="globalSearchPanel" role="listbox" hidden></div>
+        </div>
         <div class="flex items-center gap-3">
           ${themeToggleHtml()}
           <span class="text-body" style="color:var(--text-primary);font-weight:600;">${escapeHtml(studentName || 'Student')}</span>
@@ -195,7 +365,12 @@ function renderAppShell(activeHref, studentName) {
 
 function mountAppShell(activeHref, studentName) {
   const shellRoot = document.getElementById('appShell') || document.body;
+  // Apply the remembered width before the shell paints, so the sidebar
+  // never flashes at the default width before jumping to the saved one.
+  applySidebarWidth(storedSidebarWidth(), false);
   shellRoot.innerHTML = renderAppShell(activeHref, studentName);
+  initSidebarResize();
+  initGlobalSearch();
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebarBackdrop');
   const toggle = document.getElementById('menuToggle');
@@ -212,6 +387,250 @@ function mountAppShell(activeHref, studentName) {
     window.location.href = wasAdmin ? 'admin-login.html' : 'login.html';
   });
   return document.getElementById('pageBody');
+}
+
+/* =====================================================================
+   Global search box (header)
+   ---------------------------------------------------------------------
+   Two kinds of answer, kept visibly apart:
+
+     Pages       ranked locally from NAV_ITEMS + PAGE_KEYWORDS, so they
+                 appear instantly with no round trip. This is what most
+                 queries actually want ("where do I upload my resume").
+     Catalogue   courses, internships, government schemes and AIIA
+                 programmes, ranked by POST /api/search over the same
+                 rows the rest of the app renders.
+
+   Intent, not exact text: the query is expanded through
+   js/search-core.js first, so "make my cv" finds Resume and "AI course"
+   finds machine-learning material.
+   ===================================================================== */
+
+function initGlobalSearch() {
+  const wrap = document.getElementById('globalSearch');
+  const input = document.getElementById('globalSearchInput');
+  const panel = document.getElementById('globalSearchPanel');
+  if (!wrap || !input || !panel) return;
+  if (typeof expandSearchTerms !== 'function') return; // search-core.js not loaded
+
+  let debounce = 0;
+  let requestId = 0;
+  let items = [];        // flat list of the currently rendered options
+  let cursor = -1;       // keyboard highlight
+
+  const open = () => {
+    panel.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  };
+  const close = () => {
+    panel.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+    cursor = -1;
+  };
+
+  function paint(html) {
+    panel.innerHTML = html;
+    items = [...panel.querySelectorAll('[data-go]')];
+    cursor = -1;
+    open();
+  }
+
+  function highlight(next) {
+    if (!items.length) return;
+    cursor = (next + items.length) % items.length;
+    items.forEach((el, i) => el.classList.toggle('is-active', i === cursor));
+    items[cursor].scrollIntoView({ block: 'nearest' });
+  }
+
+  /* Nothing typed yet: recent searches, then popular ones. */
+  function paintIdle() {
+    const recent = typeof recentSearches === 'function' ? recentSearches() : [];
+    const chip = (t) =>
+      `<button type="button" class="gs-chip" data-go="query" data-query="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
+    paint(`
+      ${recent.length
+        ? `<div class="gs-group">
+             <div class="gs-group-head">
+               <span>Recent</span>
+               <button type="button" class="gs-clear" id="gsClearRecent">Clear</button>
+             </div>
+             <div class="gs-chips">${recent.map(chip).join('')}</div>
+           </div>`
+        : ''}
+      <div class="gs-group">
+        <p class="gs-group-head"><span>Popular searches</span></p>
+        <div class="gs-chips">${SEARCH_POPULAR.map(chip).join('')}</div>
+      </div>
+      <p class="gs-foot">Press Enter for the full Opportunity Search</p>
+    `);
+    document.getElementById('gsClearRecent')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearRecentSearches();
+      paintIdle();
+    });
+  }
+
+  function pageRow(page) {
+    return `
+      <button type="button" class="gs-row" data-go="page" data-href="${escapeHtml(page.href)}">
+        <span class="gs-row-icon" aria-hidden="true">${page.icon}</span>
+        <span class="gs-row-body">
+          <span class="gs-row-title">${escapeHtml(page.label)}</span>
+          <span class="gs-row-meta">Page</span>
+        </span>
+      </button>`;
+  }
+
+  /* A catalogue row. Clicking it opens the right place: the page inside
+     CareerNexus when the row has one, otherwise the official source —
+     never a fabricated link, and the destination is labelled either way. */
+  function resultRow(row) {
+    const external = !row.internal_url && row.official_url;
+    const href = row.internal_url || row.official_url;
+    if (!href) return '';
+    const deadline = row.deadline
+      ? ` · ${typeof deadlineLabel === 'function' ? deadlineLabel(row.deadline) : escapeHtml(row.deadline)}`
+      : '';
+    return `
+      <button type="button" class="gs-row"
+              data-go="${external ? 'external' : 'page'}"
+              data-href="${escapeHtml(safeUrl(href) || href)}">
+        <span class="gs-row-icon" aria-hidden="true">${external ? '↗' : '→'}</span>
+        <span class="gs-row-body">
+          <span class="gs-row-title">${escapeHtml(row.title)}</span>
+          <span class="gs-row-meta">${escapeHtml(row.category)} · ${escapeHtml(row.organisation)}${deadline}</span>
+        </span>
+      </button>`;
+  }
+
+  function group(title, rowsHtml, count) {
+    if (!rowsHtml) return '';
+    return `
+      <div class="gs-group">
+        <p class="gs-group-head"><span>${escapeHtml(title)}</span>${
+          count ? `<span class="gs-count">${count}</span>` : ''
+        }</p>
+        ${rowsHtml}
+      </div>`;
+  }
+
+  async function run(query) {
+    const terms = expandSearchTerms(query);
+    if (!terms.length) {
+      paintIdle();
+      return;
+    }
+
+    const pages = searchLocalPages(terms, 4);
+    const seeAll = `
+      <button type="button" class="gs-row gs-row--all" data-go="query" data-query="${escapeHtml(query)}">
+        <span class="gs-row-icon" aria-hidden="true">🔍</span>
+        <span class="gs-row-body">
+          <span class="gs-row-title">Search "${escapeHtml(query)}" everywhere</span>
+          <span class="gs-row-meta">Open Opportunity Search</span>
+        </span>
+      </button>`;
+
+    // Pages first and immediately — they need no network.
+    paint(group('Pages', pages.map(pageRow).join(''), pages.length) +
+      '<div class="gs-group" id="gsRemote"><p class="gs-group-head"><span>Searching verified opportunities…</span></p></div>' +
+      seeAll);
+
+    const mine = ++requestId;
+    let data;
+    try {
+      data = await api.search({ q: query, terms, limit: 12 });
+    } catch (err) {
+      if (mine !== requestId) return; // a newer query already answered
+      const slot = document.getElementById('gsRemote');
+      if (slot) {
+        slot.innerHTML = `<p class="gs-group-head"><span>Courses & opportunities</span></p>
+          <p class="gs-note">Could not reach the index right now. ${escapeHtml(err.message)}</p>`;
+      }
+      return;
+    }
+    if (mine !== requestId) return;
+
+    const buckets = {};
+    (data.results || []).forEach((row) => {
+      const key = row.category === 'AIIA' ? 'AIIA' :
+        (row.category === 'Courses' || row.category === 'Certifications') ? 'Courses' :
+        (row.category === 'Internships' || row.category === 'Jobs') ? 'Internships & Jobs' : 'Other';
+      (buckets[key] = buckets[key] || []).push(row);
+    });
+
+    const order = ['Courses', 'Internships & Jobs', 'AIIA', 'Other'];
+    const html = order
+      .filter((k) => buckets[k] && buckets[k].length)
+      .map((k) => group(k, buckets[k].slice(0, 4).map(resultRow).join(''), buckets[k].length))
+      .join('');
+
+    paint(group('Pages', pages.map(pageRow).join(''), pages.length) +
+      (html || `<div class="gs-group"><p class="gs-note">No courses or opportunities matched. ${
+        data.total === 0 ? 'Try a broader word, or browse by category.' : ''
+      }</p></div>`) +
+      seeAll +
+      `<p class="gs-foot">${escapeHtml(data.index_note || '')}</p>`);
+  }
+
+  function goToSearchPage(query) {
+    if (typeof rememberSearch === 'function') rememberSearch(query);
+    window.location.href = 'search.html?q=' + encodeURIComponent(query);
+  }
+
+  input.addEventListener('focus', () => {
+    if (!input.value.trim()) paintIdle();
+    else open();
+  });
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    const value = input.value;
+    // Long enough to be worth a request, short enough to feel live.
+    debounce = setTimeout(() => run(value), 220);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight(cursor + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(cursor - 1); }
+    else if (e.key === 'Escape') { close(); input.blur(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (cursor >= 0 && items[cursor]) { items[cursor].click(); return; }
+      const q = input.value.trim();
+      if (q) goToSearchPage(q);
+    }
+  });
+
+  panel.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-go]');
+    if (!row) return;
+    const kind = row.dataset.go;
+    if (kind === 'query') {
+      goToSearchPage(row.dataset.query || input.value.trim());
+    } else if (kind === 'external') {
+      const url = safeUrl(row.dataset.href);
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } else if (row.dataset.href) {
+      if (typeof rememberSearch === 'function') rememberSearch(input.value.trim());
+      window.location.href = row.dataset.href;
+    }
+    close();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) close();
+  });
+
+  // "/" focuses search, the way most web apps do it — but not while the
+  // user is typing into a field, or the character would be swallowed.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+    e.preventDefault();
+    input.focus();
+  });
 }
 
 function requireAuth() {

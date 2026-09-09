@@ -90,7 +90,21 @@ that.
 - **What-if analysis** — "if I learn TypeScript, what happens to my match?" —
   scored by the backend, never guessed in the browser
 - **Application tracking** — statuses from Applied through Selected/Rejected
+- **AIIA Hub** — every course, internship, training, research call, CME,
+  workshop, conference, admission, job and notice the All India Institute of
+  Ayurveda publishes, in one filterable place. Rendered from a local verified
+  catalogue first, so the page works even when the API does not, with live
+  notices layered on top. Applications always happen on AIIA's own site
+- **Live Updates** — official notices, vacancies and tenders pulled
+  automatically from AIIA's public JSON feeds every six hours, with real
+  deadlines and a countdown. Idempotent upsert, so a corrected deadline
+  upstream is followed rather than duplicated
 - **Light & dark themes** — persisted per device
+- **Resizable sidebar** — drag its right edge between 200 and 420px. The width
+  is remembered per device and re-clamped to at most 34% of the viewport, so a
+  width chosen on a large monitor cannot swallow the content area on a laptop.
+  Keyboard accessible (arrows, Home/End, Enter to reset) and double-click to
+  reset; below 768px the sidebar becomes an off-canvas drawer instead
 
 **For industry (recruiters)**
 - **Post any opportunity** — internships, jobs, apprenticeships, live projects, and
@@ -130,6 +144,28 @@ panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - **Application management** — filter by status, change any application's status
 - **Skill-shortage report** — % of students missing each skill the internships ask for
 
+**Search**
+
+Two search surfaces, one vocabulary, no duplicated catalogue.
+
+- **Global search** in the header understands intent rather than exact text.
+  "make my cv" reaches the Resume page; "AI course" reaches machine-learning
+  material. Results are grouped into Pages and catalogue sections, ranked by
+  relevance, and clicking one opens the right place. Pages are ranked in the
+  browser so they appear instantly; catalogue rows come from the API.
+- **Opportunity Search** (`/pages/search.html`) searches the same rows the rest
+  of the app renders, through one endpoint (`POST /api/search`). Filters for
+  category, mode, location, provider, status and fee; sort by relevance,
+  deadline or title; category chips with live counts; loading, empty and error
+  states; load-more paging. Every card shows eligibility, location, mode,
+  duration, fee, deadline, source and verified status — and says
+  *"Not specified by the official source"* rather than inventing a value.
+- **Scope is stated, not implied.** These search **CareerNexus's own verified
+  opportunity database**. There is no live web search: no search API, no
+  crawler, no scraping, and nothing is fabricated. The UI says so on every
+  results page. Live internet search is a separate feature that has
+  deliberately not been built.
+
 **Official sources, not a walled garden**
 
 Most of what this platform lists is run by somebody else — a government
@@ -149,18 +185,38 @@ own them.
   client and the server.
 - Nothing in the catalogue is invented. Every URL was fetched and confirmed
   to return 200 before being added, and each points at the organisation's own
-  site rather than an aggregator. When a link rots, fix the URL in
-  `EXTERNAL_OPPORTUNITIES` / `EXTERNAL_LEARNING` — never substitute an
-  unofficial mirror to make a card work.
+  site rather than an aggregator. When a link rots, fix the URL — never
+  substitute an unofficial mirror to make a card work.
 
-The catalogue currently carries 17 official opportunities (PM Internship
-Scheme, AICTE, NAPS, NCS, Smart India Hackathon, ISRO, Startup India, Digital
-India, and student programmes at Google, Microsoft, Amazon, Apple, IBM,
-NVIDIA, Adobe, Wipro and Google Summer of Code) and 19 official learning
-platforms (NPTEL, SWAYAM, Skill India, Google Cloud Skills Boost, Google
-Career Certificates, Microsoft Learn, AWS Skill Builder, IBM SkillsBuild,
-Cisco NetAcad, freeCodeCamp, Kaggle, Infosys Springboard, TCS iON, GitHub
-Education, MongoDB University, HackerRank, edX and others).
+**One file for every external link**
+
+`frontend/data/website-links.json` is the register of every external website
+the platform points at — 51 entries covering government portals, AIIA, company
+career pages, universities and learning platforms.
+
+- **This is the file to edit.** Change a URL there and both the frontend and
+  the backend pick it up; nothing hard-codes these addresses any more. Adding a
+  site means copying an entry, giving it a new `id`, and restarting the backend.
+- Each entry carries name, organization, category, description, url, source
+  type and purpose. The file opens with a `_readme` explaining the format.
+- Read by the backend at startup (`site_url()`), by the browser via
+  `js/website-links.js` (`siteUrl()`, `siteEntry()`, `sitesByCategory()`), and
+  exposed at `GET /api/website-links`.
+- It lives under `frontend/` rather than the repo root for one practical
+  reason: `serve.py` serves that directory, so the browser can fetch the same
+  file the backend reads. A repo-root copy would be unreachable from the page.
+- Every URL in it returned HTTP 200 when it was added.
+
+The searchable collection currently holds **74 verified entries**: government
+schemes (PM Internship Scheme, AICTE, NAPS, NCS, Smart India Hackathon, ISRO,
+Startup India, Digital India), company student programmes (Google, Microsoft,
+Amazon, Apple, IBM, NVIDIA, Adobe, Wipro, Google Summer of Code), official
+learning platforms (NPTEL, SWAYAM, Skill India, Microsoft Learn, Google Cloud
+Skills Boost, AWS Skill Builder and Machine Learning University, IBM
+SkillsBuild, Google ML Crash Course, Elements of AI, MDN, web.dev, Cisco
+NetAcad, freeCodeCamp, Kaggle, Infosys Springboard, TCS iON, GitHub Education,
+MongoDB University, HackerRank, edX), and AIIA's own courses, internships,
+research calls and vacancies.
 
 **Engineering**
 - Central API layer (`frontend/js/api.js`) — no scattered `fetch()` calls
@@ -218,6 +274,13 @@ Every requirement in SIH26044, and where it lives in the build.
 | Resume parsing | pypdf |
 | ORM | SQLAlchemy |
 
+Passwords are hashed with `hashlib.pbkdf2_hmac` from the standard library, not
+`passlib`. The Supabase Python SDK is not used either — the backend talks to
+Supabase as an ordinary PostgreSQL database through SQLAlchemy. Both packages
+were once listed in `requirements.txt` and installed for nothing; they have
+been removed, and `cryptography` (which PyJWT needs for Google's RS256 tokens,
+and which used to arrive transitively via `supabase`) is now pinned explicitly.
+
 The frontend is intentionally dependency-free — no React, Vue, Tailwind, or
 jQuery — so it runs from any static file server with zero build step.
 
@@ -233,6 +296,8 @@ VertexSquad/
 ├── frontend/                       # Static site — no build step, no npm
 │   ├── index.html                  #   Landing page
 │   ├── serve.py                    #   Static server, directory listings off
+│   ├── data/
+│   │   └── website-links.json      #   ★ EDIT HERE to change any external URL
 │   ├── pages/                      #   Application pages
 │   │   ├── login.html              #     Student authentication
 │   │   ├── admin-login.html        #     Team / admin sign-in (separate door)
@@ -252,6 +317,9 @@ VertexSquad/
 │   │   ├── applications.html
 │   │   ├── documents.html          #     Secure certificates & reports
 │   │   ├── portfolio.html          #     Verified portfolio (+ public view)
+│   │   ├── search.html             #     Opportunity Search + filters
+│   │   ├── aiia.html               #     AIIA Opportunity Hub
+│   │   ├── updates.html            #     Live official feeds & deadlines
 │   │   │
 │   │   │                           #   -- Industry & academia --
 │   │   ├── recruiter.html          #     Postings + candidate shortlisting
@@ -272,6 +340,9 @@ VertexSquad/
 │   │   ├── admin-auth.js           #     Team sign-in (role-gated)
 │   │   ├── admin.js                #     Admin panel controller
 │   │   ├── theme.js                #     Light / dark theme
+│   │   ├── website-links.js        #     Reads data/website-links.json
+│   │   ├── search-core.js          #     Search vocabulary + page ranking
+│   │   ├── aiia-data.js            #     Verified AIIA catalogue
 │   │   ├── mock-data.js            #     Offline demo data
 │   │   └── ...                     #     One controller per page
 │   └── assets/logos/
@@ -334,9 +405,10 @@ pip install -r requirements.txt
 ```
 
 This reads the file and installs each package listed — FastAPI and Uvicorn for
-the API server, SQLAlchemy and `psycopg2-binary` for the database, PyJWT for
-authentication, `pypdf` for resume text extraction, and `python-dotenv` for
-config loading.
+the API server, SQLAlchemy and `psycopg2-binary` for the database, PyJWT plus
+`cryptography` for authentication (the latter is what verifies Google's RS256
+tokens), `pypdf` for resume text extraction, and `python-dotenv` for config
+loading. Every entry is annotated in the file with why it is needed.
 
 To verify the install succeeded:
 
@@ -344,10 +416,18 @@ To verify the install succeeded:
 pip list
 ```
 
-If you later add a new package to the project, record it for everyone else with:
+If you later add a new package, add **just that line** to `requirements.txt`
+with a pinned version — import it somewhere first.
+
+Avoid `pip freeze > requirements.txt`: it writes out every transitive
+dependency in your venv as a direct one, which is how `passlib` and `supabase`
+ended up listed here despite never being imported. To check a change is
+complete, install it into a throwaway venv and import the app:
 
 ```bash
-pip freeze > requirements.txt
+python -m venv /tmp/check
+/tmp/check/bin/pip install -r requirements.txt
+/tmp/check/bin/python -c "import app.main"
 ```
 
 ### 4. Configure environment variables
@@ -536,6 +616,20 @@ All endpoints are prefixed with `/api`. Full interactive docs at `/docs`.
 | `GET` `PATCH` `DELETE` | `/admin/students[/{id}]` | **admin** — manage students |
 | `GET` `POST` `PUT` `DELETE` | `/admin/internships[/{id}]` | **admin** — manage postings |
 | `GET` `PATCH` | `/admin/applications[/{id}]` | **admin** — review applications |
+| `POST` | `/search` | Search the verified opportunity collection (filters, sort, paging) |
+| `GET` | `/website-links` | The central external-website register (public) |
+| `GET` | `/aiia` | AIIA opportunity hub |
+| `GET` | `/feeds/items` | Official notices, vacancies and tenders |
+| `POST` | `/feeds/sync` | **admin** — pull the official feeds now |
+| `GET` | `/deadlines` | Combined deadline board with days remaining |
+| `GET` | `/opportunities` | Jobs, apprenticeships, projects, FDPs |
+| `GET` `POST` | `/learning/programs` | Industry learning programmes |
+| `GET` | `/learning/recommendations` | Gaps ranked by roles unlocked |
+| `GET` | `/institution/analytics` | Cohort analytics for a placement cell |
+| `GET` `POST` | `/collaborations` | Industry–academia collaboration calls |
+| `GET` `POST` `DELETE` | `/documents[/{id}]` | Secure document store |
+| `GET` `POST` | `/portfolio` | Verified portfolio + verification |
+| `GET` | `/verify/pending` | Verification queue (staff) |
 
 Authenticated endpoints expect an `Authorization: Bearer <token>` header.
 `/admin/*` additionally requires the token's account to have `role = "admin"` —
@@ -560,6 +654,39 @@ configurable in [`frontend/js/config.js`](frontend/js/config.js).
 
 ---
 
+## Design System
+
+One set of tokens in [`frontend/css/global.css`](frontend/css/global.css) drives
+both themes; components read them via `var()`, so nothing is styled per page.
+
+| | Value |
+|---|---|
+| Accent | `#4aab95` dark · `#2f7d6c` light |
+| Page background (dark) | `#0d1116` — deep charcoal with a slight navy cast |
+| Surface / sidebar (dark) | `#171c25` |
+| Radius | 6px small · 8px buttons · 10px cards |
+| Type scale | Page 20–24px · Section 17–19px · Card 16px · Body 14px · Meta 12px |
+
+Deliberate choices worth keeping:
+
+- **The emoji navigation is part of the product identity.** 📊 Dashboard,
+  🎓 Learning Paths, 💼 Internships, 🌿 AIIA Hub and the rest stay as emoji —
+  they are not to be swapped for an icon font or SVG set.
+- **The accent is used sparingly** — active navigation, primary buttons,
+  important links and focus states. Not every element is teal.
+- **Cards are bordered containers, not floating panels**: no drop shadow, no
+  hover lift. Hover changes the border and background only.
+- **Motion is functional only** — loading, modals, hover and focus. The
+  staggered card entrances and hover lifts were removed; they cost a frame on
+  every page load and made the interface feel generated.
+- **Every colour pair meets WCAG AA** (4.5:1 minimum) in both themes; the
+  lowest is 4.8:1. Check any new colour before adding it.
+
+Bump the `?v=` cache stamp in every page's `<link>`/`<script>` tags whenever a
+CSS or JS file changes, or browsers will serve the old one.
+
+---
+
 ## Security Notes
 
 This is a hackathon prototype. Before any real deployment:
@@ -581,6 +708,12 @@ This is a hackathon prototype. Before any real deployment:
 - **Validate uploads server-side** — never trust a browser-supplied filename or
   MIME type
 - Rotate any credential that has been shared over chat or committed
+- **`file://` is not supported and that is deliberate.** Opening a page by
+  double-clicking it sends `Origin: null`, which is not in the CORS allowlist,
+  and `localStorage` is per-origin so the session is invisible. The page detects
+  this and explains it rather than rendering blank. Do not add `"null"` to
+  `ALLOWED_ORIGINS` to "fix" it — that would let any HTML file on the machine
+  call the API
 
 ---
 

@@ -127,20 +127,20 @@
 
 .split-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--space-5);
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
   gap: var(--space-4);
 }
 
 .stat-card { text-align: center; }
 .stat-value {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -148,13 +148,13 @@
 
 .form-grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 0 var(--space-4);
 }
 
 .opp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: var(--space-4);
 }
 
@@ -273,7 +273,7 @@
 
 .score-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: var(--space-4);
 }
 .score-card-lead {
@@ -349,7 +349,7 @@
 
 .program-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: var(--space-3);
 }
 
@@ -382,7 +382,7 @@
 
 /* ---------- Opportunities ---------- */
 
-.opp-card { display: flex; flex-direction: column; }
+.opp-card { display: flex; flex-direction: column; min-width: 0; }
 .opp-head {
   display: flex;
   justify-content: space-between;
@@ -390,6 +390,10 @@
   align-items: flex-start;
   margin-bottom: var(--space-2);
 }
+/* Same reason as .internship-card-head: let the title column shrink so a
+   long title wraps instead of stretching the card. */
+.opp-head > div:first-child { min-width: 0; }
+.opp-head .text-card-heading { overflow-wrap: anywhere; }
 .opp-type {
   font-size: 0.72rem;
   font-weight: 700;
@@ -436,7 +440,7 @@
 
 .assessment-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(110px, 100%), 1fr));
   gap: var(--space-4);
   text-align: center;
 }
@@ -499,7 +503,7 @@ body.public-portfolio .app-shell { display: block; }
 
 .verify-item {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
@@ -538,16 +542,18 @@ body.public-portfolio .app-shell { display: block; }
   align-items: center;
   gap: 5px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
   white-space: nowrap;
 }
+/* Provenance is worth a badge, but the filled blue chip with a full
+   border was competing with the page title. Tint only, no outline. */
 .source-official {
-  color: #2f6f8a;
-  background: rgba(91, 155, 213, 0.16);
-  border: 1px solid rgba(91, 155, 213, 0.4);
+  color: #3f7f9c;
+  background: rgba(91, 155, 213, 0.11);
+  border: 1px solid transparent;
 }
 .source-platform {
   color: var(--text-muted);
@@ -599,7 +605,7 @@ body.public-portfolio .app-shell { display: block; }
 /* Facts grid: the details a student needs before opening the brochure. */
 .aiia-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
   gap: 10px var(--space-4);
   margin: 0 0 var(--space-3);
 }
@@ -726,14 +732,14 @@ body.public-portfolio .app-shell { display: block; }
 
 .aiia-hero {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-5);
   align-items: center;
   padding: var(--space-5);
   border: 1px solid var(--border);
-  border-left: 3px solid #4faf82;
+  border-left: 2px solid var(--primary);
   border-radius: var(--radius-lg, 14px);
-  background: rgba(79, 175, 130, 0.05);
+  background: var(--surface);
 }
 .aiia-hero-stats {
   display: flex;
@@ -753,8 +759,8 @@ body.public-portfolio .app-shell { display: block; }
    must never read a Goa listing as a Delhi one. */
 .source-goa {
   color: #8a5a2f;
-  background: rgba(214, 154, 82, 0.16);
-  border: 1px solid rgba(214, 154, 82, 0.42);
+  background: rgba(214, 154, 82, 0.12);
+  border: 1px solid transparent;
 }
 :root[data-theme='dark'] .source-goa { color: #e8bd85; }
 

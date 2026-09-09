@@ -1,0 +1,567 @@
+{
+  "_readme": [
+    "CareerNexus — central register of external websites.",
+    "",
+    "THIS IS THE FILE TO EDIT when an external destination changes. Add,",
+    "remove or correct an entry here and both the frontend and the backend",
+    "pick it up; no component hard-codes these URLs any more.",
+    "",
+    "TO ADD A WEBSITE: copy any entry in \"websites\", give it a new unique",
+    "\"id\", fill in the fields and save. Restart the backend so it re-reads",
+    "the file. Nothing else needs changing.",
+    "",
+    "RULES THIS FILE FOLLOWS:",
+    "  * Official sources only. If an organisation runs its own site, that",
+    "    is the URL used here — never an aggregator or a third party.",
+    "  * Never invent a URL. If it cannot be confirmed, it does not go in.",
+    "  * Every url below returned HTTP 200 when it was added.",
+    "",
+    "SCOPE: this register holds organisation-level destinations (portals,",
+    "platforms, career pages, AIIA sections). Deep links that belong to one",
+    "specific opportunity — a single notice PDF, one course page — stay",
+    "with that opportunity's own record, because they are that record's",
+    "data rather than shared configuration.",
+    "",
+    "NOTE ON AIIA LINKS: aiia.gov.in is a single-page application, so its",
+    "section links are hash routes (#/coursesAvailable and so on) served by",
+    "the same verified domain.",
+    "",
+    "CareerNexus searches this register and its own verified opportunity",
+    "records. It does not search the live internet."
+  ],
+
+  "meta": {
+    "version": 1,
+    "last_verified": "2026-09-09",
+    "verified_how": "Each url fetched with a browser user-agent and confirmed to resolve (HTTP 200) before being added.",
+    "categories": [
+      "Government",
+      "Courses",
+      "Internships",
+      "Certifications",
+      "Jobs",
+      "AIIA",
+      "Universities",
+      "Companies",
+      "Learning Platforms",
+      "Student Opportunities"
+    ],
+    "source_types": ["Official", "Official (partner-hosted)"]
+  },
+
+  "websites": [
+    {
+      "id": "aiia_delhi",
+      "name": "All India Institute of Ayurveda",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "Official website of AIIA New Delhi, the autonomous institute under the Ministry of Ayush that set problem statement SIH26044.",
+      "url": "https://aiia.gov.in",
+      "source": "Official",
+      "purpose": "AIIA courses, internships, training, research and official notices"
+    },
+    {
+      "id": "aiia_goa",
+      "name": "AIIA Goa",
+      "organization": "All India Institute of Ayurveda, Goa",
+      "category": "AIIA",
+      "description": "Official website of the AIIA Goa satellite campus. A separate campus with its own intake, so its listings are never presented as Delhi's.",
+      "url": "https://aiiagoa.org",
+      "source": "Official",
+      "purpose": "AIIA Goa courses, CME programmes, fellowships and faculty recruitment"
+    },
+    {
+      "id": "ministry_ayush",
+      "name": "Ministry of Ayush",
+      "organization": "Ministry of Ayush, Government of India",
+      "category": "Government",
+      "description": "The parent ministry for Ayurveda, Yoga, Unani, Siddha and Homoeopathy, and AIIA's administrative authority.",
+      "url": "https://ayush.gov.in",
+      "source": "Official",
+      "purpose": "Ayush policy, schemes and national-level notifications"
+    },
+    {
+      "id": "aiia_courses",
+      "name": "AIIA — Courses Available",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "AIIA's own listing of the courses it currently runs.",
+      "url": "https://aiia.gov.in/#/coursesAvailable",
+      "source": "Official",
+      "purpose": "AIIA certificate courses and skill training programmes"
+    },
+    {
+      "id": "aiia_admissions",
+      "name": "AIIA — Academic Admissions",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "Admission information for AIIA's academic programmes.",
+      "url": "https://aiia.gov.in/#/academicadmission",
+      "source": "Official",
+      "purpose": "AIIA admissions, PG and PhD programme intake"
+    },
+    {
+      "id": "aiia_notices",
+      "name": "AIIA — Notices Archive",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "Every notice AIIA publishes, including course announcements and internship notices.",
+      "url": "https://aiia.gov.in/#/noticesArchive",
+      "source": "Official",
+      "purpose": "AIIA notifications and announcements"
+    },
+    {
+      "id": "aiia_vacancies",
+      "name": "AIIA — Vacancies",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "AIIA's recruitment and vacancy notices, including contractual and project posts.",
+      "url": "https://aiia.gov.in/#/archivesVacancies",
+      "source": "Official",
+      "purpose": "AIIA jobs and recruitment"
+    },
+    {
+      "id": "aiia_research",
+      "name": "AIIA — Research Projects",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "Ongoing research projects at AIIA, the route to research and fellowship openings.",
+      "url": "https://aiia.gov.in/#/ongoingresearchprojects",
+      "source": "Official",
+      "purpose": "AIIA research projects and fellowships"
+    },
+    {
+      "id": "aiia_events",
+      "name": "AIIA — Events",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "AIIA conferences, CME programmes, seminars and workshops.",
+      "url": "https://aiia.gov.in/#/eventsList",
+      "source": "Official",
+      "purpose": "AIIA CME, conferences, seminars and workshops"
+    },
+    {
+      "id": "aiia_student_corner",
+      "name": "AIIA — Student Corner",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "AIIA's information hub for its own students.",
+      "url": "https://aiia.gov.in/#/studentCorner",
+      "source": "Official",
+      "purpose": "AIIA student programmes and resources"
+    },
+    {
+      "id": "aiia_placement",
+      "name": "AIIA — Placement Cell",
+      "organization": "All India Institute of Ayurveda, New Delhi",
+      "category": "AIIA",
+      "description": "AIIA's placement cell, the institute's own academia-industry interface.",
+      "url": "https://aiia.gov.in/#/placementcell",
+      "source": "Official",
+      "purpose": "AIIA placements and industry engagement"
+    },
+
+    {
+      "id": "pm_internship",
+      "name": "PM Internship Scheme",
+      "organization": "Ministry of Corporate Affairs, Government of India",
+      "category": "Internships",
+      "description": "The Government of India's flagship scheme placing candidates in twelve-month internships with India's top companies.",
+      "url": "https://pminternship.mca.gov.in",
+      "source": "Official",
+      "purpose": "Government internship scheme applications"
+    },
+    {
+      "id": "aicte_internship",
+      "name": "AICTE Internship Portal",
+      "organization": "All India Council for Technical Education",
+      "category": "Internships",
+      "description": "India's national internship portal for technical-education students.",
+      "url": "https://internship.aicte-india.org",
+      "source": "Official",
+      "purpose": "Internships for engineering and technical students"
+    },
+    {
+      "id": "apprenticeship_india",
+      "name": "Apprenticeship India (NAPS)",
+      "organization": "Ministry of Skill Development & Entrepreneurship",
+      "category": "Government",
+      "description": "The National Apprenticeship Promotion Scheme portal for stipendiary apprenticeships.",
+      "url": "https://www.apprenticeshipindia.gov.in",
+      "source": "Official",
+      "purpose": "Apprenticeships and stipendiary training"
+    },
+    {
+      "id": "ncs",
+      "name": "National Career Service",
+      "organization": "Ministry of Labour & Employment",
+      "category": "Jobs",
+      "description": "The Government of India's national employment portal, covering jobs, careers guidance and training.",
+      "url": "https://www.ncs.gov.in",
+      "source": "Official",
+      "purpose": "Government job listings and career services"
+    },
+    {
+      "id": "sih",
+      "name": "Smart India Hackathon",
+      "organization": "Ministry of Education Innovation Cell",
+      "category": "Student Opportunities",
+      "description": "India's national innovation initiative, where problem statement SIH26044 is published.",
+      "url": "https://sih.gov.in",
+      "source": "Official",
+      "purpose": "Hackathon participation and problem statements"
+    },
+    {
+      "id": "isro",
+      "name": "ISRO",
+      "organization": "Indian Space Research Organisation",
+      "category": "Government",
+      "description": "India's space agency, which publishes its own internship and project openings.",
+      "url": "https://www.isro.gov.in",
+      "source": "Official",
+      "purpose": "Research internships and project opportunities"
+    },
+    {
+      "id": "startup_india",
+      "name": "Startup India",
+      "organization": "Department for Promotion of Industry and Internal Trade",
+      "category": "Government",
+      "description": "The Government of India's startup initiative, with learning programmes and innovation challenges.",
+      "url": "https://www.startupindia.gov.in",
+      "source": "Official",
+      "purpose": "Entrepreneurship programmes and innovation challenges"
+    },
+    {
+      "id": "digital_india",
+      "name": "Digital India",
+      "organization": "Ministry of Electronics & Information Technology",
+      "category": "Government",
+      "description": "The Digital India programme, covering digital-skilling and technology initiatives.",
+      "url": "https://www.digitalindia.gov.in",
+      "source": "Official",
+      "purpose": "Digital skilling programmes and government technology initiatives"
+    },
+    {
+      "id": "swayam",
+      "name": "SWAYAM",
+      "organization": "Ministry of Education, Government of India",
+      "category": "Courses",
+      "description": "India's national online education platform, hosting credit-eligible courses from school to postgraduate level.",
+      "url": "https://swayam.gov.in",
+      "source": "Official",
+      "purpose": "Free credit-eligible online courses"
+    },
+    {
+      "id": "skill_india",
+      "name": "Skill India Digital Hub",
+      "organization": "Ministry of Skill Development & Entrepreneurship",
+      "category": "Courses",
+      "description": "The Government of India's skilling platform, with courses, apprenticeships and job listings in one place.",
+      "url": "https://www.skillindiadigital.gov.in",
+      "source": "Official",
+      "purpose": "Government skilling courses and certifications"
+    },
+    {
+      "id": "nptel",
+      "name": "NPTEL",
+      "organization": "IIT / IISc (Ministry of Education)",
+      "category": "Universities",
+      "description": "Engineering and science courses taught by IIT and IISc faculty, with an optional proctored certification exam.",
+      "url": "https://nptel.ac.in/courses",
+      "source": "Official",
+      "purpose": "University-taught courses and certification exams"
+    },
+
+    {
+      "id": "microsoft_learn",
+      "name": "Microsoft Learn",
+      "organization": "Microsoft",
+      "category": "Learning Platforms",
+      "description": "Microsoft's official training platform, covering Azure, Power Platform, .NET and data tools.",
+      "url": "https://learn.microsoft.com/en-us/training/",
+      "source": "Official",
+      "purpose": "Courses and certification paths"
+    },
+    {
+      "id": "google_cloud_skills",
+      "name": "Google Cloud Skills Boost",
+      "organization": "Google Cloud",
+      "category": "Learning Platforms",
+      "description": "Google Cloud's own training platform, with hands-on labs and skill badges.",
+      "url": "https://www.cloudskillsboost.google",
+      "source": "Official",
+      "purpose": "Cloud courses, labs and skill badges"
+    },
+    {
+      "id": "google_ml_crash_course",
+      "name": "Google Machine Learning Crash Course",
+      "organization": "Google for Developers",
+      "category": "Courses",
+      "description": "Google's own introduction to machine learning, with interactive Python exercises.",
+      "url": "https://developers.google.com/machine-learning/crash-course",
+      "source": "Official",
+      "purpose": "Free machine-learning course"
+    },
+    {
+      "id": "google_career_certificates",
+      "name": "Google Career Certificates",
+      "organization": "Google (hosted on Coursera)",
+      "category": "Certifications",
+      "description": "Google's professional certificate programmes in data analytics, IT support, UX and project management. Google publishes these through Coursera, which is why the URL is a Coursera one.",
+      "url": "https://www.coursera.org/google-career-certificates",
+      "source": "Official (partner-hosted)",
+      "purpose": "Professional certificate programmes"
+    },
+    {
+      "id": "kaggle_learn",
+      "name": "Kaggle Learn",
+      "organization": "Kaggle (Google)",
+      "category": "Courses",
+      "description": "Short practical data-science and machine-learning courses with in-browser notebooks.",
+      "url": "https://www.kaggle.com/learn",
+      "source": "Official",
+      "purpose": "Free data-science micro-courses"
+    },
+    {
+      "id": "aws_skill_builder",
+      "name": "AWS Skill Builder",
+      "organization": "Amazon Web Services",
+      "category": "Learning Platforms",
+      "description": "Amazon's official cloud training platform and certification preparation.",
+      "url": "https://skillbuilder.aws",
+      "source": "Official",
+      "purpose": "Cloud courses and AWS certification preparation"
+    },
+    {
+      "id": "aws_mlu",
+      "name": "AWS Machine Learning University",
+      "organization": "Amazon Web Services",
+      "category": "Courses",
+      "description": "The machine-learning curriculum Amazon uses to train its own scientists and engineers, released publicly.",
+      "url": "https://aws.amazon.com/machine-learning/mlu/",
+      "source": "Official",
+      "purpose": "Free machine-learning curriculum"
+    },
+    {
+      "id": "ibm_skillsbuild",
+      "name": "IBM SkillsBuild",
+      "organization": "IBM",
+      "category": "Learning Platforms",
+      "description": "IBM's free learning platform for students, with digital credentials on completion.",
+      "url": "https://skillsbuild.org",
+      "source": "Official",
+      "purpose": "Free courses and digital credentials for students"
+    },
+    {
+      "id": "ibm_ai_training",
+      "name": "IBM Artificial Intelligence Training",
+      "organization": "IBM Training",
+      "category": "Certifications",
+      "description": "IBM's AI and data-science learning tracks, including generative AI and watsonx.",
+      "url": "https://www.ibm.com/training/artificial-intelligence",
+      "source": "Official",
+      "purpose": "AI courses and certification tracks"
+    },
+    {
+      "id": "cisco_netacad",
+      "name": "Cisco Networking Academy",
+      "organization": "Cisco",
+      "category": "Learning Platforms",
+      "description": "Cisco's own networking, cybersecurity and programming curriculum.",
+      "url": "https://www.netacad.com",
+      "source": "Official",
+      "purpose": "Networking and cybersecurity courses"
+    },
+    {
+      "id": "freecodecamp",
+      "name": "freeCodeCamp",
+      "organization": "freeCodeCamp.org",
+      "category": "Learning Platforms",
+      "description": "A non-profit offering free, project-based web-development certifications.",
+      "url": "https://www.freecodecamp.org/learn/",
+      "source": "Official",
+      "purpose": "Free web-development certifications"
+    },
+    {
+      "id": "github_education",
+      "name": "GitHub Education",
+      "organization": "GitHub",
+      "category": "Student Opportunities",
+      "description": "GitHub's student programme, including the Student Developer Pack and Campus Experts.",
+      "url": "https://education.github.com",
+      "source": "Official",
+      "purpose": "Student developer tools and programmes"
+    },
+    {
+      "id": "mongodb_university",
+      "name": "MongoDB University",
+      "organization": "MongoDB",
+      "category": "Learning Platforms",
+      "description": "MongoDB's official database courses and developer certifications.",
+      "url": "https://learn.mongodb.com",
+      "source": "Official",
+      "purpose": "Database courses and certification"
+    },
+    {
+      "id": "elements_of_ai",
+      "name": "Elements of AI",
+      "organization": "University of Helsinki & MinnaLearn",
+      "category": "Universities",
+      "description": "A university-built introduction to artificial intelligence for non-specialists, no programming required.",
+      "url": "https://www.elementsofai.com",
+      "source": "Official",
+      "purpose": "Free introductory AI course with certificate"
+    },
+    {
+      "id": "mdn_learn",
+      "name": "MDN Web Docs — Learn",
+      "organization": "Mozilla",
+      "category": "Courses",
+      "description": "Mozilla's structured web-development curriculum and the reference the web platform is documented against.",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn",
+      "source": "Official",
+      "purpose": "Free web-development curriculum"
+    },
+    {
+      "id": "web_dev_learn",
+      "name": "web.dev Learn",
+      "organization": "Google Chrome Developers",
+      "category": "Courses",
+      "description": "Courses on modern web development written by the Chrome team.",
+      "url": "https://web.dev/learn",
+      "source": "Official",
+      "purpose": "Free courses on web performance, CSS and accessibility"
+    },
+    {
+      "id": "edx",
+      "name": "edX",
+      "organization": "edX",
+      "category": "Learning Platforms",
+      "description": "University courses from MIT, Harvard and other institutions, auditable free of charge.",
+      "url": "https://www.edx.org",
+      "source": "Official",
+      "purpose": "University courses, free to audit"
+    },
+    {
+      "id": "hackerrank_skills",
+      "name": "HackerRank Skills Directory",
+      "organization": "HackerRank",
+      "category": "Certifications",
+      "description": "Free role-based skill certifications that can be attached to a profile.",
+      "url": "https://www.hackerrank.com/skills-directory",
+      "source": "Official",
+      "purpose": "Free skill certifications"
+    },
+    {
+      "id": "infosys_springboard",
+      "name": "Infosys Springboard",
+      "organization": "Infosys",
+      "category": "Learning Platforms",
+      "description": "Infosys's free digital-skilling platform, open to students.",
+      "url": "https://infyspringboard.onwingspan.com",
+      "source": "Official",
+      "purpose": "Free industry-designed courses"
+    },
+    {
+      "id": "tcs_ion",
+      "name": "TCS iON",
+      "organization": "Tata Consultancy Services",
+      "category": "Learning Platforms",
+      "description": "TCS's learning and assessment platform, including career-readiness programmes.",
+      "url": "https://www.tcsion.com",
+      "source": "Official",
+      "purpose": "Career-readiness courses and assessments"
+    },
+
+    {
+      "id": "google_students",
+      "name": "Google Student Programmes",
+      "organization": "Google",
+      "category": "Companies",
+      "description": "Google's own careers page for students: software-engineering internships, STEP and other early-career programmes.",
+      "url": "https://www.google.com/about/careers/applications/students/",
+      "source": "Official",
+      "purpose": "Company internships and early-career roles"
+    },
+    {
+      "id": "google_summer_of_code",
+      "name": "Google Summer of Code",
+      "organization": "Google Open Source",
+      "category": "Student Opportunities",
+      "description": "Google's paid open-source contribution programme for new contributors.",
+      "url": "https://summerofcode.withgoogle.com",
+      "source": "Official",
+      "purpose": "Paid open-source programme"
+    },
+    {
+      "id": "microsoft_students",
+      "name": "Microsoft Students & Graduates",
+      "organization": "Microsoft",
+      "category": "Companies",
+      "description": "Microsoft's careers page for students and recent graduates, including its India internships.",
+      "url": "https://careers.microsoft.com/v2/global/en/students.html",
+      "source": "Official",
+      "purpose": "Company internships and graduate roles"
+    },
+    {
+      "id": "amazon_university",
+      "name": "Amazon University Recruiting",
+      "organization": "Amazon",
+      "category": "Companies",
+      "description": "Amazon's university career programmes and internship listings.",
+      "url": "https://www.amazon.jobs/content/en/career-programs/university",
+      "source": "Official",
+      "purpose": "Company internships and graduate programmes"
+    },
+    {
+      "id": "apple_students",
+      "name": "Apple Students",
+      "organization": "Apple",
+      "category": "Companies",
+      "description": "Apple's careers page for students, covering internships and the Apple Scholars programme.",
+      "url": "https://www.apple.com/careers/us/students.html",
+      "source": "Official",
+      "purpose": "Company internships and student programmes"
+    },
+    {
+      "id": "ibm_internships",
+      "name": "IBM Internships",
+      "organization": "IBM",
+      "category": "Companies",
+      "description": "IBM's own internship listings, including its India locations.",
+      "url": "https://www.ibm.com/careers/internships",
+      "source": "Official",
+      "purpose": "Company internships"
+    },
+    {
+      "id": "nvidia_university",
+      "name": "NVIDIA University Recruiting",
+      "organization": "NVIDIA",
+      "category": "Companies",
+      "description": "NVIDIA's university recruiting page for internships and new-graduate roles.",
+      "url": "https://www.nvidia.com/en-us/about-nvidia/careers/university-recruiting/",
+      "source": "Official",
+      "purpose": "Company internships and graduate roles"
+    },
+    {
+      "id": "adobe_careers",
+      "name": "Adobe Careers",
+      "organization": "Adobe",
+      "category": "Companies",
+      "description": "Adobe's careers site, which carries its student and internship openings.",
+      "url": "https://careers.adobe.com",
+      "source": "Official",
+      "purpose": "Company internships and roles"
+    },
+    {
+      "id": "wipro_careers",
+      "name": "Wipro Careers",
+      "organization": "Wipro",
+      "category": "Companies",
+      "description": "Wipro's careers site, including its Elite and WILP early-career programmes.",
+      "url": "https://careers.wipro.com",
+      "source": "Official",
+      "purpose": "Company early-career programmes"
+    }
+  ]
+}

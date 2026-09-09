@@ -7,11 +7,11 @@
 
 :root {
   /* Brand */
-  --primary: #4f46e5;
-  --primary-dark: #3730a3;
-  --primary-light: #eef2ff;
-  --secondary: #0ea5e9;
-  --secondary-light: #e0f2fe;
+  --primary: #2f7d6c;
+  --primary-dark: #245f53;
+  --primary-light: #e8f2ef;
+  --secondary: #4b5590;
+  --secondary-light: #ecedf6;
 
   /* Surfaces */
   --background: #f6f7fb;
@@ -21,7 +21,10 @@
   /* Text */
   --text-primary: #10131a;
   --text-secondary: #5b6270;
-  --text-muted: #8a90a0;
+  /* Was #8a90a0 — 3.2:1 on white, under the AA floor for the metadata
+     and caption text this token drives. #6b7280 keeps the muted look at
+     4.8:1 on a card and 4.5:1 on the page. */
+  --text-muted: #6b7280;
   --text-on-primary: #ffffff;
 
   /* Borders / dividers */
@@ -49,9 +52,9 @@
   --match-low-bg: #fdecee;
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(16, 19, 26, 0.05);
-  --shadow-md: 0 4px 16px rgba(16, 19, 26, 0.08);
-  --shadow-lg: 0 12px 32px rgba(16, 19, 26, 0.12);
+  --shadow-sm: 0 1px 2px rgba(16, 19, 26, 0.04);
+  --shadow-md: 0 2px 8px rgba(16, 19, 26, 0.07);
+  --shadow-lg: 0 8px 24px rgba(16, 19, 26, 0.1);
 
   /* Chrome that doesn't map 1:1 to a surface token */
   --navbar-bg: rgba(255, 255, 255, 0.88);
@@ -59,10 +62,13 @@
   --toast-bg: #10131a;
   --toast-text: #ffffff;
 
-  /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  /* Radius. 18px cards plus pill-shaped everything was the strongest
+     "generated dashboard" signal in the UI; these are application
+     radii. --radius-full stays for genuine pills (avatars, icon
+     buttons, status badges). */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
   --radius-full: 999px;
 
   /* Spacing scale */
@@ -82,7 +88,7 @@
 
   /* Layout */
   --sidebar-width: 260px;
-  --header-height: 72px;
+  --header-height: 60px;
   --content-max: 1280px;
 
   /* Motion */
@@ -97,50 +103,63 @@
    re-themes without any per-page CSS.
    ========================================================= */
 html[data-theme='dark'] {
-  --primary: #2dd4bf;
-  --primary-dark: #14b8a6;
-  --primary-light: rgba(45, 212, 191, 0.12);
-  --secondary: #6366f1;
-  --secondary-light: rgba(99, 102, 241, 0.12);
+  /* The accent was #2dd4bf, which reads at 9.3:1 against the card surface
+     — far brighter than anything needs to be and the main reason the UI
+     looked synthetic. #4aab95 is the same CareerNexus teal with the glare
+     taken out: still 6.1:1 on a card (comfortably AA) and 6.8:1 on the
+     page, so nothing loses legibility. --primary-dark is genuinely darker
+     now, as a hover state should be, rather than brighter than the base. */
+  --primary: #4aab95;
+  --primary-dark: #3f9e88;
+  --primary-light: rgba(74, 171, 149, 0.13);
+  --secondary: #7c86c4;
+  --secondary-light: rgba(124, 134, 196, 0.12);
 
-  --background: #070c17;
-  --surface: #101a2c;
-  --surface-alt: #16223a;
+  /* Deep charcoal with a slight navy cast, not near-black with a blue
+     wash. The surface steps are quiet (1.11:1 apart) but visible, which
+     is what separates a real application from a flat dark canvas. */
+  --background: #0d1116;
+  --surface: #171c25;
+  --surface-alt: #1e242e;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #a3b1c6;
-  --text-muted: #72819a;
-  --text-on-primary: #05201c;
+  --text-primary: #eef2f7;
+  --text-secondary: #9aa4b2;
+  /* Was #72819a — only 4:1 on a card, under the AA floor for body text. */
+  --text-muted: #8b95a3;
+  --text-on-primary: #0b0f14;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
 
-  --success: #22c55e;
-  --success-bg: rgba(34, 197, 94, 0.12);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.12);
-  --danger: #f87171;
-  --danger-bg: rgba(239, 68, 68, 0.14);
-  --info: #2dd4bf;
-  --info-bg: rgba(45, 212, 191, 0.1);
+  /* Same semantics, a stop or two off full saturation. */
+  --success: #56b981;
+  --success-bg: rgba(86, 185, 129, 0.12);
+  --warning: #d69b4a;
+  --warning-bg: rgba(214, 155, 74, 0.12);
+  --danger: #dd7f7f;
+  --danger-bg: rgba(221, 127, 127, 0.13);
+  --info: #6fa8bd;
+  --info-bg: rgba(111, 168, 189, 0.11);
 
-  --match-excellent: #22c55e;
-  --match-excellent-bg: rgba(34, 197, 94, 0.12);
-  --match-good: #2dd4bf;
-  --match-good-bg: rgba(45, 212, 191, 0.12);
-  --match-moderate: #f59e0b;
-  --match-moderate-bg: rgba(245, 158, 11, 0.12);
-  --match-low: #f87171;
-  --match-low-bg: rgba(239, 68, 68, 0.14);
+  --match-excellent: #56b981;
+  --match-excellent-bg: rgba(86, 185, 129, 0.12);
+  --match-good: #4aab95;
+  --match-good-bg: rgba(74, 171, 149, 0.12);
+  --match-moderate: #d69b4a;
+  --match-moderate-bg: rgba(214, 155, 74, 0.12);
+  --match-low: #dd7f7f;
+  --match-low-bg: rgba(221, 127, 127, 0.13);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.45);
+  /* Depth comes from the surface steps and the borders, not from a 48px
+     drop shadow under every panel. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.36);
 
-  --navbar-bg: rgba(7, 12, 23, 0.85);
+  --navbar-bg: rgba(13, 17, 22, 0.86);
   --overlay: rgba(0, 0, 0, 0.6);
-  --toast-bg: #182543;
-  --toast-text: #f8fafc;
+  --toast-bg: #232a35;
+  --toast-text: #eef2f7;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -175,8 +194,8 @@ body {
   font-family: var(--font-body);
   background: var(--background);
   color: var(--text-primary);
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -243,51 +262,58 @@ select:focus-visible,
 }
 
 /* ---------- Typography scale ---------- */
+/* The marketing hero is the only place that earns a display size. */
 .text-display {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 4vw, 3.6rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
+/* 20-24px. Sora is kept for page and section titles so the brand voice
+   survives, but at a weight that does not shout. */
 .text-page-heading {
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.25rem, 1.6vw, 1.5rem);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.008em;
 }
 
+/* 17-19px */
 .text-section-heading {
   font-family: var(--font-display);
-  font-size: clamp(1.3rem, 1.8vw, 1.6rem);
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.text-card-heading {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: clamp(1.05rem, 1.2vw, 1.2rem);
+  font-weight: 650;
   line-height: 1.3;
 }
 
-.text-body {
+/* 16px, body font — a card title is not a heading contest. */
+.text-card-heading {
   font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.text-body {
+  font-size: 0.933rem;
   font-weight: 400;
   color: var(--text-secondary);
+  line-height: 1.55;
 }
 
 .text-caption {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .text-label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 

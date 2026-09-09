@@ -30,8 +30,8 @@
   margin-bottom: var(--space-6);
 }
 .details-meta-row { display: flex; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-3); color: var(--text-secondary); }
-.details-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: start; }
-.req-columns { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.details-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.req-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4); }
 
 .apply-sticky { position: sticky; top: calc(var(--header-height) + var(--space-4)); }
 

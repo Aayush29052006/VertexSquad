@@ -1,19 +1,30 @@
 # CareerNexus — backend dependencies
 # Install with:  pip install -r requirements.txt
+#
+# Versions are pinned so every team member and the deploy run an identical
+# environment. Everything listed here is genuinely needed: each entry is
+# either imported by app/main.py or required at runtime by something that
+# is (noted below where the reason is not obvious).
 
 # Web framework & server
 fastapi==0.141.1
 uvicorn==0.52.4
-python-multipart==0.0.32       # required for file uploads (resume upload endpoint)
+python-multipart==0.0.32       # FastAPI needs it to accept UploadFile (resume upload)
+pydantic==2.13.5               # request/response models; imported directly by main.py
 
 # Database
 SQLAlchemy==2.0.52
-psycopg2-binary==2.9.12        # PostgreSQL driver (Supabase)
-supabase==2.31.0
+psycopg2-binary==2.9.12        # SQLAlchemy's PostgreSQL driver (Supabase). Never
+                               # imported by name — SQLAlchemy loads it from the
+                               # postgresql:// URL. Not needed for the SQLite fallback.
 
 # Auth
-PyJWT==2.13.0
-passlib==1.7.4
+PyJWT==2.13.0                  # HS256 for our own sessions, RS256 + JWKS for Google
+cryptography==50.0.1           # PyJWT needs it for RS256. Without it Google
+                               # Sign-In fails with "RS256 requires
+                               # 'cryptography' to be installed" — it used to
+                               # arrive transitively via the supabase package,
+                               # so removing that dependency exposed it.
 email-validator==2.3.0         # required by Pydantic's EmailStr
 
 # Resume parsing
@@ -21,3 +32,19 @@ pypdf==6.16.2
 
 # Config
 python-dotenv==1.2.3
+
+# ---------------------------------------------------------------------
+# Deliberately NOT dependencies
+#
+#   passlib   — password hashing uses hashlib.pbkdf2_hmac from the standard
+#               library (PBKDF2-HMAC-SHA256, 260,000 iterations, per-user
+#               salt). No third-party hasher, and none of the bcrypt/passlib
+#               version pitfalls. See hash_password() in app/main.py.
+#
+#   supabase  — the Supabase Python SDK is not used. The backend talks to
+#               Supabase as a plain PostgreSQL database through SQLAlchemy,
+#               so psycopg2-binary above is the only driver required.
+#
+# Both were listed here previously and installed for nothing. If you add a
+# package, import it somewhere before adding it to this file.
+# ---------------------------------------------------------------------

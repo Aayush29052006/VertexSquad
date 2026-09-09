@@ -10,10 +10,13 @@
 
 /* Tablet landscape / small desktop */
 @media (max-width: 1024px) {
-  .sidebar { width: 220px; }
+  /* The sidebar width is no longer pinned here: it is a user setting now,
+     driven by --sidebar-width. js/ui.js narrows the allowed maximum on
+     small screens instead, so a width chosen on a big monitor cannot
+     swallow the content area on a laptop. */
   .page-body { padding: var(--space-5); }
-  .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
-  .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Tablet portrait */
@@ -26,11 +29,17 @@
     position: fixed;
     left: 0; top: 0; bottom: 0;
     z-index: 200;
+    /* Off-canvas drawer: it slides over the content, so the width the user
+       dragged on desktop does not apply and a literal width wins over
+       --sidebar-width here. */
+    width: min(300px, 82vw);
     transform: translateX(-100%);
     transition: transform var(--transition-base);
     box-shadow: var(--shadow-lg);
   }
   .sidebar.open { transform: translateX(0); }
+  /* Nothing to resize while the sidebar is a drawer. */
+  .sidebar-resizer { display: none; }
   .mobile-menu-btn { display: inline-flex; }
   .sidebar-backdrop {
     display: none;

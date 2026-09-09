@@ -1,0 +1,275 @@
+/* =========================================================
+   CareerNexus — Search
+   The header box, its results panel, and the Opportunity
+   Search page. Uses the existing tokens and card primitives
+   so it needs no colours or shadows of its own.
+   ========================================================= */
+
+/* ---------- Header search box ---------- */
+
+.global-search {
+  position: relative;
+  flex: 1 1 auto;
+  /* Bounded so it never crowds out the avatar and theme toggle, and never
+     shrinks to a slit once the sidebar is dragged wide. */
+  max-width: 520px;
+  min-width: 0;
+  margin: 0 var(--space-4);
+}
+.global-search-icon {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.global-search-input {
+  width: 100%;
+  padding: 0.55rem 0.9rem 0.55rem 2.2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.global-search-input::placeholder { color: var(--text-muted); }
+.global-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--surface);
+}
+/* Chrome draws its own clear button on type="search"; it fights the
+   rounded field, so hide it and let Escape do the job. */
+.global-search-input::-webkit-search-cancel-button { display: none; }
+
+.global-search-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0; right: 0;
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3);
+  z-index: 120;
+}
+
+.gs-group + .gs-group { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.gs-group-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 6px;
+  padding: 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gs-count {
+  font-size: 0.68rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+}
+.gs-clear {
+  background: none; border: none; padding: 0;
+  font: inherit; font-size: 0.68rem; text-transform: none; letter-spacing: 0;
+  color: var(--primary); cursor: pointer;
+}
+
+.gs-row {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  width: 100%;
+  padding: 8px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gs-row:hover, .gs-row.is-active { background: var(--surface-alt); }
+.gs-row-icon { flex-shrink: 0; width: 18px; text-align: center; opacity: 0.8; }
+.gs-row-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gs-row-title {
+  font-size: 0.9rem; font-weight: 600; color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.gs-row-meta { font-size: 0.76rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.gs-row--all .gs-row-title { color: var(--primary); }
+
+.gs-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; }
+.gs-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.gs-chip:hover { border-color: var(--primary); color: var(--primary); }
+.gs-note, .gs-foot {
+  margin: 4px 6px 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.gs-foot { padding-top: var(--space-2); border-top: 1px solid var(--border); margin-top: var(--space-2); }
+
+/* Below the tablet breakpoint the header has the menu button, the theme
+   toggle, the name and the avatar already — a full search field there
+   would leave no room for any of them, so it collapses to the sidebar's
+   "Search Opportunities" link instead. */
+@media (max-width: 768px) {
+  .global-search { display: none; }
+}
+
+/* ---------- Opportunity Search page ---------- */
+
+/* A page header, not a floating panel: the search controls group under
+   a hairline rather than inside yet another bordered card. */
+.search-hero {
+  padding: 0 0 var(--space-5);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.search-bar {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+.search-bar-field { position: relative; flex: 1 1 280px; min-width: 0; }
+.search-bar-icon {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem; pointer-events: none; opacity: 0.7;
+}
+.search-bar-input {
+  width: 100%;
+  padding: 0.62rem 0.9rem 0.62rem 2.5rem;
+  font-size: 0.933rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  color: var(--text-primary);
+}
+.search-bar-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+.search-bar-input::-webkit-search-cancel-button { display: none; }
+
+/* Suggestions under the big field: recent, then popular. */
+.search-suggest {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3);
+  z-index: 80;
+}
+
+.search-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.search-filter { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.search-filter label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+
+.search-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.search-count { font-size: 0.9rem; color: var(--text-secondary); }
+.search-count strong { color: var(--text-primary); }
+
+.search-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-4); }
+.search-cat {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+  font: inherit; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer;
+}
+.search-cat:hover { border-color: var(--primary); color: var(--primary); }
+.search-cat.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
+.search-cat .n {
+  font-size: 0.72rem; font-weight: 700;
+  padding: 0 6px; border-radius: 999px;
+  background: rgba(127,127,127,0.14);
+}
+
+.search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.result-card { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.result-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.result-head > div:first-child { min-width: 0; }
+.result-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.result-org { font-size: 0.85rem; color: var(--text-secondary); overflow-wrap: anywhere; }
+.result-cat {
+  flex-shrink: 0;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--surface-alt); color: var(--text-secondary);
+}
+.result-desc {
+  font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;
+  /* Long official descriptions must not make one card twice the height of
+     its neighbours. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.result-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr));
+  gap: 6px var(--space-3);
+  font-size: 0.8rem;
+}
+.result-fact { min-width: 0; }
+.result-fact .k { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.result-fact .v { color: var(--text-secondary); overflow-wrap: anywhere; }
+/* A field the source does not publish is stated, never invented. */
+.result-fact .v.is-unspecified { font-style: italic; opacity: 0.75; }
+.result-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: var(--space-2);
+  margin-top: auto; padding-top: var(--space-3);
+}
+.result-foot > * { min-width: 0; }
+.result-source { font-size: 0.74rem; color: var(--text-muted); overflow-wrap: anywhere; }
+
+.search-more { display: flex; justify-content: center; margin-top: var(--space-5); }
+
+@media (max-width: 480px) {
+  .search-hero { padding: var(--space-4); }
+  .search-bar-input { font-size: 0.95rem; padding-left: 2.7rem; }
+}

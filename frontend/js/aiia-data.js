@@ -35,8 +35,20 @@ const AIIA_SOURCE = {
   AYUSH: 'Ministry of Ayush — Official',
 };
 
-const AIIA_SITE_URL = 'https://aiia.gov.in';
-const AIIA_GOA_URL = 'https://aiiagoa.org';
+/* Both site roots come from the central register
+   (data/website-links.json), via the fallback table in
+   js/website-links.js which is loaded before this file.
+
+   Why not read the fetched register directly? The opportunity list below
+   is built in template literals when this script parses, which happens
+   before any fetch can resolve. So the frontend keeps exactly one
+   literal for each root — in website-links.js — and
+   checkWebsiteLinkDrift() warns in the console if the JSON register and
+   that literal ever disagree, rather than letting them quietly diverge. */
+const AIIA_SITE_URL = (typeof WEBSITE_LINK_FALLBACKS !== 'undefined'
+  && WEBSITE_LINK_FALLBACKS.aiia_delhi) || 'https://aiia.gov.in';
+const AIIA_GOA_URL = (typeof WEBSITE_LINK_FALLBACKS !== 'undefined'
+  && WEBSITE_LINK_FALLBACKS.aiia_goa) || 'https://aiiagoa.org';
 
 const AIIA_OPPORTUNITIES = [
   /* ---------------- Courses (AIIA Delhi) ---------------- */

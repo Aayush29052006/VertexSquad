@@ -16,7 +16,8 @@
 }
 
 .auth-side {
-  background: linear-gradient(160deg, var(--primary-dark), var(--primary));
+  /* One flat brand panel instead of a two-stop gradient. */
+  background: var(--primary-dark);
   color: #fff;
   padding: var(--space-8);
   display: flex;
@@ -39,7 +40,10 @@
 .auth-links { text-align: center; margin-top: var(--space-5); color: var(--text-secondary); }
 
 @media (max-width: 768px) {
-  .auth-shell { grid-template-columns: 1fr; }
+  /* minmax(0, ...) not 1fr: a bare 1fr refuses to go below its widest
+     child, and Google's fixed-width sign-in iframe then made the whole
+     page scroll sideways on a phone. */
+  .auth-shell { grid-template-columns: minmax(0, 1fr); }
   .auth-side { display: none; }
   .auth-card .brand { display: flex; justify-content: center; margin-bottom: var(--space-5); }
 }
@@ -68,6 +72,10 @@
   display: flex;
   justify-content: center;
   min-height: 44px;
+  /* Google renders its button in an iframe of its own chosen width. Clip
+     the overhang here rather than letting it widen the page. */
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ---------- Demo account quick-fill ----------

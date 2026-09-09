@@ -641,3 +641,83 @@ body.public-portfolio .app-shell { display: block; }
   flex-wrap: wrap;
 }
 .aiia-link-row:last-child { border-bottom: none; }
+
+/* ---------- Deadlines ----------
+   Colour carries the urgency so a student can scan a list and see what is
+   about to shut. Urgent is only the last three days, so the red keeps
+   meaning something. */
+
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.deadline-badge.deadline-urgent {
+  color: #b3454f; background: rgba(217, 112, 122, 0.16); border-color: rgba(217, 112, 122, 0.42);
+}
+.deadline-badge.deadline-soon {
+  color: #9a6b25; background: rgba(214, 154, 82, 0.16); border-color: rgba(214, 154, 82, 0.42);
+}
+.deadline-badge.deadline-open {
+  color: #2f8a63; background: rgba(79, 175, 130, 0.14); border-color: rgba(79, 175, 130, 0.36);
+}
+.deadline-badge.deadline-closed,
+.deadline-badge.deadline-none {
+  color: var(--text-muted); background: rgba(127, 127, 127, 0.1); border-color: var(--border);
+}
+:root[data-theme='dark'] .deadline-badge.deadline-urgent { color: #f0a1a8; }
+:root[data-theme='dark'] .deadline-badge.deadline-soon   { color: #e8bd85; }
+:root[data-theme='dark'] .deadline-badge.deadline-open   { color: #7fd3aa; }
+
+/* ---------- Live updates feed ---------- */
+
+.feed-list { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.feed-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* A left edge tinted by urgency, so the list reads at a glance. */
+  border-left: 3px solid var(--border);
+}
+.feed-card.deadline-urgent { border-left-color: #d9707a; }
+.feed-card.deadline-soon   { border-left-color: #d69a52; }
+.feed-card.deadline-open   { border-left-color: #4faf82; }
+
+.feed-head { display: flex; gap: var(--space-3); align-items: flex-start; }
+.feed-icon { font-size: 1.3rem; line-height: 1.2; flex-shrink: 0; }
+.feed-main { min-width: 0; }
+.feed-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  line-height: 1.45;
+}
+.feed-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Source health: green reachable, red failing, grey never checked. */
+.sync-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.sync-ok    { background: #4faf82; }
+.sync-fail  { background: #d9707a; }
+.sync-never { background: var(--text-muted); opacity: 0.5; }
+
+.ml-2 { margin-left: 8px; }

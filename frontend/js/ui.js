@@ -30,6 +30,8 @@ const NAV_ITEMS = [
   { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
   { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN] },
   { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
+  // Auto-collected official notices, vacancies and tenders, with deadlines.
+  { href: 'updates.html', icon: '🔔', label: 'Live Updates', roles: ALL_ROLES },
   // The institute behind SIH26044. Everything on this page is AIIA's own.
   { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES },
   { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN] },
@@ -313,6 +315,51 @@ function isExternalListing(item) {
   return (item.source_type || 'platform') === 'external';
 }
 
+/* ---------- Deadlines ----------
+   A listing without a visible closing date is close to useless: the whole
+   question a student has is "can I still apply?". These render the answer
+   rather than a bare date the reader has to work out for themselves.
+
+   Anything that has no date says so honestly instead of implying urgency
+   that the publisher never stated. */
+
+function daysUntil(dateText) {
+  if (!dateText) return null;
+  const target = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target - today) / 86400000);
+}
+
+function deadlineLabel(dateText) {
+  const left = daysUntil(dateText);
+  if (left === null) return 'No closing date published';
+  if (left < 0) return `Closed ${formatDate(dateText)}`;
+  if (left === 0) return 'Closes today';
+  if (left === 1) return 'Closes tomorrow';
+  if (left <= 30) return `${left} days left`;
+  return `Closes ${formatDate(dateText)}`;
+}
+
+/* Urgency tier, used for colour. Deliberately conservative: "urgent" is
+   only the last three days, so the badge keeps its meaning. */
+function deadlineTier(dateText) {
+  const left = daysUntil(dateText);
+  if (left === null) return 'none';
+  if (left < 0) return 'closed';
+  if (left <= 3) return 'urgent';
+  if (left <= 7) return 'soon';
+  return 'open';
+}
+
+function deadlineBadge(dateText) {
+  const tier = deadlineTier(dateText);
+  const icon = { urgent: '⏰', soon: '⏳', closed: '🚫', open: '📅', none: '📄' }[tier];
+  const title = dateText ? `Closing date ${dateText}` : 'The publisher has not stated a closing date';
+  return `<span class="deadline-badge deadline-${tier}" title="${escapeHtml(title)}">${icon} ${escapeHtml(deadlineLabel(dateText))}</span>`;
+}
+
 /* ---------- Skill chips ---------- */
 function skillChip(name, variant = 'default') {
   const cls = variant === 'missing' ? 'skill-chip chip-missing' : 'skill-chip';
@@ -403,7 +450,7 @@ function internshipCardHtml(item) {
       <div class="internship-chips">${matchedChips}</div>
       ${missingChips}
       <div class="internship-footer">
-        <span class="text-caption">${item.deadline ? `Deadline: ${formatDate(item.deadline)}` : 'Open until filled'}</span>
+        ${deadlineBadge(item.deadline)}
         ${
           isExternalListing(item)
             ? officialLinkButton(item.official_url, 'Official Website')

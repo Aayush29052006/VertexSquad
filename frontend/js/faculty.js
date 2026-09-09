@@ -42,7 +42,7 @@ function facOpportunityCard(o) {
       </div>
       <div class="internship-chips mt-2">${(o.required_skills || []).map((s) => skillChip(s)).join('')}</div>
       <div class="internship-footer">
-        <span class="text-caption">${o.deadline ? `Applications close ${formatDate(o.deadline)}` : 'Open until filled'}</span>
+        ${deadlineBadge(o.deadline)}
         <a class="btn btn-primary btn-sm" href="internship-details.html?id=${encodeURIComponent(o.id)}">View & Apply</a>
       </div>
     </article>`;

@@ -47,7 +47,7 @@ function programmeCard(p) {
 
       <div class="internship-footer">
         <span class="text-caption">
-          ${p.announced ? `Announced ${formatDate(p.announced)}` : 'See the institute notice board'}
+          ${p.deadline ? deadlineBadge(p.deadline) : (p.announced ? `Announced ${formatDate(p.announced)}` : 'See the institute notice board')}
         </span>
         <div class="flex gap-2" style="flex-wrap:wrap;">
           ${officialLinkButton(p.section_url, 'Section', 'btn btn-ghost btn-sm')}

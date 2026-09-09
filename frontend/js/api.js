@@ -405,6 +405,21 @@ const api = {
     return apiRequest(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 
+  // ---------- Official feed automation ----------
+  // Items pulled from institution APIs, with the publisher's own deadline.
+  getFeedItems(filters = {}) {
+    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined));
+    const q = new URLSearchParams(clean).toString();
+    return apiRequest(`/feeds/items${q ? `?${q}` : ''}`);
+  },
+  // Admin-only: makes outbound requests to other people's servers.
+  syncFeeds() {
+    return apiRequest('/feeds/sync', { method: 'POST' });
+  },
+  getDeadlines(withinDays = 30) {
+    return apiRequest(`/deadlines?within_days=${encodeURIComponent(withinDays)}`);
+  },
+
   // ---------- AIIA opportunity hub ----------
   // Read-only: everything it returns lives on aiia.gov.in.
   getAiiaHub() {

@@ -77,7 +77,7 @@ function opportunityCard(item) {
       }
 
       <div class="internship-footer">
-        <span class="text-caption">${item.deadline ? `Deadline: ${formatDate(item.deadline)}` : 'Open until filled'}</span>
+        ${deadlineBadge(item.deadline)}
         <div class="flex gap-2">
           <a class="btn btn-ghost btn-sm" href="what-if.html?id=${encodeURIComponent(item.id)}">What-If</a>
           ${

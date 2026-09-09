@@ -13,6 +13,8 @@ from sqlalchemy.orm import sessionmaker, Session
 import io
 import pypdf
 import urllib.request
+import time
+import urllib.parse
 
 # Load environment variables FIRST — every os.environ read below depends on it.
 from dotenv import load_dotenv
@@ -5615,6 +5617,438 @@ def aiia_hub(user: StudentModel = Depends(get_current_student)):
         "sections": AIIA_SECTIONS,
     }
 
+# =====================================================================
+# OFFICIAL FEED AUTOMATION
+# ---------------------------------------------------------------------
+# Instead of a hand-maintained list going stale, the platform pulls new
+# notices, vacancies and tenders straight from the institutions that
+# publish them, and keeps their real closing dates.
+#
+# AIIA's website is a React app backed by a public JSON API — the same
+# endpoints its own pages call. Each row carries a start_date, an
+# end_date and the file name of the official PDF, so we get an accurate
+# deadline and a first-party link without guessing at anything.
+#
+# Rules this module holds to:
+#   * only official endpoints; no aggregators, no scraping of third
+#     parties
+#   * every item keeps the publisher's own deadline, never an invented one
+#   * an item with no usable title or link is dropped rather than shown
+#     half-empty
+#   * a source that is unreachable is recorded as failed and retried; it
+#     never takes the app down and never wipes what was already collected
+# =====================================================================
+
+import threading
+import urllib.error
+
+FEED_USER_AGENT = "CareerNexus/1.0 (SIH26044 student project; contact via aiia.gov.in)"
+FEED_TIMEOUT = 20          # seconds per request
+FEED_SYNC_INTERVAL = 6 * 60 * 60   # re-check every six hours
+
+# AIIA maps its document types to numeric ids in its own viewpdf route.
+AIIA_DOC_TYPE = {"vacancy": 1, "notice": 2, "tender": 3}
+
+# The sources we pull from. `parser` names the shape of the response so a
+# new source can be added without touching the sync loop.
+FEED_SOURCES = [
+    {
+        "id": "aiia_notices",
+        "name": "AIIA — Notices",
+        "organisation": "All India Institute of Ayurveda",
+        "category": "Notice",
+        "url": "https://aiia.gov.in/getnoticedetail",
+        "parser": "aiia",
+        "list_key": "noticeList",
+        "doc_type": "notice",
+        "homepage": "https://aiia.gov.in/#/noticesArchive",
+    },
+    {
+        "id": "aiia_vacancies",
+        "name": "AIIA — Vacancies & Recruitment",
+        "organisation": "All India Institute of Ayurveda",
+        "category": "Vacancy",
+        "url": "https://aiia.gov.in/getvacancydetail",
+        "parser": "aiia",
+        "list_key": "vacancyList",
+        "doc_type": "vacancy",
+        "homepage": "https://aiia.gov.in/#/archivesVacancies",
+    },
+    {
+        "id": "aiia_tenders",
+        "name": "AIIA — Tenders",
+        "organisation": "All India Institute of Ayurveda",
+        "category": "Tender",
+        "url": "https://aiia.gov.in/gettenderdetail",
+        "parser": "aiia",
+        "list_key": "tenderList",
+        "doc_type": "tender",
+        "homepage": "https://aiia.gov.in/#/archiveTender",
+    },
+    {
+        "id": "aiia_news",
+        "name": "AIIA — News & Announcements",
+        "organisation": "All India Institute of Ayurveda",
+        "category": "News",
+        "url": "https://aiia.gov.in/getcurrentnewsnoticedetail",
+        "parser": "aiia",
+        "list_key": "newsList",
+        "doc_type": "notice",
+        "homepage": "https://aiia.gov.in/#/newsArchive",
+    },
+]
+
+FEED_SOURCES_BY_ID = {s["id"]: s for s in FEED_SOURCES}
+
+
+class FeedItemModel(Base):
+    """One listing pulled from an official source.
+
+    `external_id` is the publisher's own id for the row, so re-running the
+    sync updates an item in place instead of duplicating it — a title or a
+    deadline can be corrected upstream and we follow.
+    """
+    __tablename__ = "feed_items"
+
+    id = Column(String, primary_key=True, index=True)
+    source_id = Column(String, nullable=False, index=True)
+    external_id = Column(String, nullable=False, index=True)
+    title = Column(Text, nullable=False)
+    category = Column(String, nullable=False, default="Notice")
+    organisation = Column(String, nullable=False, default="")
+    official_url = Column(String, nullable=False, default="")
+    published_on = Column(String, default="")   # publisher's start_date
+    deadline = Column(String, default="")       # publisher's end_date
+    first_seen = Column(String, nullable=False)
+    last_seen = Column(String, nullable=False)
+
+
+class FeedSyncModel(Base):
+    """The outcome of the last sync per source, so the UI can be honest
+    about how fresh the data is and when a source is failing."""
+    __tablename__ = "feed_syncs"
+
+    source_id = Column(String, primary_key=True, index=True)
+    last_run = Column(String, default="")
+    status = Column(String, default="never")    # ok | failed | never
+    message = Column(Text, default="")
+    items_seen = Column(Integer, default=0)
+    items_new = Column(Integer, default=0)
+
+
+Base.metadata.create_all(bind=engine)
+
+
+def _fetch_json(url: str):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": FEED_USER_AGENT,
+        "Accept": "application/json",
+    })
+    with urllib.request.urlopen(req, timeout=FEED_TIMEOUT) as resp:
+        return json.loads(resp.read().decode("utf-8", errors="replace"))
+
+
+def _clean_date(value) -> str:
+    """Keep an ISO yyyy-mm-dd date, drop anything else.
+
+    A malformed date is worse than a missing one: it would sort wrongly and
+    could show a student a deadline that never existed.
+    """
+    text = str(value or "").strip()[:10]
+    if len(text) == 10 and text[4] == "-" and text[7] == "-":
+        try:
+            datetime.datetime.strptime(text, "%Y-%m-%d")
+            return text
+        except ValueError:
+            return ""
+    return ""
+
+
+def _parse_aiia(source: dict, payload: dict) -> list:
+    """AIIA returns {listKey: [{id, title_english, start_date, end_date,
+    pdf_name, ...}]}. The PDF is served through its viewpdf route."""
+    rows = payload.get(source["list_key"]) or []
+    doc_type_id = AIIA_DOC_TYPE.get(source.get("doc_type", "notice"), 2)
+    out = []
+    for row in rows:
+        title = (row.get("title_english") or row.get("title_hindi") or "").strip()
+        pdf = (row.get("pdf_name") or "").strip()
+        if not title:
+            continue  # nothing useful to show
+        url = (
+            f"https://aiia.gov.in/viewpdf?docTypeId={doc_type_id}"
+            f"&pdfName={urllib.parse.quote(pdf)}"
+            if pdf else source["homepage"]
+        )
+        out.append({
+            "external_id": str(row.get("id") or pdf or title[:60]),
+            "title": " ".join(title.split()),
+            "published_on": _clean_date(row.get("start_date")),
+            "deadline": _clean_date(row.get("end_date")),
+            "official_url": url,
+        })
+    return out
+
+
+FEED_PARSERS = {"aiia": _parse_aiia}
+
+
+def sync_one_source(source: dict, db: Session) -> dict:
+    """Pull one source and upsert its rows. Never raises."""
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    record = db.query(FeedSyncModel).filter(FeedSyncModel.source_id == source["id"]).first()
+    if record is None:
+        record = FeedSyncModel(source_id=source["id"])
+        db.add(record)
+
+    try:
+        payload = _fetch_json(source["url"])
+        items = FEED_PARSERS[source["parser"]](source, payload)
+    except (urllib.error.URLError, TimeoutError, ValueError, KeyError, OSError) as e:
+        # A source being down is normal and temporary. Record it and leave
+        # everything already collected in place.
+        record.last_run = now
+        record.status = "failed"
+        record.message = f"{type(e).__name__}: {e}"[:300]
+        db.commit()
+        return {"source_id": source["id"], "status": "failed", "new": 0, "seen": 0}
+
+    # Load this source's rows in one query and match in memory. Querying
+    # per item meant ~160 round trips to a database in another region,
+    # which took nearly two minutes — long enough for the browser to give
+    # up on the admin's "Sync now" click.
+    existing = {
+        row.external_id: row
+        for row in db.query(FeedItemModel).filter(FeedItemModel.source_id == source["id"]).all()
+    }
+
+    new_count = 0
+    for item in items:
+        row = existing.get(item["external_id"])
+        if row is None:
+            row = FeedItemModel(
+                id=new_id("feed"),
+                source_id=source["id"],
+                external_id=item["external_id"],
+                first_seen=now,
+            )
+            row.last_seen = now
+            db.add(row)
+            existing[item["external_id"]] = row
+            new_count += 1
+
+        url = clean_public_url(item["official_url"])
+        # Only touch a row that actually changed, so a sync where nothing
+        # moved upstream issues no UPDATE at all. last_seen is deliberately
+        # part of that: stamping it every run would dirty every row and undo
+        # the saving. How fresh the data is comes from FeedSyncModel.last_run,
+        # which is what the UI shows anyway.
+        if (
+            row.title != item["title"]
+            or row.official_url != url
+            or row.published_on != item["published_on"]
+            or row.deadline != item["deadline"]
+            or row.category != source["category"]
+        ):
+            row.title = item["title"]
+            row.category = source["category"]
+            row.organisation = source["organisation"]
+            row.official_url = url
+            row.published_on = item["published_on"]
+            row.deadline = item["deadline"]
+            row.last_seen = now
+
+    record.last_run = now
+    record.status = "ok"
+    record.message = ""
+    record.items_seen = len(items)
+    record.items_new = new_count
+    db.commit()
+    return {"source_id": source["id"], "status": "ok", "new": new_count, "seen": len(items)}
+
+
+def sync_all_sources() -> list:
+    db = SessionLocal()
+    try:
+        return [sync_one_source(s, db) for s in FEED_SOURCES]
+    finally:
+        db.close()
+
+
+def _feed_sync_loop():
+    """Background refresh. Daemon thread, so it never blocks shutdown."""
+    while True:
+        try:
+            results = sync_all_sources()
+            ok = sum(1 for r in results if r["status"] == "ok")
+            new = sum(r["new"] for r in results)
+            print(f"Official feeds: synced {ok}/{len(results)} sources, {new} new items")
+        except Exception as e:  # a bug here must not kill the thread
+            print(f"Official feeds: sync loop error ({type(e).__name__}: {e})")
+        time.sleep(FEED_SYNC_INTERVAL)
+
+
+def start_feed_scheduler():
+    """Start the periodic sync unless it has been switched off.
+
+    Off by default in tests: the suite should not depend on a government
+    website being reachable, and it should not hammer one either.
+    """
+    if os.environ.get("DISABLE_FEED_SYNC", "").strip().lower() in ("1", "true", "yes"):
+        print("Official feeds: automatic sync disabled by DISABLE_FEED_SYNC")
+        return
+    threading.Thread(target=_feed_sync_loop, name="feed-sync", daemon=True).start()
+
+
+def days_until(date_text: str):
+    """Whole days from today to an ISO date; None when there is no date."""
+    if not date_text:
+        return None
+    try:
+        target = datetime.datetime.strptime(date_text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    return (target - datetime.date.today()).days
+
+
+def _feed_item_out(row: FeedItemModel) -> dict:
+    left = days_until(row.deadline)
+    return {
+        "id": row.id,
+        "source_id": row.source_id,
+        "source_name": FEED_SOURCES_BY_ID.get(row.source_id, {}).get("name", row.source_id),
+        "title": row.title,
+        "category": row.category,
+        "organisation": row.organisation,
+        "official_url": row.official_url,
+        "published_on": row.published_on,
+        "deadline": row.deadline,
+        "days_left": left,
+        "is_open": left is None or left >= 0,
+        "first_seen": row.first_seen,
+    }
+
+
+@app.get("/api/feeds/items")
+def list_feed_items(
+    category: Optional[str] = Query(None),
+    include_closed: bool = Query(False),
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Everything pulled from official sources, soonest deadline first.
+
+    Items whose deadline has passed are hidden unless asked for — a closed
+    listing is noise for a student looking for something to apply to.
+    """
+    q = db.query(FeedItemModel)
+    if category:
+        q = q.filter(FeedItemModel.category == category)
+
+    items = [_feed_item_out(r) for r in q.all()]
+    if not include_closed:
+        items = [i for i in items if i["is_open"]]
+
+    # Soonest real deadline first; undated items after them, newest first.
+    items.sort(key=lambda i: (
+        i["days_left"] is None,
+        i["days_left"] if i["days_left"] is not None else 0,
+        i["published_on"] or "",
+    ))
+
+    counts = {}
+    for i in items:
+        counts[i["category"]] = counts.get(i["category"], 0) + 1
+
+    syncs = {s.source_id: s for s in db.query(FeedSyncModel).all()}
+    last_run = max((s.last_run for s in syncs.values() if s.last_run), default="")
+
+    return {
+        "items": items,
+        "total": len(items),
+        "categories": [{"name": k, "count": v} for k, v in sorted(counts.items())],
+        "closing_soon": sum(1 for i in items if i["days_left"] is not None and 0 <= i["days_left"] <= 7),
+        "last_synced": last_run,
+        "sources": [
+            {
+                "id": s["id"],
+                "name": s["name"],
+                "organisation": s["organisation"],
+                "homepage": s["homepage"],
+                "status": syncs[s["id"]].status if s["id"] in syncs else "never",
+                "last_run": syncs[s["id"]].last_run if s["id"] in syncs else "",
+                "items_seen": syncs[s["id"]].items_seen if s["id"] in syncs else 0,
+                "message": syncs[s["id"]].message if s["id"] in syncs else "",
+            }
+            for s in FEED_SOURCES
+        ],
+    }
+
+
+@app.post("/api/feeds/sync")
+def trigger_feed_sync(admin: StudentModel = Depends(get_current_admin)):
+    """Run every source now. Admin-only: it makes outbound requests to
+    other people's servers, so it is not something any visitor can trigger."""
+    results = sync_all_sources()
+    return {
+        "results": results,
+        "new_items": sum(r["new"] for r in results),
+        "sources_ok": sum(1 for r in results if r["status"] == "ok"),
+        "sources_total": len(results),
+    }
+
+
+@app.get("/api/deadlines")
+def upcoming_deadlines(
+    within_days: int = Query(30),
+    user: StudentModel = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """One combined deadline board: platform postings, the curated official
+    catalogue, and everything the feeds have pulled in."""
+    out = []
+
+    for opp in db.query(InternshipModel).all():
+        left = days_until(opp.deadline or "")
+        if left is None or left < 0:
+            continue
+        out.append({
+            "title": opp.title,
+            "organisation": opp.company,
+            "category": (opp.opportunity_type or "internship").replace("_", " ").title(),
+            "deadline": opp.deadline,
+            "days_left": left,
+            "official_url": opp.official_url or "",
+            "internal_url": "" if (opp.source_type or "platform") == "external" else opp.id,
+            "kind": "opportunity",
+        })
+
+    for row in db.query(FeedItemModel).all():
+        left = days_until(row.deadline)
+        if left is None or left < 0:
+            continue
+        out.append({
+            "title": row.title,
+            "organisation": row.organisation,
+            "category": row.category,
+            "deadline": row.deadline,
+            "days_left": left,
+            "official_url": row.official_url,
+            "internal_url": "",
+            "kind": "feed",
+        })
+
+    out = [d for d in out if d["days_left"] <= within_days]
+    out.sort(key=lambda d: d["days_left"])
+    return {
+        "within_days": within_days,
+        "total": len(out),
+        "closing_this_week": sum(1 for d in out if d["days_left"] <= 7),
+        "deadlines": out,
+    }
+
+
+start_feed_scheduler()
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

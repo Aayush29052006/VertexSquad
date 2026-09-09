@@ -489,7 +489,7 @@ def seed_database():
                 InternshipModel(
                     id="int_1",
                     title="Frontend Developer Intern",
-                    company="TechNova",
+                    company="CareerNexus Demo Employer",
                     location="Pune",
                     work_mode="Hybrid",
                     stipend="₹15,000/month",
@@ -500,7 +500,7 @@ def seed_database():
                 InternshipModel(
                     id="int_2",
                     title="Full Stack Engineer Intern",
-                    company="FinEdge Solutions",
+                    company="CareerNexus Demo Employer",
                     location="Bengaluru",
                     work_mode="Remote",
                     stipend="₹20,000/month",
@@ -511,7 +511,7 @@ def seed_database():
                 InternshipModel(
                     id="int_3",
                     title="Data Analyst Intern",
-                    company="InsightWorks",
+                    company="CareerNexus Demo Employer",
                     location="Remote",
                     work_mode="Remote",
                     stipend="₹12,000/month",
@@ -522,7 +522,7 @@ def seed_database():
                 InternshipModel(
                     id="int_4",
                     title="Backend Developer Intern",
-                    company="CloudSprint",
+                    company="CareerNexus Demo Employer",
                     location="Hyderabad",
                     work_mode="On-site",
                     stipend="₹18,000/month",
@@ -533,7 +533,7 @@ def seed_database():
                 InternshipModel(
                     id="int_5",
                     title="UI/UX Design Intern",
-                    company="PixelForge Studio",
+                    company="CareerNexus Demo Employer",
                     location="Mumbai",
                     work_mode="Hybrid",
                     stipend="₹10,000/month",
@@ -4068,7 +4068,7 @@ def seed_platform_v2():
                 "email": "recruiter@technova.example.com",
                 "full_name": "Priya Nair",
                 "role": ROLE_RECRUITER,
-                "org_name": "TechNova",
+                "org_name": "CareerNexus Demo Employer",
                 "designation": "Campus Hiring Lead",
                 "location": "Pune, Maharashtra",
             },
@@ -4190,7 +4190,7 @@ def seed_platform_v2():
                     InternshipModel(
                         id="opp_job_1",
                         title="Graduate Software Engineer",
-                        company="FinEdge Solutions",
+                        company="CareerNexus Demo Employer",
                         location="Bengaluru",
                         work_mode="Hybrid",
                         stipend="Rs. 8,00,000/year",
@@ -4207,7 +4207,7 @@ def seed_platform_v2():
                     InternshipModel(
                         id="opp_job_2",
                         title="Associate Data Analyst",
-                        company="InsightWorks",
+                        company="CareerNexus Demo Employer",
                         location="Remote",
                         work_mode="Remote",
                         stipend="Rs. 6,50,000/year",
@@ -4224,7 +4224,7 @@ def seed_platform_v2():
                     InternshipModel(
                         id="opp_app_1",
                         title="Cloud Support Apprentice (NAPS)",
-                        company="CloudSprint",
+                        company="CareerNexus Demo Employer",
                         location="Hyderabad",
                         work_mode="On-site",
                         stipend="Rs. 14,000/month",
@@ -4242,7 +4242,7 @@ def seed_platform_v2():
                     InternshipModel(
                         id="opp_fdp_1",
                         title="FDP: Applied Machine Learning for Engineering Faculty",
-                        company="TechNova",
+                        company="CareerNexus Demo Employer",
                         location="Pune",
                         work_mode="Hybrid",
                         stipend="Sponsored",
@@ -4258,7 +4258,7 @@ def seed_platform_v2():
                     InternshipModel(
                         id="opp_fac_1",
                         title="Faculty Summer Internship — Platform Engineering",
-                        company="FinEdge Solutions",
+                        company="CareerNexus Demo Employer",
                         location="Bengaluru",
                         work_mode="On-site",
                         stipend="Rs. 60,000/month",
@@ -4274,7 +4274,7 @@ def seed_platform_v2():
                     InternshipModel(
                         id="opp_proj_1",
                         title="Live Industry Project — Campus Placement Analytics",
-                        company="InsightWorks",
+                        company="CareerNexus Demo Employer",
                         location="Remote",
                         work_mode="Remote",
                         stipend="Rs. 1,50,000 consultancy grant",
@@ -4399,8 +4399,8 @@ def seed_platform_v2():
                 [
                     LearningProgramModel(
                         id="lp_seed_1",
-                        title="TechNova Frontend Bootcamp",
-                        provider="TechNova",
+                        title="Sample Frontend Bootcamp",
+                        provider="CareerNexus Demo Employer",
                         program_type="workshop",
                         description="Four weekends of React and TypeScript taught by the engineers who run our web platform. Top performers are fast-tracked to interview.",
                         skills_covered=json.dumps(["React", "TypeScript", "JavaScript", "CSS"]),
@@ -4413,8 +4413,8 @@ def seed_platform_v2():
                     ),
                     LearningProgramModel(
                         id="lp_seed_2",
-                        title="CloudSprint Cloud Foundations Certification",
-                        provider="CloudSprint",
+                        title="Sample Cloud Foundations Certification",
+                        provider="CareerNexus Demo Employer",
                         program_type="certification",
                         description="Prepares you for the AWS Cloud Practitioner exam. Exam voucher sponsored for students who complete every module.",
                         skills_covered=json.dumps(["AWS", "Docker"]),
@@ -4427,8 +4427,8 @@ def seed_platform_v2():
                     ),
                     LearningProgramModel(
                         id="lp_seed_3",
-                        title="FinEdge Data Mentorship",
-                        provider="FinEdge Solutions",
+                        title="Sample Data Mentorship",
+                        provider="CareerNexus Demo Employer",
                         program_type="mentorship",
                         description="Eight weeks paired one-to-one with a senior data analyst. Fortnightly calls and one portfolio project reviewed in detail.",
                         skills_covered=json.dumps(["SQL", "Python", "Power BI", "Communication"]),
@@ -4442,7 +4442,7 @@ def seed_platform_v2():
                     LearningProgramModel(
                         id="lp_seed_4",
                         title="Teaching Modern Backend Engineering",
-                        provider="TechNova",
+                        provider="CareerNexus Demo Employer",
                         program_type="workshop",
                         description="A faculty-facing workshop on bringing containers, CI and API design into an undergraduate syllabus.",
                         skills_covered=json.dumps(["Docker", "FastAPI", "Git"]),
@@ -4464,7 +4464,7 @@ def seed_platform_v2():
                     CollaborationModel(
                         id="col_seed_1",
                         title="Guest Lecture: What a Production Codebase Actually Looks Like",
-                        organisation="TechNova",
+                        organisation="CareerNexus Demo Employer",
                         collab_type="guest_lecture",
                         description="A working engineer walks through a real repository — reviews, tests, deploys and all — for final-year students.",
                         skills_involved=json.dumps(["Git", "Python", "Communication"]),
@@ -4479,7 +4479,7 @@ def seed_platform_v2():
                     CollaborationModel(
                         id="col_seed_2",
                         title="Innovation Challenge: Rural Healthcare Access",
-                        organisation="InsightWorks",
+                        organisation="CareerNexus Demo Employer",
                         collab_type="innovation_challenge",
                         description="Six-week challenge open to student teams of three to five. Winning team gets a paid pilot and internship offers.",
                         skills_involved=json.dumps(["Python", "SQL", "Problem Solving"]),
@@ -4494,7 +4494,7 @@ def seed_platform_v2():
                     CollaborationModel(
                         id="col_seed_3",
                         title="Joint Research: Skill-Demand Forecasting for Tier-2 Campuses",
-                        organisation="FinEdge Solutions",
+                        organisation="CareerNexus Demo Employer",
                         collab_type="research",
                         description="Co-authored research with a faculty lead on predicting regional skill demand. Data and compute provided.",
                         skills_involved=json.dumps(["Python", "SQL"]),
@@ -4509,9 +4509,9 @@ def seed_platform_v2():
                     CollaborationModel(
                         id="col_seed_4",
                         title="Live Project: Campus Energy Dashboard",
-                        organisation="CloudSprint",
+                        organisation="CareerNexus Demo Employer",
                         collab_type="live_project",
-                        description="Build and ship a real dashboard for campus energy use, mentored by a CloudSprint engineer. Counts as a verified portfolio project.",
+                        description="Build and ship a real dashboard for campus energy use, mentored by an industry engineer. Counts as a verified portfolio project.",
                         skills_involved=json.dumps(["React", "Power BI", "SQL"]),
                         mode="Hybrid",
                         location="Jalgaon",
@@ -4628,7 +4628,7 @@ def seed_platform_v2():
                         verifier_name="Priya Nair",
                         verifier_role=ROLE_RECRUITER,
                         verified_at="2026-09-02",
-                        note="Shipped production React components during the TechNova internship.",
+                        note="Shipped production React components during the internship.",
                     ),
                     VerificationModel(
                         id="ver_seed_3",
@@ -5257,12 +5257,363 @@ def seed_external_catalogue():
         ).all():
             row.url = ""
 
+        # The sample listings originally named five invented employers. The
+        # rows already exist wherever an earlier build ran, so rename them
+        # here rather than only in the seed literal: nothing on the site
+        # should present a company that does not exist as if it hires.
+        RETIRED_NAMES = (
+            "TechNova", "FinEdge Solutions", "CloudSprint",
+            "InsightWorks", "PixelForge Studio",
+        )
+        DEMO_EMPLOYER = "CareerNexus Demo Employer"
+        for name in RETIRED_NAMES:
+            for row in db.query(InternshipModel).filter(InternshipModel.company == name).all():
+                row.company = DEMO_EMPLOYER
+            for row in db.query(LearningProgramModel).filter(LearningProgramModel.provider == name).all():
+                row.provider = DEMO_EMPLOYER
+            for row in db.query(CollaborationModel).filter(CollaborationModel.organisation == name).all():
+                row.organisation = DEMO_EMPLOYER
+            for row in db.query(StudentModel).filter(StudentModel.org_name == name).all():
+                row.org_name = DEMO_EMPLOYER
+
         db.commit()
     finally:
         db.close()
 
 
 seed_external_catalogue()
+
+# =====================================================================
+# AIIA OPPORTUNITY HUB
+# ---------------------------------------------------------------------
+# SIH26044 is set by the All India Institute of Ayurveda, an autonomous
+# institute under the Ministry of Ayush, so the platform carries a hub for
+# what AIIA itself offers students.
+#
+# Everything here was read off aiia.gov.in — the programme names, the
+# announcement dates and the document links are the institute's own. The
+# site is a single-page app, so its routes are hash routes (/#/courses...)
+# and they are reproduced exactly as the site's navigation emits them.
+#
+# Where a detail is not stated on the public listing — fees, precise
+# eligibility — the field says to consult the official brochure rather than
+# guessing. An invented eligibility rule would be worse than a missing one:
+# a student could be turned away at the counter because of it.
+#
+# Two kinds of link, deliberately:
+#   * section pages are stable and survive the academic year
+#   * programme documents are the authoritative source for that intake but
+#     are rotated as sessions close, so each card also belongs to a section
+#     the student can fall back to.
+# =====================================================================
+
+AIIA_SITE = "https://aiia.gov.in"
+AIIA_ORG = "All India Institute of Ayurveda"
+AIIA_MINISTRY = "Ministry of Ayush, Government of India"
+AIIA_LOCATION = "AIIA, New Delhi"
+
+# Stable sections of the official site, grouped for the hub's quick links.
+AIIA_SECTIONS = [
+    {
+        "group": "Admissions & Academics",
+        "links": [
+            {"label": "Courses Available", "url": f"{AIIA_SITE}/#/coursesAvailable",
+             "note": "Every course AIIA currently runs"},
+            {"label": "PhD Programme", "url": f"{AIIA_SITE}/#/phdprogram",
+             "note": "Doctoral research in Ayurveda"},
+            {"label": "PhD Admission", "url": f"{AIIA_SITE}/#/academicadmission",
+             "note": "Entrance notifications and admission rounds"},
+            {"label": "Postgraduate Courses", "url": f"{AIIA_SITE}/#/postgraduatecourse",
+             "note": "MD/MS Ayurveda specialisations"},
+            {"label": "Syllabus", "url": f"{AIIA_SITE}/#/syllabus",
+             "note": "Official syllabi by course"},
+            {"label": "Exams & Results", "url": f"{AIIA_SITE}/#/examsResults",
+             "note": "Examination notices and results"},
+        ],
+    },
+    {
+        "group": "Students",
+        "links": [
+            {"label": "Student Corner", "url": f"{AIIA_SITE}/#/studentCorner",
+             "note": "Notices and resources for enrolled students"},
+            {"label": "Student Council Committee", "url": f"{AIIA_SITE}/#/studentcouncilcommittee",
+             "note": "Student representation at the institute"},
+            {"label": "Placement Cell", "url": f"{AIIA_SITE}/#/placementcell",
+             "note": "The institute's placement committee"},
+            {"label": "Student Enrolment List", "url": f"{AIIA_SITE}/#/studentEnrollmentList",
+             "note": "Published enrolment lists"},
+        ],
+    },
+    {
+        "group": "Research",
+        "links": [
+            {"label": "Ongoing Research Projects", "url": f"{AIIA_SITE}/#/ongoingresearchprojects",
+             "note": "Projects currently running at AIIA"},
+            {"label": "Completed Research Projects", "url": f"{AIIA_SITE}/#/completedresearchprojects",
+             "note": "Published project outcomes"},
+            {"label": "Guidelines for Research", "url": f"{AIIA_SITE}/#/guidelinesforresearch",
+             "note": "Institutional research guidelines"},
+            {"label": "Research Application Form", "url": f"{AIIA_SITE}/#/researchform",
+             "note": "Form for research proposals"},
+            {"label": "International Journal of Ayurveda Research", "url": f"{AIIA_SITE}/#/internationalJournalofAyurvedaResearch",
+             "note": "AIIA's peer-reviewed journal (IJAR)"},
+        ],
+    },
+    {
+        "group": "Notices & Careers",
+        "links": [
+            {"label": "Notices", "url": f"{AIIA_SITE}/#/noticesArchive",
+             "note": "Official notices and circulars"},
+            {"label": "Vacancies", "url": f"{AIIA_SITE}/#/archivesVacancies",
+             "note": "Teaching, non-teaching and project posts"},
+            {"label": "News", "url": f"{AIIA_SITE}/#/newsArchive",
+             "note": "Institute news archive"},
+            {"label": "Tenders", "url": f"{AIIA_SITE}/#/archiveTender",
+             "note": "Procurement and tender notices"},
+        ],
+    },
+    {
+        "group": "Events & Training",
+        "links": [
+            {"label": "Training & Workshops", "url": f"{AIIA_SITE}/#/trainingWorkshop",
+             "note": "Training programmes and workshops"},
+            {"label": "Events", "url": f"{AIIA_SITE}/#/eventsList",
+             "note": "Conferences, seminars and institute events"},
+        ],
+    },
+    {
+        "group": "About AIIA",
+        "links": [
+            {"label": "About the Institute", "url": f"{AIIA_SITE}/#/aboutus",
+             "note": "India's first NABH-accredited AYUSH institute"},
+            {"label": "Mandate", "url": f"{AIIA_SITE}/#/mandate",
+             "note": "What the institute is charged with"},
+            {"label": "Institute Hospital", "url": f"{AIIA_SITE}/#/institutehospital",
+             "note": "Clinical services and departments"},
+            {"label": "Ministry of Ayush", "url": "https://ayush.gov.in",
+             "note": "The parent ministry"},
+        ],
+    },
+]
+
+# Specific programmes AIIA has announced, taken from its own listings.
+# `announced` is the date the institute published the notice.
+AIIA_PROGRAMMES = [
+    {
+        "id": "aiia_panchakarma_tech",
+        "title": "Panchakarma Technician Course, Batch 2026-27",
+        "category": "Certificate Course",
+        "department": "Department of Panchakarma",
+        "description": "Technician training in Panchakarma therapy procedures, run as a full batch intake by the institute.",
+        "announced": "2026-07-10",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/Academic_Brochure_10072026.pdf",
+        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
+    },
+    {
+        "id": "aiia_yoga_wellness",
+        "title": "Yoga Wellness Trainer Course",
+        "category": "Certificate Course",
+        "department": "Department of Swasthavritta",
+        "description": "Trainer-level certification in yoga for wellness. AIIA extended the application deadline for this intake by a separate notice.",
+        "announced": "2026-05-14",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/Academic_Brochure_Yoga.pdf",
+        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
+    },
+    {
+        "id": "aiia_aesthetic_assistant",
+        "title": "Ayurvedic Aesthetic Assistant Course (Session 2026-27)",
+        "category": "Certificate Course",
+        "department": "All India Institute of Ayurveda",
+        "description": "Skill course training assistants in Ayurvedic aesthetic practice for the 2026-27 academic session.",
+        "announced": "2026-08-20",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/Flyer_20082026_merged.pdf",
+        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
+    },
+    {
+        "id": "aiia_garbhini_mitra",
+        "title": "Garbhini Mitra Course",
+        "category": "Certificate Course",
+        "department": "Department of Prasuti Tantra & Stri Roga",
+        "description": "Course on Ayurvedic maternal care. AIIA publishes the brochure together with the application form.",
+        "announced": "2026-08-10",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/Academic_Brochure_08082026.pdf",
+        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
+    },
+    {
+        "id": "aiia_hospital_management",
+        "title": "Certificate Course in Hospital Management 2026",
+        "category": "Certificate Course",
+        "department": "All India Institute of Ayurveda",
+        "description": "Hospital administration and management training for the 2026 session.",
+        "announced": "2026-07-24",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/CCHM_2026_Admission_Notification_AIIA.pdf",
+        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
+    },
+    {
+        "id": "aiia_ayurprabha",
+        "title": "AYURPRABHA-2K26 — Workshop on Ayurveda Dermatology & Cosmetology",
+        "category": "Workshop",
+        "department": "All India Institute of Ayurveda",
+        "duration": "6 days",
+        "description": "Six-day hands-on workshop in Ayurvedic dermatology and cosmetology.",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/AYURPRABHA.pdf",
+        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
+    },
+    {
+        "id": "aiia_molecular_biology",
+        "title": "Skill Development Training Programme in Molecular Biology Techniques",
+        "category": "Training Programme",
+        "department": "Research laboratories, AIIA",
+        "description": "Laboratory skill training in molecular biology techniques for research students.",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/skill_training_adv_final.pdf",
+        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
+    },
+    {
+        "id": "aiia_qc_pharmacology",
+        "title": "Hands-on Training Programme in QC & Pharmacology Labs",
+        "category": "Training Programme",
+        "department": "Quality Control & Pharmacology Laboratories, AIIA",
+        "description": "Practical laboratory training in quality control and pharmacology methods.",
+        "announced": "2026-05-27",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/pdf/Hands_on_Training.pdf",
+        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
+    },
+    {
+        "id": "aiia_kaumaracon",
+        "title": "KAUMARACON-2026 — International Conference on Kaumarabhritya",
+        "category": "Conference",
+        "department": "Department of Kaumarabhritya",
+        "description": "International conference on Ayurvedic paediatrics. The first circular carries the call for participation.",
+        "mode": "Offline",
+        "certificate": False,
+        "url": f"{AIIA_SITE}/pdf/KAUMARACON-2026.jpeg",
+        "section_url": f"{AIIA_SITE}/#/eventsList",
+    },
+    {
+        "id": "aiia_saushrutam",
+        "title": "SAUSHRUTAM 2K26 — International Seminar on Shalya Tantra",
+        "category": "Seminar",
+        "department": "Department of Shalya Tantra",
+        "description": "International seminar on Ayurvedic surgery (Shalya Tantra).",
+        "announced": "2026-05-11",
+        "mode": "Offline",
+        "certificate": False,
+        "url": f"{AIIA_SITE}/pdf/Saushrutam_2026.pdf",
+        "section_url": f"{AIIA_SITE}/#/eventsList",
+    },
+    {
+        "id": "aiia_phd",
+        "title": "PhD in Ayurveda 2026-2027",
+        "category": "Research / Doctoral",
+        "department": "All India Institute of Ayurveda",
+        "description": "Doctoral admission in Ayurveda, through the AIIA PhD entrance examination. Entrance notices, answer keys and results are all published on the institute's notice board.",
+        "announced": "2026-03-16",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/#/phdprogram",
+        "section_url": f"{AIIA_SITE}/#/academicadmission",
+    },
+    {
+        "id": "aiia_aipr",
+        "title": "Advanced Certificate Course on Intellectual Property Rights (AIPR)",
+        "category": "Certificate Course",
+        "department": "All India Institute of Ayurveda",
+        "description": "Advanced certificate course covering intellectual property rights, announced by institute notice.",
+        "announced": "2026-03-20",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/#/noticesArchive",
+        "section_url": f"{AIIA_SITE}/#/noticesArchive",
+    },
+    {
+        "id": "aiia_dietician",
+        "title": "Ayurveda Dietician and Poshan Sahayak Course",
+        "category": "Certificate Course",
+        "department": "All India Institute of Ayurveda",
+        "description": "Course in Ayurvedic dietetics and nutrition support. AIIA invited applications by public notice.",
+        "announced": "2026-02-06",
+        "mode": "Offline",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/#/noticesArchive",
+        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
+    },
+    {
+        "id": "aiia_ecme_ayurvidya",
+        "title": "e-CME Courses on the Ayurvidya Portal",
+        "category": "Online Course",
+        "department": "All India Institute of Ayurveda",
+        "description": "Continuing medical education delivered online through the Ayurvidya portal, run in scheduled batches.",
+        "announced": "2026-07-14",
+        "mode": "Online",
+        "certificate": True,
+        "url": f"{AIIA_SITE}/#/noticesArchive",
+        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
+    },
+]
+
+
+@app.get("/api/aiia")
+def aiia_hub(user: StudentModel = Depends(get_current_student)):
+    """The AIIA opportunity hub.
+
+    Read-only and entirely first-party: every link points at aiia.gov.in or
+    the Ministry of Ayush. Nothing here is stored in our database, because
+    none of it is ours — the institute owns it and we only help students
+    find it.
+    """
+    programmes = []
+    for item in AIIA_PROGRAMMES:
+        programmes.append({
+            "id": item["id"],
+            "title": item["title"],
+            "category": item["category"],
+            "department": item.get("department", AIIA_ORG),
+            "description": item.get("description", ""),
+            "eligibility": item.get("eligibility", "See the official brochure"),
+            "duration": item.get("duration", "See the official brochure"),
+            "fees": item.get("fees", "See the official brochure"),
+            "deadline": item.get("deadline", ""),
+            "announced": item.get("announced", ""),
+            "mode": item.get("mode", "Offline"),
+            "location": item.get("location", AIIA_LOCATION),
+            "certificate": bool(item.get("certificate")),
+            "official_url": clean_public_url(item["url"]),
+            "section_url": clean_public_url(item.get("section_url", AIIA_SITE)),
+        })
+
+    # Newest announcement first; undated items fall to the end.
+    programmes.sort(key=lambda p: p["announced"] or "", reverse=True)
+
+    by_category = {}
+    for p in programmes:
+        by_category[p["category"]] = by_category.get(p["category"], 0) + 1
+
+    return {
+        "organisation": AIIA_ORG,
+        "ministry": AIIA_MINISTRY,
+        "location": AIIA_LOCATION,
+        "website": AIIA_SITE,
+        "ministry_website": "https://ayush.gov.in",
+        "programmes": programmes,
+        "categories": [{"name": k, "count": v} for k, v in sorted(by_category.items())],
+        "sections": AIIA_SECTIONS,
+    }
 
 if __name__ == "__main__":
     import uvicorn

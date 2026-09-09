@@ -30,6 +30,8 @@ const NAV_ITEMS = [
   { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
   { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN] },
   { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
+  // The institute behind SIH26044. Everything on this page is AIIA's own.
+  { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES },
   { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN] },
   { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis', roles: [ROLES.STUDENT, ROLES.ADMIN] },
   { href: 'documents.html', icon: '🗂️', label: 'My Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },

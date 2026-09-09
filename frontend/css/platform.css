@@ -584,3 +584,60 @@ body.public-portfolio .app-shell { display: block; }
   border-top: 1px solid var(--border);
   padding-top: var(--space-4);
 }
+
+/* ---------- AIIA opportunity hub ---------- */
+
+.aiia-card { display: flex; flex-direction: column; }
+.aiia-card-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+.aiia-icon { font-size: 1.6rem; line-height: 1; }
+
+/* Facts grid: the details a student needs before opening the brochure. */
+.aiia-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+.aiia-facts dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.aiia-facts dd { margin: 0; font-size: 0.84rem; line-height: 1.4; }
+
+.aiia-chip {
+  padding: 6px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.aiia-chip:hover { border-color: var(--primary); color: var(--text-primary); }
+.aiia-chip.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #06231c;
+}
+
+.aiia-links { display: flex; flex-direction: column; }
+.aiia-link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.aiia-link-row:last-child { border-bottom: none; }

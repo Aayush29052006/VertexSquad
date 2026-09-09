@@ -405,6 +405,12 @@ const api = {
     return apiRequest(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 
+  // ---------- AIIA opportunity hub ----------
+  // Read-only: everything it returns lives on aiia.gov.in.
+  getAiiaHub() {
+    return apiRequest('/aiia');
+  },
+
   // ---------- Institution analytics ----------
   getInstitutionAnalytics() {
     return apiRequest('/institution/analytics');

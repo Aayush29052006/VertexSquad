@@ -51,6 +51,8 @@ function opportunityCard(item) {
         </div>
       </div>
 
+      <div class="mb-2">${sourceBadge(item)}</div>
+
       ${item.description ? `<p class="text-caption mb-3">${escapeHtml(item.description)}</p>` : ''}
 
       <div class="internship-meta">
@@ -61,6 +63,8 @@ function opportunityCard(item) {
         ${item.openings > 1 ? `<span>👥 ${item.openings} openings</span>` : ''}
         ${item.min_cgpa ? `<span>🎓 Min CGPA ${item.min_cgpa}</span>` : ''}
       </div>
+
+      ${item.eligibility ? `<p class="text-caption mt-2">✅ <strong>Eligibility:</strong> ${escapeHtml(item.eligibility)}</p>` : ''}
 
       <div class="internship-chips mt-2">${(item.matched_skills || []).map((s) => skillChip(s)).join('')}</div>
       ${
@@ -76,7 +80,13 @@ function opportunityCard(item) {
         <span class="text-caption">${item.deadline ? `Deadline: ${formatDate(item.deadline)}` : 'Open until filled'}</span>
         <div class="flex gap-2">
           <a class="btn btn-ghost btn-sm" href="what-if.html?id=${encodeURIComponent(item.id)}">What-If</a>
-          <a class="btn btn-primary btn-sm" href="internship-details.html?id=${encodeURIComponent(item.id)}">View & Apply</a>
+          ${
+            // Externally-hosted listings send the student to the real portal.
+            // Showing "Apply" here would claim an application we cannot make.
+            isExternalListing(item)
+              ? officialLinkButton(item.official_url, 'Official Website')
+              : `<a class="btn btn-primary btn-sm" href="internship-details.html?id=${encodeURIComponent(item.id)}">View &amp; Apply</a>`
+          }
         </div>
       </div>
     </article>`;
@@ -85,11 +95,13 @@ function opportunityCard(item) {
 function applyFilters() {
   const type = document.getElementById('typeFilter').value;
   const mode = document.getElementById('modeFilter').value;
+  const source = document.getElementById('sourceFilter').value;
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
 
   const filtered = allOpportunities.filter((o) => {
     if (type && o.opportunity_type !== type) return false;
     if (mode && (o.work_mode || '').toLowerCase() !== mode.toLowerCase()) return false;
+    if (source && (o.source_type || 'platform') !== source) return false;
     if (search) {
       const haystack = [o.title, o.company, o.location, ...(o.required_skills || [])].join(' ').toLowerCase();
       if (!haystack.includes(search)) return false;
@@ -140,8 +152,19 @@ function applyFilters() {
           <option value="Hybrid">Hybrid</option>
           <option value="On-site">On-site</option>
         </select>
+        <select class="form-input" id="sourceFilter">
+          <option value="">All sources</option>
+          <option value="external">Official portals &amp; companies</option>
+          <option value="platform">Posted on CareerNexus</option>
+        </select>
         <span class="text-caption" id="resultCount"></span>
       </div>
+
+      <p class="text-caption mb-4">
+        🌐 Listings marked with an organisation's name are hosted on that organisation's own
+        site — the button takes you there to apply. Nothing on this page asks you to apply
+        through us for an opportunity we do not run.
+      </p>
 
       <div class="opp-grid" id="oppList"></div>
     `;
@@ -153,6 +176,7 @@ function applyFilters() {
     document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('typeFilter').addEventListener('change', applyFilters);
     document.getElementById('modeFilter').addEventListener('change', applyFilters);
+    document.getElementById('sourceFilter').addEventListener('change', applyFilters);
     applyFilters();
   } catch (err) {
     pageBody.innerHTML = errorState(err.message || 'Could not load opportunities.', 'location.reload');

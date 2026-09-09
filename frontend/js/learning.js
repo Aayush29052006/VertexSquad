@@ -14,11 +14,9 @@ const PROGRAM_ICONS = {
 
 function programCard(p) {
   const isIndustry = p.source === 'industry';
-  // The URL comes from whatever a recruiter typed, so it is validated as
-  // http(s) before it can become a link — see safeUrl() in ui.js.
-  const url = safeUrl(p.url);
+  const isOfficial = p.source === 'official';
   return `
-    <article class="program-card${isIndustry ? ' program-industry' : ''}">
+    <article class="program-card${isIndustry ? ' program-industry' : ''}${isOfficial ? ' program-official' : ''}">
       <div class="program-head">
         <span class="program-icon" aria-hidden="true">${PROGRAM_ICONS[p.program_type] || '📘'}</span>
         <div>
@@ -26,18 +24,19 @@ function programCard(p) {
           <p class="program-provider">${escapeHtml(p.provider)}</p>
         </div>
         ${isIndustry ? '<span class="badge badge-success">Industry partner</span>' : ''}
+        ${isOfficial ? '<span class="source-badge source-official">🌐 Official platform</span>' : ''}
       </div>
       ${p.description ? `<p class="text-caption mb-2">${escapeHtml(p.description)}</p>` : ''}
       <div class="program-meta">
         <span>${escapeHtml((p.program_type || '').replace(/^\w/, (c) => c.toUpperCase()))}</span>
         ${p.duration ? `<span>⏱ ${escapeHtml(p.duration)}</span>` : ''}
         ${p.cost ? `<span>💰 ${escapeHtml(p.cost)}</span>` : ''}
+        ${p.certificate ? '<span>🎖️ Certificate</span>' : ''}
       </div>
-      ${
-        url
-          ? `<a class="btn btn-secondary btn-sm mt-3" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Course ↗</a>`
-          : ''
-      }
+      ${p.eligibility ? `<p class="text-caption mt-2">✅ ${escapeHtml(p.eligibility)}</p>` : ''}
+      <div class="mt-3">
+        ${officialLinkButton(p.url, 'Official Website', 'btn btn-secondary btn-sm')}
+      </div>
     </article>`;
 }
 
@@ -73,8 +72,11 @@ async function renderCatalogue(container) {
       return;
     }
     container.innerHTML = `
-      <h2 class="text-section-heading mb-1">All Industry Programs</h2>
-      <p class="text-caption mb-4">Published directly by hiring companies, whether or not they close one of your gaps.</p>
+      <h2 class="text-section-heading mb-1">All Courses &amp; Certifications</h2>
+      <p class="text-caption mb-4">
+        Official platforms and industry partners, whether or not they close one of your gaps.
+        Every link opens the provider's own website — CareerNexus does not host these courses.
+      </p>
       <div class="program-grid">${programs.map(programCard).join('')}</div>`;
   } catch (err) {
     container.innerHTML = `<div class="card"><p class="form-error">${escapeHtml(err.message)}</p></div>`;

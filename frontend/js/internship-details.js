@@ -38,6 +38,7 @@ function renderDetails(pageBody, item) {
       <div>
         <h1 class="text-page-heading">${escapeHtml(item.title)}</h1>
         <p class="text-body mt-1">${escapeHtml(item.company)}</p>
+        <div class="mt-2">${sourceBadge(item)}</div>
         <div class="details-meta-row">
           <span>📍 ${escapeHtml(item.location)}</span>
           <span>💻 ${escapeHtml(item.work_mode)}</span>
@@ -95,16 +96,30 @@ function renderDetails(pageBody, item) {
       <div>
         <div class="card apply-sticky">
           <p class="text-label mb-1">Application Deadline</p>
-          <p class="text-card-heading mb-4">${formatDate(item.deadline)}</p>
+          <p class="text-card-heading mb-4">${item.deadline ? formatDate(item.deadline) : 'Open until filled'}</p>
           ${matchBadge(item.match_score)}
-          <button class="btn btn-primary btn-block btn-lg mt-4" id="applyBtn">Apply Now</button>
+          ${
+            // An externally-hosted listing is applied for on its own portal.
+            // We show the way there and say so plainly, instead of an Apply
+            // button that would only write a row in our own database.
+            isExternalListing(item)
+              ? `<div class="external-apply mt-4">
+                   <p class="text-caption mb-3">
+                     This opportunity is hosted by <strong>${escapeHtml(item.source_name || item.company)}</strong>.
+                     Applications are made on their official website, not on CareerNexus.
+                   </p>
+                   ${officialLinkButton(item.official_url, 'Apply on Official Portal', 'btn btn-primary btn-block btn-lg')}
+                 </div>`
+              : `<button class="btn btn-primary btn-block btn-lg mt-4" id="applyBtn">Apply Now</button>`
+          }
           <button class="btn btn-secondary btn-block mt-3" id="prepBtn">🤖 Prepare with AI</button>
         </div>
       </div>
     </div>
   `;
 
-  document.getElementById('applyBtn').addEventListener('click', openApplyModal);
+  // Only present for platform-hosted listings.
+  document.getElementById('applyBtn')?.addEventListener('click', openApplyModal);
   document.getElementById('prepBtn').addEventListener('click', openPrepModal);
 }
 

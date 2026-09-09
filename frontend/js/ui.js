@@ -228,6 +228,49 @@ function matchBadge(score) {
   return `<span class="badge badge-${tier === 'excellent' ? 'success' : tier === 'good' ? 'info' : tier === 'moderate' ? 'warning' : 'danger'}">${label}</span>`;
 }
 
+/* ---------- Links to official external sources ----------
+   Most of what this platform lists is run by somebody else: a government
+   scheme, a company's careers page, an official learning platform. Those
+   listings must send the student to the real source rather than to a page
+   of ours pretending to own them.
+
+   Every such link says where it goes, opens in a new tab, and carries the
+   ↗ mark, so nobody clicks expecting to stay on CareerNexus. */
+
+function externalHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch (_) {
+    return '';
+  }
+}
+
+/* A button that leaves the site. Returns '' for anything that is not a
+   valid http(s) URL, so a bad link renders as no button at all rather
+   than as a dead one. */
+function officialLinkButton(url, label = 'Official Website', className = 'btn btn-primary btn-sm') {
+  const safe = safeUrl(url);
+  if (!safe) return '';
+  const host = externalHost(safe);
+  return `<a class="${className} external-link" href="${escapeHtml(safe)}"
+             target="_blank" rel="noopener noreferrer"
+             title="Opens ${escapeHtml(host)} in a new tab">${escapeHtml(label)}<span class="ext-arrow" aria-hidden="true">↗</span><span class="sr-only"> (opens ${escapeHtml(host)} in a new tab)</span></a>`;
+}
+
+/* Small label naming who actually runs a listing. */
+function sourceBadge(item) {
+  if ((item.source_type || 'platform') !== 'external') {
+    return '<span class="source-badge source-platform">Posted on CareerNexus</span>';
+  }
+  const who = item.source_name || item.company || 'Official source';
+  const host = externalHost(item.official_url || '');
+  return `<span class="source-badge source-official" title="${escapeHtml(host)}">🌐 ${escapeHtml(who)}</span>`;
+}
+
+function isExternalListing(item) {
+  return (item.source_type || 'platform') === 'external';
+}
+
 /* ---------- Skill chips ---------- */
 function skillChip(name, variant = 'default') {
   const cls = variant === 'missing' ? 'skill-chip chip-missing' : 'skill-chip';
@@ -318,8 +361,12 @@ function internshipCardHtml(item) {
       <div class="internship-chips">${matchedChips}</div>
       ${missingChips}
       <div class="internship-footer">
-        <span class="text-caption">Deadline: ${formatDate(item.deadline)}</span>
-        <a class="btn btn-primary btn-sm" href="internship-details.html?id=${encodeURIComponent(item.id)}">View Details</a>
+        <span class="text-caption">${item.deadline ? `Deadline: ${formatDate(item.deadline)}` : 'Open until filled'}</span>
+        ${
+          isExternalListing(item)
+            ? officialLinkButton(item.official_url, 'Official Website')
+            : `<a class="btn btn-primary btn-sm" href="internship-details.html?id=${encodeURIComponent(item.id)}">View Details</a>`
+        }
       </div>
     </article>
   `;

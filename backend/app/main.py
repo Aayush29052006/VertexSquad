@@ -229,6 +229,17 @@ class InternshipModel(Base):
     min_cgpa = Column(Float, nullable=True, default=0.0)
     openings = Column(Integer, nullable=True, default=1)
     posted_by = Column(String, nullable=True)  # students.id of the publisher
+    # Where this listing actually lives.
+    #   "platform" — a recruiter posted it here, so students apply through us
+    #                and the application record we create is the real one.
+    #   "external" — it belongs to an official portal (a government scheme, a
+    #                company's own careers page). We only surface it; the
+    #                student applies on the official site, and offering an
+    #                in-app "Apply" for one would be a lie, so we don't.
+    source_type = Column(String, nullable=True, default="platform")
+    official_url = Column(String, nullable=True, default="")
+    source_name = Column(String, nullable=True, default="")   # e.g. "Government of India"
+    eligibility = Column(String, nullable=True, default="")
 
 
 class ApplicationModel(Base):
@@ -292,6 +303,11 @@ class LearningProgramModel(Base):
     audience = Column(String, default="student")  # student|faculty|both
     posted_by = Column(String, nullable=True)
     created_at = Column(String, nullable=False)
+    eligibility = Column(String, default="")
+    certificate = Column(Integer, default=0)   # 1 when it awards a certificate
+    # "official" for a first-party platform (NPTEL, Microsoft Learn, AWS),
+    # "industry" for something a recruiter published here.
+    source_type = Column(String, default="industry")
 
 
 class CollaborationModel(Base):
@@ -401,6 +417,14 @@ def run_migrations():
         ("internships", "min_cgpa", "FLOAT DEFAULT 0"),
         ("internships", "openings", "INTEGER DEFAULT 1"),
         ("internships", "posted_by", "VARCHAR"),
+        # Official-source linking.
+        ("internships", "source_type", "VARCHAR DEFAULT 'platform'"),
+        ("internships", "official_url", "VARCHAR DEFAULT ''"),
+        ("internships", "source_name", "VARCHAR DEFAULT ''"),
+        ("internships", "eligibility", "VARCHAR DEFAULT ''"),
+        ("learning_programs", "eligibility", "VARCHAR DEFAULT ''"),
+        ("learning_programs", "certificate", "INTEGER DEFAULT 0"),
+        ("learning_programs", "source_type", "VARCHAR DEFAULT 'industry'"),
     ]
     with engine.connect() as conn:
         for table, column, ddl in add_columns:
@@ -419,6 +443,8 @@ def run_migrations():
             "UPDATE students SET is_active = 1 WHERE is_active IS NULL",
             "UPDATE internships SET opportunity_type = 'internship' WHERE opportunity_type IS NULL",
             "UPDATE internships SET audience = 'student' WHERE audience IS NULL",
+            "UPDATE internships SET source_type = 'platform' WHERE source_type IS NULL",
+            "UPDATE learning_programs SET source_type = 'industry' WHERE source_type IS NULL",
         ):
             try:
                 conn.execute(text(stmt))
@@ -1386,7 +1412,13 @@ def get_recommendations(
             "required_skills": json.loads(internship.required_skills),
             "matched_skills": score_details["matched_skills"],
             "missing_skills": score_details["missing_skills"],
-            "breakdown": score_details["breakdown"]
+            "breakdown": score_details["breakdown"],
+            "source_type": internship.source_type or "platform",
+            "official_url": internship.official_url or "",
+            "source_name": internship.source_name or "",
+            "eligibility": internship.eligibility or "",
+            "description": internship.description or "",
+            "opportunity_type": internship.opportunity_type or "internship",
         })
 
     # Sort results by match score in descending order
@@ -1414,7 +1446,12 @@ def get_internship_details(internship_id: str, student: StudentModel = Depends(g
         "required_skills": json.loads(internship.required_skills),
         "matched_skills": score_details["matched_skills"],
         "missing_skills": score_details["missing_skills"],
-        "breakdown": score_details["breakdown"]
+        "breakdown": score_details["breakdown"],
+        "source_type": internship.source_type or "platform",
+        "official_url": internship.official_url or "",
+        "source_name": internship.source_name or "",
+        "eligibility": internship.eligibility or "",
+        "opportunity_type": internship.opportunity_type or "internship",
     }
 
 
@@ -1460,6 +1497,20 @@ def apply_to_internship(internship_id: str, student: StudentModel = Depends(get_
     internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
     if not internship:
         raise HTTPException(status_code=404, detail="Internship not found")
+
+    # An externally-sourced listing belongs to someone else's portal. Writing
+    # an application row here would tell the student they had applied when no
+    # one outside this database has any idea they exist — so refuse, and point
+    # them at the official page instead.
+    if (internship.source_type or "platform") == "external":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This opportunity is hosted by "
+                f"{internship.source_name or internship.company}. "
+                "Apply on their official website — the link is on the listing."
+            ),
+        )
 
     # Check for existing application
     existing = db.query(ApplicationModel).filter(
@@ -2617,7 +2668,9 @@ def _program_out(p: LearningProgramModel) -> dict:
         "duration": p.duration or "",
         "cost": p.cost or "Free",
         "audience": p.audience or "student",
-        "source": "industry",
+        "eligibility": p.eligibility or "",
+        "certificate": bool(p.certificate),
+        "source": p.source_type or "industry",
     }
 
 
@@ -2765,7 +2818,24 @@ def learning_recommendations(student: StudentModel = Depends(get_current_student
         for p in industry:
             if any(s.lower() == skill.lower() for s in json.loads(p.skills_covered or "[]")):
                 programs.append(_program_out(p))
+
+        # Several sources can point at the same page — the official catalogue
+        # and CURATED_LEARNING overlap, and a partner program may cite a
+        # public course. Dedupe the whole group on URL so one course is never
+        # listed twice under a single skill.
+        deduped, seen_urls = [], set()
+        for prog in programs:
+            key = (prog.get("url") or "").rstrip("/").lower()
+            if key and key in seen_urls:
+                continue
+            if key:
+                seen_urls.add(key)
+            deduped.append(prog)
+        programs = deduped
         for title, provider, ptype, url, duration in CURATED_LEARNING.get(skill, []):
+            if url.rstrip("/").lower() in seen_urls:
+                continue
+            seen_urls.add(url.rstrip("/").lower())
             programs.append(
                 {
                     "id": f"curated_{skill}_{provider}".replace(" ", "_").lower(),
@@ -2825,6 +2895,10 @@ def _opportunity_out(i: InternshipModel, score_details: Optional[dict] = None) -
         "min_cgpa": i.min_cgpa or 0.0,
         "openings": i.openings or 1,
         "required_skills": json.loads(i.required_skills or "[]"),
+        "source_type": i.source_type or "platform",
+        "official_url": i.official_url or "",
+        "source_name": i.source_name or "",
+        "eligibility": i.eligibility or "",
     }
     if score_details:
         out.update(
@@ -4330,7 +4404,7 @@ def seed_platform_v2():
                         program_type="workshop",
                         description="Four weekends of React and TypeScript taught by the engineers who run our web platform. Top performers are fast-tracked to interview.",
                         skills_covered=json.dumps(["React", "TypeScript", "JavaScript", "CSS"]),
-                        url="https://www.freecodecamp.org/learn/",
+                        url="",
                         duration="4 weekends",
                         cost="Free",
                         audience="student",
@@ -4344,7 +4418,7 @@ def seed_platform_v2():
                         program_type="certification",
                         description="Prepares you for the AWS Cloud Practitioner exam. Exam voucher sponsored for students who complete every module.",
                         skills_covered=json.dumps(["AWS", "Docker"]),
-                        url="https://skillbuilder.aws/",
+                        url="",
                         duration="6 weeks",
                         cost="Free (sponsored voucher)",
                         audience="student",
@@ -4358,7 +4432,7 @@ def seed_platform_v2():
                         program_type="mentorship",
                         description="Eight weeks paired one-to-one with a senior data analyst. Fortnightly calls and one portfolio project reviewed in detail.",
                         skills_covered=json.dumps(["SQL", "Python", "Power BI", "Communication"]),
-                        url="https://learn.microsoft.com/training/",
+                        url="",
                         duration="8 weeks",
                         cost="Free",
                         audience="student",
@@ -4372,7 +4446,7 @@ def seed_platform_v2():
                         program_type="workshop",
                         description="A faculty-facing workshop on bringing containers, CI and API design into an undergraduate syllabus.",
                         skills_covered=json.dumps(["Docker", "FastAPI", "Git"]),
-                        url="https://docs.docker.com/get-started/",
+                        url="",
                         duration="3 days",
                         cost="Free",
                         audience="faculty",
@@ -4586,6 +4660,609 @@ def seed_platform_v2():
 
 
 seed_platform_v2()
+
+# =====================================================================
+# VERIFIED EXTERNAL OPPORTUNITY CATALOGUE
+# ---------------------------------------------------------------------
+# Real programmes run by governments, companies and official learning
+# platforms. Nothing here is invented: every `official_url` was fetched
+# and confirmed to resolve before it was added, and each points at the
+# organisation's own site rather than an aggregator.
+#
+# These carry source_type="external", which means the platform surfaces
+# them and then gets out of the way — the student applies on the official
+# site. The in-app apply endpoint refuses them for exactly that reason.
+#
+# When a link rots, fix the URL here. Never substitute an unofficial
+# mirror to make a card work.
+# =====================================================================
+
+EXTERNAL_OPPORTUNITIES = [
+    # ---------- Government of India ----------
+    {
+        "id": "ext_gov_pm_internship",
+        "title": "PM Internship Scheme",
+        "company": "Ministry of Corporate Affairs",
+        "source_name": "Government of India",
+        "official_url": "https://pminternship.mca.gov.in",
+        "opportunity_type": "internship",
+        "location": "Across India",
+        "work_mode": "On-site",
+        "stipend": "Rs. 5,000/month + one-time grant",
+        "duration": "12 months",
+        "eligibility": "Age 21-24, not in full-time employment or education",
+        "description": "Twelve-month internships with India's top companies under the Government of India's flagship scheme. Applications are made on the official MCA portal.",
+        "required_skills": ["Communication", "Problem Solving"],
+    },
+    {
+        "id": "ext_gov_aicte",
+        "title": "AICTE Internship Portal",
+        "company": "All India Council for Technical Education",
+        "source_name": "Government of India",
+        "official_url": "https://internship.aicte-india.org",
+        "opportunity_type": "internship",
+        "location": "Across India",
+        "work_mode": "Hybrid",
+        "stipend": "Varies by employer",
+        "duration": "Varies",
+        "eligibility": "Students of AICTE-approved institutions",
+        "description": "The national internship portal for technical students, listing openings from industry, government and research organisations.",
+        "required_skills": ["Communication"],
+    },
+    {
+        "id": "ext_gov_naps",
+        "title": "National Apprenticeship Promotion Scheme (NAPS)",
+        "company": "Ministry of Skill Development & Entrepreneurship",
+        "source_name": "Government of India",
+        "official_url": "https://www.apprenticeshipindia.gov.in",
+        "opportunity_type": "apprenticeship",
+        "location": "Across India",
+        "work_mode": "On-site",
+        "stipend": "Government-supported stipend",
+        "duration": "6-36 months",
+        "eligibility": "Students and graduates; criteria vary by trade",
+        "description": "Register as an apprentice and be matched with establishments across India. Stipend is partly funded by the Government of India.",
+        "required_skills": ["Communication", "Teamwork"],
+    },
+    {
+        "id": "ext_gov_ncs",
+        "title": "National Career Service",
+        "company": "Ministry of Labour & Employment",
+        "source_name": "Government of India",
+        "official_url": "https://www.ncs.gov.in",
+        "opportunity_type": "job",
+        "location": "Across India",
+        "work_mode": "Hybrid",
+        "stipend": "Varies by employer",
+        "duration": "Full-time",
+        "eligibility": "Open to all jobseekers",
+        "description": "The Government of India's official employment portal: job listings, career counselling and free skill training.",
+        "required_skills": ["Communication"],
+    },
+    {
+        "id": "ext_gov_sih",
+        "title": "Smart India Hackathon",
+        "company": "Ministry of Education Innovation Cell",
+        "source_name": "Government of India",
+        "official_url": "https://sih.gov.in",
+        "opportunity_type": "project",
+        "location": "Across India",
+        "work_mode": "Hybrid",
+        "stipend": "Prize money for winning teams",
+        "duration": "Annual, 36-hour grand finale",
+        "eligibility": "Student teams from recognised institutions",
+        "description": "India's national innovation contest, where student teams solve problem statements posted by ministries and industry.",
+        "required_skills": ["Python", "Problem Solving", "Teamwork"],
+    },
+    {
+        "id": "ext_gov_isro",
+        "title": "ISRO Careers & Student Programmes",
+        "company": "Indian Space Research Organisation",
+        "source_name": "Government of India",
+        "official_url": "https://www.isro.gov.in",
+        "opportunity_type": "internship",
+        "location": "Bengaluru, Thiruvananthapuram & other centres",
+        "work_mode": "On-site",
+        "stipend": "As per ISRO norms",
+        "duration": "4-24 weeks",
+        "eligibility": "Engineering and science students; criteria vary by centre",
+        "description": "Internships, project work and recruitment at India's national space agency, announced on the official ISRO website.",
+        "required_skills": ["Python", "C++", "Problem Solving"],
+    },
+    {
+        "id": "ext_gov_startupindia",
+        "title": "Startup India",
+        "company": "Department for Promotion of Industry and Internal Trade",
+        "source_name": "Government of India",
+        "official_url": "https://www.startupindia.gov.in",
+        "opportunity_type": "project",
+        "location": "Online",
+        "work_mode": "Remote",
+        "stipend": "Grants and incubation support",
+        "duration": "Varies",
+        "eligibility": "Student founders and early-stage startups",
+        "description": "Recognition, funding schemes, free learning programmes and mentorship for student entrepreneurs.",
+        "required_skills": ["Communication", "Leadership"],
+    },
+    {
+        "id": "ext_gov_digitalindia",
+        "title": "Digital India Programme",
+        "company": "Ministry of Electronics & IT",
+        "source_name": "Government of India",
+        "official_url": "https://www.digitalindia.gov.in",
+        "opportunity_type": "internship",
+        "location": "New Delhi & across India",
+        "work_mode": "On-site",
+        "stipend": "As per programme norms",
+        "duration": "Varies",
+        "eligibility": "Students in IT and allied disciplines",
+        "description": "Internships and project opportunities across the Digital India initiative, announced on the official MeitY portal.",
+        "required_skills": ["Python", "SQL"],
+    },
+
+    # ---------- Company student programmes ----------
+    {
+        "id": "ext_co_google_students",
+        "title": "Google Student Programmes & Internships",
+        "company": "Google",
+        "source_name": "Google Careers",
+        "official_url": "https://www.google.com/about/careers/applications/students/",
+        "opportunity_type": "internship",
+        "location": "Bengaluru, Hyderabad & global",
+        "work_mode": "Hybrid",
+        "stipend": "As per Google's offer",
+        "duration": "10-14 weeks",
+        "eligibility": "Students currently enrolled in a degree programme",
+        "description": "Software engineering internships, STEP and other early-career programmes, applied for on Google's own careers site.",
+        "required_skills": ["Python", "C++", "Problem Solving"],
+    },
+    {
+        "id": "ext_co_gsoc",
+        "title": "Google Summer of Code",
+        "company": "Google Open Source",
+        "source_name": "Google",
+        "official_url": "https://summerofcode.withgoogle.com",
+        "opportunity_type": "project",
+        "location": "Online",
+        "work_mode": "Remote",
+        "stipend": "Stipend paid by Google",
+        "duration": "12+ weeks",
+        "eligibility": "Open to adult newcomers to open source",
+        "description": "Paid, mentored open-source contribution with a real project. Applications open annually on the official GSoC site.",
+        "required_skills": ["Git", "Python", "Communication"],
+    },
+    {
+        "id": "ext_co_microsoft",
+        "title": "Microsoft Students & Graduates",
+        "company": "Microsoft",
+        "source_name": "Microsoft Careers",
+        "official_url": "https://careers.microsoft.com/v2/global/en/students.html",
+        "opportunity_type": "internship",
+        "location": "Bengaluru, Hyderabad, Noida & global",
+        "work_mode": "Hybrid",
+        "stipend": "As per Microsoft's offer",
+        "duration": "8-12 weeks",
+        "eligibility": "Students in an undergraduate or postgraduate programme",
+        "description": "Internships and graduate roles across engineering, data and product, applied for on Microsoft's own careers portal.",
+        "required_skills": ["C#", "Python", "SQL"],
+    },
+    {
+        "id": "ext_co_amazon",
+        "title": "Amazon University Programmes",
+        "company": "Amazon",
+        "source_name": "Amazon Jobs",
+        "official_url": "https://www.amazon.jobs/content/en/career-programs/university",
+        "opportunity_type": "internship",
+        "location": "Bengaluru, Hyderabad, Chennai & global",
+        "work_mode": "Hybrid",
+        "stipend": "As per Amazon's offer",
+        "duration": "10-24 weeks",
+        "eligibility": "Students graduating within the programme window",
+        "description": "SDE internships and new-graduate roles listed on Amazon's official jobs site.",
+        "required_skills": ["Java", "Python", "SQL", "Problem Solving"],
+    },
+    {
+        "id": "ext_co_apple",
+        "title": "Apple Students",
+        "company": "Apple",
+        "source_name": "Apple Careers",
+        "official_url": "https://www.apple.com/careers/us/students.html",
+        "opportunity_type": "internship",
+        "location": "Global",
+        "work_mode": "On-site",
+        "stipend": "As per Apple's offer",
+        "duration": "12-24 weeks",
+        "eligibility": "Currently enrolled students",
+        "description": "Internships and student programmes across engineering, design and operations, on Apple's own careers site.",
+        "required_skills": ["Problem Solving", "Communication"],
+    },
+    {
+        "id": "ext_co_ibm",
+        "title": "IBM Internships",
+        "company": "IBM",
+        "source_name": "IBM Careers",
+        "official_url": "https://www.ibm.com/careers/internships",
+        "opportunity_type": "internship",
+        "location": "Bengaluru, Pune & global",
+        "work_mode": "Hybrid",
+        "stipend": "As per IBM's offer",
+        "duration": "8-24 weeks",
+        "eligibility": "Students in a relevant degree programme",
+        "description": "Internships across software, cloud, data and consulting, applied for on IBM's official careers site.",
+        "required_skills": ["Python", "SQL", "Communication"],
+    },
+    {
+        "id": "ext_co_nvidia",
+        "title": "NVIDIA University Recruiting",
+        "company": "NVIDIA",
+        "source_name": "NVIDIA Careers",
+        "official_url": "https://www.nvidia.com/en-us/about-nvidia/careers/university-recruiting/",
+        "opportunity_type": "internship",
+        "location": "Pune, Bengaluru & global",
+        "work_mode": "Hybrid",
+        "stipend": "As per NVIDIA's offer",
+        "duration": "12-24 weeks",
+        "eligibility": "Students in engineering, CS or related fields",
+        "description": "Internships and new-graduate roles in GPU computing, AI and graphics, on NVIDIA's official site.",
+        "required_skills": ["C++", "Python"],
+    },
+    {
+        "id": "ext_co_adobe",
+        "title": "Adobe Careers & Student Roles",
+        "company": "Adobe",
+        "source_name": "Adobe Careers",
+        "official_url": "https://careers.adobe.com",
+        "opportunity_type": "internship",
+        "location": "Noida, Bengaluru & global",
+        "work_mode": "Hybrid",
+        "stipend": "As per Adobe's offer",
+        "duration": "8-24 weeks",
+        "eligibility": "Students and recent graduates",
+        "description": "Internships and early-career roles across product, engineering and design on Adobe's official careers site.",
+        "required_skills": ["JavaScript", "Figma", "Problem Solving"],
+    },
+    {
+        "id": "ext_co_wipro",
+        "title": "Wipro Careers",
+        "company": "Wipro",
+        "source_name": "Wipro Careers",
+        "official_url": "https://careers.wipro.com",
+        "opportunity_type": "job",
+        "location": "Across India",
+        "work_mode": "Hybrid",
+        "stipend": "As per Wipro's offer",
+        "duration": "Full-time",
+        "eligibility": "Graduates and experienced professionals",
+        "description": "Graduate hiring including Elite and WILP programmes, listed on Wipro's own careers portal.",
+        "required_skills": ["Java", "SQL", "Communication"],
+    },
+]
+
+# ---------------------------------------------------------------------
+# Official learning platforms. Same rule: first-party URLs only.
+# ---------------------------------------------------------------------
+
+EXTERNAL_LEARNING = [
+    {
+        "id": "ext_lp_nptel",
+        "title": "NPTEL Online Certification Courses",
+        "provider": "NPTEL (IIT / IISc)",
+        "program_type": "certification",
+        "url": "https://nptel.ac.in/courses",
+        "description": "Free engineering and science courses taught by IIT and IISc faculty, with an optional proctored certification exam.",
+        "skills_covered": ["Python", "SQL", "C++", "Communication"],
+        "duration": "4-12 weeks",
+        "cost": "Free (exam fee optional)",
+        "eligibility": "Open to all students",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_swayam",
+        "title": "SWAYAM",
+        "provider": "Ministry of Education, Government of India",
+        "program_type": "course",
+        "url": "https://swayam.gov.in",
+        "description": "India's national online education platform, hosting credit-eligible courses from school to postgraduate level.",
+        "skills_covered": ["Python", "Communication", "Leadership"],
+        "duration": "4-16 weeks",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_skillindia",
+        "title": "Skill India Digital Hub",
+        "provider": "Ministry of Skill Development & Entrepreneurship",
+        "program_type": "course",
+        "url": "https://www.skillindiadigital.gov.in/courses",
+        "description": "Government of India's skilling platform: free vocational and digital-skills courses with recognised certification.",
+        "skills_covered": ["Communication", "Excel", "Problem Solving"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all Indian citizens",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_google_cloud",
+        "title": "Google Cloud Skills Boost",
+        "provider": "Google Cloud",
+        "program_type": "certification",
+        "url": "https://www.cloudskillsboost.google",
+        "description": "Hands-on labs and learning paths for Google Cloud, leading to official Google Cloud certifications.",
+        "skills_covered": ["Docker", "SQL", "Python"],
+        "duration": "Self-paced",
+        "cost": "Free tier available",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_google_certs",
+        "title": "Google Career Certificates",
+        "provider": "Google (on Coursera)",
+        "program_type": "certification",
+        "url": "https://www.coursera.org/google-career-certificates",
+        "description": "Professional certificates in data analytics, IT support, UX design, cybersecurity and project management.",
+        "skills_covered": ["Excel", "SQL", "Power BI", "Figma"],
+        "duration": "3-6 months",
+        "cost": "Paid (financial aid available)",
+        "eligibility": "No prior experience required",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_ms_learn",
+        "title": "Microsoft Learn Training",
+        "provider": "Microsoft",
+        "program_type": "certification",
+        "url": "https://learn.microsoft.com/en-us/training/",
+        "description": "Free learning paths for Azure, Power BI, .NET and GitHub, mapped to official Microsoft certifications.",
+        "skills_covered": ["Power BI", "SQL", "Excel", "Git", "TypeScript"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_aws",
+        "title": "AWS Skill Builder",
+        "provider": "Amazon Web Services",
+        "program_type": "certification",
+        "url": "https://skillbuilder.aws",
+        "description": "AWS's official training library, including free digital courses that prepare you for AWS certification exams.",
+        "skills_covered": ["AWS", "Docker"],
+        "duration": "Self-paced",
+        "cost": "Free tier available",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_ibm_skillsbuild",
+        "title": "IBM SkillsBuild",
+        "provider": "IBM",
+        "program_type": "certification",
+        "url": "https://skillsbuild.org",
+        "description": "Free courses and digital credentials for students in AI, cybersecurity, data analysis and cloud.",
+        "skills_covered": ["Python", "SQL", "Communication"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Students and educators",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_cisco",
+        "title": "Cisco Networking Academy",
+        "provider": "Cisco",
+        "program_type": "certification",
+        "url": "https://www.netacad.com",
+        "description": "Courses in networking, cybersecurity and Python, with pathways to official Cisco certifications.",
+        "skills_covered": ["Python", "Problem Solving"],
+        "duration": "Self-paced",
+        "cost": "Many courses free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_fcc",
+        "title": "freeCodeCamp Certifications",
+        "provider": "freeCodeCamp",
+        "program_type": "certification",
+        "url": "https://www.freecodecamp.org/learn/",
+        "description": "Project-based certifications in responsive web design, JavaScript, front-end libraries and back-end APIs.",
+        "skills_covered": ["JavaScript", "HTML", "CSS", "React", "Node.js"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_kaggle",
+        "title": "Kaggle Learn",
+        "provider": "Kaggle (Google)",
+        "program_type": "course",
+        "url": "https://www.kaggle.com/learn",
+        "description": "Short, hands-on micro-courses in Python, pandas, SQL, machine learning and data visualisation.",
+        "skills_covered": ["Python", "SQL"],
+        "duration": "3-7 hours each",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_infosys",
+        "title": "Infosys Springboard",
+        "provider": "Infosys",
+        "program_type": "course",
+        "url": "https://infyspringboard.onwingspan.com",
+        "description": "Infosys's free digital-literacy and professional-skills platform for students, with certification pathways.",
+        "skills_covered": ["Java", "Python", "Communication"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all learners",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_tcsion",
+        "title": "TCS iON Career Edge",
+        "provider": "Tata Consultancy Services",
+        "program_type": "course",
+        "url": "https://www.tcsion.com",
+        "description": "Free employability programmes covering communication, aptitude and IT foundations for job-seeking students.",
+        "skills_covered": ["Communication", "Excel", "Problem Solving"],
+        "duration": "10-15 days",
+        "cost": "Free",
+        "eligibility": "Students and fresh graduates",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_github_edu",
+        "title": "GitHub Education & Student Developer Pack",
+        "provider": "GitHub",
+        "program_type": "course",
+        "url": "https://education.github.com",
+        "description": "Free developer tools, cloud credits and learning resources for verified students.",
+        "skills_covered": ["Git"],
+        "duration": "Ongoing",
+        "cost": "Free for students",
+        "eligibility": "Verified students",
+        "certificate": 0,
+    },
+    {
+        "id": "ext_lp_mongodb",
+        "title": "MongoDB University",
+        "provider": "MongoDB",
+        "program_type": "certification",
+        "url": "https://learn.mongodb.com",
+        "description": "Official MongoDB courses and developer certification, free to take.",
+        "skills_covered": ["MongoDB", "Node.js"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_docker",
+        "title": "Docker Get Started",
+        "provider": "Docker",
+        "program_type": "course",
+        "url": "https://docs.docker.com/get-started/",
+        "description": "Docker's own guided introduction to containers, images and Compose.",
+        "skills_covered": ["Docker"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 0,
+    },
+    {
+        "id": "ext_lp_fastapi",
+        "title": "FastAPI Official Tutorial",
+        "provider": "FastAPI",
+        "program_type": "course",
+        "url": "https://fastapi.tiangolo.com/tutorial/",
+        "description": "The framework's own step-by-step tutorial for building production Python APIs.",
+        "skills_covered": ["FastAPI", "Python"],
+        "duration": "Self-paced",
+        "cost": "Free",
+        "eligibility": "Basic Python knowledge",
+        "certificate": 0,
+    },
+    {
+        "id": "ext_lp_hackerrank",
+        "title": "HackerRank Skills Certification",
+        "provider": "HackerRank",
+        "program_type": "certification",
+        "url": "https://www.hackerrank.com/skills-directory",
+        "description": "Free role-based skill certifications in problem solving, Python, SQL, Java and React that recruiters recognise.",
+        "skills_covered": ["Python", "SQL", "Java", "React", "Problem Solving"],
+        "duration": "1-2 hours per test",
+        "cost": "Free",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+    {
+        "id": "ext_lp_edx",
+        "title": "edX University Courses",
+        "provider": "edX",
+        "program_type": "course",
+        "url": "https://www.edx.org",
+        "description": "University courses from MIT, Harvard, IIT-affiliated and other institutions, auditable free.",
+        "skills_covered": ["Python", "SQL", "Communication"],
+        "duration": "Varies",
+        "cost": "Free to audit",
+        "eligibility": "Open to all",
+        "certificate": 1,
+    },
+]
+
+
+def seed_external_catalogue():
+    """Load the verified official-source catalogue.
+
+    Idempotent per row, so a link fixed in EXTERNAL_OPPORTUNITIES here is
+    applied on the next restart rather than being skipped because the row
+    already exists. Nothing a recruiter posted is ever touched: only rows
+    this function owns (source_type == "external") get refreshed.
+    """
+    db = SessionLocal()
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    try:
+        for item in EXTERNAL_OPPORTUNITIES:
+            row = db.query(InternshipModel).filter(InternshipModel.id == item["id"]).first()
+            if row is None:
+                row = InternshipModel(id=item["id"])
+                db.add(row)
+            row.title = item["title"]
+            row.company = item["company"]
+            row.location = item["location"]
+            row.work_mode = item["work_mode"]
+            row.stipend = item.get("stipend", "")
+            row.duration = item.get("duration", "")
+            row.deadline = item.get("deadline", "")
+            row.description = item.get("description", "")
+            row.opportunity_type = item["opportunity_type"]
+            row.audience = item.get("audience", "student")
+            row.eligibility = item.get("eligibility", "")
+            row.openings = item.get("openings", 0)
+            row.required_skills = json.dumps(item.get("required_skills", []))
+            row.source_type = "external"
+            row.official_url = clean_public_url(item["official_url"])
+            row.source_name = item["source_name"]
+            row.posted_by = None
+
+        for item in EXTERNAL_LEARNING:
+            row = db.query(LearningProgramModel).filter(LearningProgramModel.id == item["id"]).first()
+            if row is None:
+                row = LearningProgramModel(id=item["id"], created_at=now)
+                db.add(row)
+            row.title = item["title"]
+            row.provider = item["provider"]
+            row.program_type = item["program_type"]
+            row.description = item.get("description", "")
+            row.skills_covered = json.dumps(item.get("skills_covered", []))
+            row.url = clean_public_url(item["url"])
+            row.duration = item.get("duration", "")
+            row.cost = item.get("cost", "Free")
+            row.audience = item.get("audience", "student")
+            row.eligibility = item.get("eligibility", "")
+            row.certificate = item.get("certificate", 0)
+            row.source_type = "official"
+            row.posted_by = None
+
+        # The sample partner programs shipped with an official platform's URL
+        # (CloudSprint's course pointed at skillbuilder.aws). Those companies
+        # are illustrative, so crediting them with a real platform's page is
+        # a false attribution — clear it. The rows already exist for anyone
+        # who ran an earlier build, hence fixing them here rather than only
+        # in the seed literal.
+        for row in db.query(LearningProgramModel).filter(
+            LearningProgramModel.id.like("lp_seed_%")
+        ).all():
+            row.url = ""
+
+        db.commit()
+    finally:
+        db.close()
+
+
+seed_external_catalogue()
 
 if __name__ == "__main__":
     import uvicorn

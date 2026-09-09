@@ -130,6 +130,38 @@ panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - **Application management** — filter by status, change any application's status
 - **Skill-shortage report** — % of students missing each skill the internships ask for
 
+**Official sources, not a walled garden**
+
+Most of what this platform lists is run by somebody else — a government
+scheme, a company's careers page, an official learning platform. Those
+listings link to the real source instead of to a page of ours pretending to
+own them.
+
+- Every opportunity carries a `source_type`. `platform` means a recruiter
+  posted it here and students apply through us, which is the product working
+  as intended. `external` means it belongs to an official portal.
+- An `external` listing shows **Official Website ↗** and never an Apply
+  button. The apply endpoint rejects it server-side too, so nothing can
+  record an application to an opportunity we do not run.
+- Cards name the organisation behind the listing, and every outbound link
+  opens in a new tab with the host named in its tooltip.
+- URLs are validated as http(s) before they can become a link, on both the
+  client and the server.
+- Nothing in the catalogue is invented. Every URL was fetched and confirmed
+  to return 200 before being added, and each points at the organisation's own
+  site rather than an aggregator. When a link rots, fix the URL in
+  `EXTERNAL_OPPORTUNITIES` / `EXTERNAL_LEARNING` — never substitute an
+  unofficial mirror to make a card work.
+
+The catalogue currently carries 17 official opportunities (PM Internship
+Scheme, AICTE, NAPS, NCS, Smart India Hackathon, ISRO, Startup India, Digital
+India, and student programmes at Google, Microsoft, Amazon, Apple, IBM,
+NVIDIA, Adobe, Wipro and Google Summer of Code) and 19 official learning
+platforms (NPTEL, SWAYAM, Skill India, Google Cloud Skills Boost, Google
+Career Certificates, Microsoft Learn, AWS Skill Builder, IBM SkillsBuild,
+Cisco NetAcad, freeCodeCamp, Kaggle, Infosys Springboard, TCS iON, GitHub
+Education, MongoDB University, HackerRank, edX and others).
+
 **Engineering**
 - Central API layer (`frontend/js/api.js`) — no scattered `fetch()` calls
 - Mock-data mode for frontend work without a running backend

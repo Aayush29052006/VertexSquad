@@ -526,3 +526,61 @@ body.public-portfolio .app-shell { display: block; }
   .cat-value, .bar-meta { text-align: left; }
   .options { padding-left: 0; }
 }
+
+/* ---------- Official external sources ----------
+   Most listings here belong to somebody else — a government scheme, a
+   company's careers page, an official learning platform. These styles make
+   that unmistakable, so a student always knows whether a click keeps them
+   on CareerNexus or hands them over to the real source. */
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.source-official {
+  color: #2f6f8a;
+  background: rgba(91, 155, 213, 0.16);
+  border: 1px solid rgba(91, 155, 213, 0.4);
+}
+.source-platform {
+  color: var(--text-muted);
+  background: rgba(127, 127, 127, 0.1);
+  border: 1px solid var(--border);
+}
+:root[data-theme='dark'] .source-official { color: #8ec5e3; }
+
+/* The arrow is what tells you the link leaves the site, so it must not be
+   dropped when a button's label wraps. */
+.external-link .ext-arrow {
+  margin-left: 6px;
+  font-weight: 700;
+  display: inline-block;
+}
+.external-link:hover .ext-arrow { transform: translate(1px, -1px); }
+
+/* Announced to screen readers, invisible on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* An official learning platform gets the same left-edge marker as an
+   industry partner, in the source-official blue rather than green. */
+.program-official { border-left: 3px solid #5b9bd5; }
+
+.external-apply {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+}

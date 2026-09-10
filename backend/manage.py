@@ -5,6 +5,7 @@ Run from the backend/ folder with the venv active (or use venv\Scripts\python):
     python manage.py set-password  you@example.com
     python manage.py make-admin    teammate@example.com
     python manage.py list-admins
+    python manage.py reseed
 
 set-password prompts for the new password (twice, hidden) and never echoes it.
 """
@@ -14,6 +15,31 @@ import getpass
 
 from app.main import SessionLocal, StudentModel, hash_password
 
+
+
+def reseed():
+    """Clear the seed marker so the next startup re-runs the seeders.
+
+    Startup skips seeding when app_meta.seed_version matches SEED_VERSION,
+    because re-running it costs ~20s of round trips to change nothing. Use
+    this after editing catalogue data if you did not bump SEED_VERSION.
+
+    It only deletes the marker row - it does not touch any real data, and
+    the seeders themselves are idempotent, so this is safe to run at any
+    time. Restart the backend afterwards.
+    """
+    from app.main import AppMetaModel
+    db = SessionLocal()
+    try:
+        row = db.query(AppMetaModel).filter(AppMetaModel.key == "seed_version").first()
+        if row is None:
+            print("No seed marker set - the next startup would seed anyway.")
+            return
+        db.delete(row)
+        db.commit()
+        print("Seed marker cleared. Restart the backend to re-run the seeders.")
+    finally:
+        db.close()
 
 def _get(db, email):
     s = db.query(StudentModel).filter(StudentModel.email == email.strip().lower()).first()
@@ -147,6 +173,8 @@ if __name__ == "__main__":
         make_admin(args[1])
     elif cmd == "list-admins":
         list_admins()
+    elif cmd == "reseed":
+        reseed()
     elif cmd == "test-email":
         test_email()
     else:

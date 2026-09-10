@@ -640,6 +640,7 @@ For things there is no UI for yet, run `backend/manage.py` (venv active):
 ```bash
 cd backend
 python manage.py list-admins                     # who has admin access
+python manage.py reseed                          # clear the seed marker
 python manage.py make-admin  teammate@email.com   # promote a registered account
 python manage.py set-password you@email.com       # prompts for a new password (hidden)
 ```

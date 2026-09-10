@@ -416,6 +416,26 @@ class DocumentModel(Base):
     data_b64 = Column(Text, default="")
 
 
+class AppMetaModel(Base):
+    """One-row-per-key scratchpad for the app's own bookkeeping.
+
+    Currently holds only the seed marker (see SEED_VERSION). Deliberately
+    tiny and generic so a future "last feed sync" style flag has somewhere
+    to live without another table.
+    """
+    __tablename__ = "app_meta"
+
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String, default="")
+
+
+# Bump this whenever the seed data below changes - the catalogue, the demo
+# accounts, the learning programmes, anything the seed_* functions write.
+# Startup compares it against what is recorded in app_meta and re-runs the
+# seeders only when the two differ.
+SEED_VERSION = "2026-09-10a"
+
+
 # Create tables
 def create_missing_tables():
     """Create any table that does not exist yet, in ONE round trip.
@@ -674,7 +694,52 @@ def seed_database():
     finally:
         db.close()
 
-seed_database()
+def seeds_are_current() -> bool:
+    """Has this database already been seeded at SEED_VERSION?
+
+    The seed functions are idempotent, so re-running them is harmless - but
+    against a remote Supabase instance they cost around twenty seconds of
+    round trips to establish that nothing needs changing. One query answers
+    the same question. A fresh database has no marker and seeds normally, so
+    nobody has to remember to run a setup step.
+    """
+    if os.environ.get("CN_FORCE_RESEED", "").strip().lower() in ("1", "true", "yes"):
+        return False
+    db = SessionLocal()
+    try:
+        row = db.query(AppMetaModel).filter(AppMetaModel.key == "seed_version").first()
+        return bool(row and row.value == SEED_VERSION)
+    except Exception:
+        return False          # no marker table yet, or unreadable: seed
+    finally:
+        db.close()
+
+
+def mark_seeds_current():
+    """Record that the seeders have run at this SEED_VERSION."""
+    db = SessionLocal()
+    try:
+        row = db.query(AppMetaModel).filter(AppMetaModel.key == "seed_version").first()
+        if row is None:
+            db.add(AppMetaModel(key="seed_version", value=SEED_VERSION))
+        else:
+            row.value = SEED_VERSION
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        # Not fatal: the next startup just seeds again, which is the old
+        # behaviour rather than a broken one.
+        print(f"Seed marker: could not record version ({exc})")
+    finally:
+        db.close()
+
+
+SEEDS_CURRENT = seeds_are_current()
+if SEEDS_CURRENT:
+    print(f"Seed data: already at {SEED_VERSION}, skipping seeders")
+
+if not SEEDS_CURRENT:
+    seed_database()
 bootstrap_admins()
 warm_google_keys()
 
@@ -4753,7 +4818,8 @@ def seed_platform_v2():
         db.close()
 
 
-seed_platform_v2()
+if not SEEDS_CURRENT:
+    seed_platform_v2()
 
 # =====================================================================
 # VERIFIED EXTERNAL OPPORTUNITY CATALOGUE
@@ -5592,7 +5658,9 @@ def seed_external_catalogue():
         db.close()
 
 
-seed_external_catalogue()
+if not SEEDS_CURRENT:
+    seed_external_catalogue()
+    mark_seeds_current()
 
 # =====================================================================
 # AIIA OPPORTUNITY HUB

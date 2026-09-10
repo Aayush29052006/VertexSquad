@@ -41,37 +41,37 @@
     {
       "id": "aayush_chaudhari",
       "name": "Aayush Jivan Chaudhari",
-      "title": "Developer",
+      "title": "Lead Developer & Technical Architect",
       "bio": "Built most of the platform: the matching engine, the four stakeholder portals, AIIA Hub, search and the admin panel."
     },
     {
       "id": "yash_barkale",
       "name": "Yash Barkale",
-      "title": "Developer",
+      "title": "Full-Stack Developer",
       "bio": "Set up the first full-stack build — the FastAPI backend, the Supabase database and the initial frontend."
     },
     {
       "id": "sneha_jadhav",
       "name": "Sneha Jadhav",
-      "title": "Leader",
+      "title": "Team Lead & Project Coordinator",
       "bio": "Started the project and maintains the repository, coordinating what the team works on."
     },
     {
       "id": "rugved_patil",
       "name": "Rugved Patil",
-      "title": "Tester",
+      "title": "Quality Assurance & Testing",
       "bio": ""
     },
     {
       "id": "tanmay_wagh",
       "name": "Tanmay Wagh",
-      "title": "Tester",
+      "title": "Quality Assurance & Testing",
       "bio": ""
     },
     {
       "id": "chaitanya_badgujar",
       "name": "Chaitanya Badgujar",
-      "title": "Tester",
+      "title": "Quality Assurance & Testing",
       "bio": ""
     }
   ]

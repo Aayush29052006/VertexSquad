@@ -23,9 +23,20 @@ async function apiRequest(path, options = {}) {
     let message = 'Something went wrong. Please try again.';
     try {
       const body = await res.json();
-      // FastAPI's HTTPException serializes to {"detail": "..."} — fall back
-      // to .message in case an endpoint ever returns a different shape.
-      message = body.detail || body.message || message;
+      // FastAPI's HTTPException serializes to {"detail": "..."}, but a
+      // request-validation failure makes `detail` an array of error
+      // objects — rendering that straight into the UI shows
+      // "[object Object]". Pull the first readable message out instead.
+      const detail = body.detail;
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (Array.isArray(detail) && detail.length) {
+        message = detail[0].msg || detail[0].message || message;
+      } else if (detail && typeof detail === 'object') {
+        message = detail.msg || detail.message || message;
+      } else {
+        message = body.message || message;
+      }
     } catch (_) {
       /* non-JSON error body, keep default message */
     }
@@ -450,6 +461,19 @@ const api = {
     });
   },
 
+  // ---------- Team & Contact ----------
+  // Both are public: someone who is not signed in must be able to read
+  // the team page and send a message.
+  getTeam() {
+    return apiRequest('/team');
+  },
+  getContactMeta() {
+    return apiRequest('/contact/meta');
+  },
+  sendContactMessage(payload) {
+    return apiRequest('/contact', { method: 'POST', body: JSON.stringify(payload) });
+  },
+
   // ---------- Institution analytics ----------
   getInstitutionAnalytics() {
     return apiRequest('/institution/analytics');
@@ -493,6 +517,11 @@ const api = {
     },
     deleteInternship(id) {
       return apiRequest(`/admin/internships/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+    // Every contact-form message, including any the mailer could not
+    // deliver — this is what keeps a failed send from being a black hole.
+    listContactMessages() {
+      return apiRequest('/admin/contact-messages');
     },
     listApplications(status = '') {
       const q = status ? `?status=${encodeURIComponent(status)}` : '';

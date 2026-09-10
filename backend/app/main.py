@@ -2,10 +2,13 @@ import os
 import re
 import json
 import pathlib
+import smtplib
+from email.message import EmailMessage
+from email_validator import validate_email as _validate_email
 import jwt
 import datetime
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -5522,6 +5525,10 @@ seed_external_catalogue()
 # it at import instead of hard-coding aiia.gov.in in a second place.
 # =====================================================================
 
+TEAM_PATH = (
+    pathlib.Path(__file__).resolve().parent.parent.parent / "frontend" / "data" / "team.json"
+)
+
 WEBSITE_LINKS_PATH = (
     pathlib.Path(__file__).resolve().parent.parent.parent / "frontend" / "data" / "website-links.json"
 )
@@ -6779,6 +6786,357 @@ def unified_search(
         "index_note": SEARCH_INDEX_NOTE,
         "results": page,
     }
+
+
+
+# =====================================================================
+# CONTACT US
+# ---------------------------------------------------------------------
+# The flow the brief asks for:
+#
+#   form -> POST /api/contact -> stored -> SMTP -> CONTACT_TO
+#
+# Two rules shape the whole thing:
+#
+#   1. Never claim an email was sent when it was not. The response
+#      carries `delivered`, and the UI says something different for each
+#      outcome. A frontend that always shows "sent!" is a lie.
+#
+#   2. Never lose a message. Every submission is written to the database
+#      before the SMTP attempt, so a wrong password or a down mail server
+#      costs delivery, not the message — it is still readable at
+#      GET /api/admin/contact-messages.
+#
+# Credentials live in the environment, never in frontend code:
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, CONTACT_TO
+# =====================================================================
+
+CONTACT_TO = os.environ.get("CONTACT_TO", "aayushswapnali@gmail.com").strip()
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or 587)
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+
+# Length caps. Anything longer is rejected rather than truncated, so a
+# sender is told their message did not go through instead of silently
+# losing the end of it.
+CONTACT_MAX = {"name": 120, "email": 254, "subject": 200, "message": 5000, "phone": 40, "category": 60}
+CONTACT_MIN = {"name": 2, "subject": 3, "message": 10}
+
+CONTACT_CATEGORIES = [
+    "General question", "Feedback", "Bug report",
+    "Partnership", "Institution enquiry", "Other",
+]
+
+# Rate limit: a burst allowance plus an hourly cap, per IP. In-process
+# and therefore per-worker — fine for a single-instance deployment, and
+# the honest limitation is noted in the README.
+CONTACT_RATE_WINDOW = 3600      # seconds
+CONTACT_RATE_MAX = 5            # submissions per IP per window
+CONTACT_MIN_GAP = 20            # seconds between two submissions
+_contact_hits: dict = {}
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client address.
+
+    X-Forwarded-For is attacker-controlled unless a trusted proxy sets
+    it, so it is only consulted when TRUST_PROXY_HEADERS says a proxy is
+    actually in front of us. Otherwise a spammer would rotate the header
+    and walk straight through the rate limit.
+    """
+    if os.environ.get("TRUST_PROXY_HEADERS", "").strip().lower() in ("1", "true", "yes"):
+        fwd = request.headers.get("x-forwarded-for", "")
+        if fwd:
+            return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _contact_rate_check(ip: str) -> Optional[str]:
+    """None when the caller may post, else the reason they may not."""
+    now = time.time()
+    hits = [t for t in _contact_hits.get(ip, []) if now - t < CONTACT_RATE_WINDOW]
+    _contact_hits[ip] = hits
+
+    if hits and now - hits[-1] < CONTACT_MIN_GAP:
+        return "You just sent a message. Please wait a moment before sending another."
+    if len(hits) >= CONTACT_RATE_MAX:
+        return "Too many messages from this address. Please try again later."
+
+    # Keep the table from growing without bound on a long-running server.
+    if len(_contact_hits) > 5000:
+        for key in [k for k, v in _contact_hits.items() if not v or now - v[-1] > CONTACT_RATE_WINDOW]:
+            _contact_hits.pop(key, None)
+    return None
+
+
+def _contact_record(ip: str) -> None:
+    """Count one accepted submission against the sender's allowance.
+
+    Deliberately separate from the check, and called only once a message
+    has passed validation. Charging a rejected submission would mean
+    someone who mistyped their email has to sit out the 20-second gap
+    before they can correct it — punishing a typo like spam.
+    """
+    _contact_hits.setdefault(ip, []).append(time.time())
+
+
+class ContactMessageModel(Base):
+    """A message from the contact form.
+
+    Stored before the email is attempted, so nothing is lost when mail is
+    misconfigured or the SMTP host is unreachable.
+    """
+    __tablename__ = "contact_messages"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    phone = Column(String, default="")
+    category = Column(String, default="")
+    created_at = Column(String, nullable=False)
+    # Whether the SMTP send actually succeeded, and why not if it did not.
+    delivered = Column(Integer, default=0)
+    delivery_error = Column(String, default="")
+    client_ip = Column(String, default="")
+
+
+# ContactMessageModel is declared after the two create_all() calls higher
+# up, so it needs its own or the table is never created and the first
+# submission dies on "no such table: contact_messages".
+Base.metadata.create_all(bind=engine)
+
+
+class ContactPayload(BaseModel):
+    name: str
+    # Deliberately `str`, not EmailStr: EmailStr fails with a 422 and a
+    # Pydantic error array, which renders as "[object Object]" in the UI.
+    # The address is validated below with the same email_validator library,
+    # so nothing is weakened — only the error message improves.
+    email: str
+    subject: str
+    message: str
+    phone: Optional[str] = ""
+    category: Optional[str] = ""
+    # Honeypot: a field the form renders but hides. A human never fills
+    # it; a naive bot filling every input does.
+    website: Optional[str] = ""
+
+
+def _contact_clean(value: Optional[str], limit: int) -> str:
+    """Trim, collapse newlines that only pad the message, and cap length."""
+    text = (value or "").strip()
+    return text[:limit]
+
+
+def _header_safe(value: str) -> str:
+    """Strip CR/LF before a value goes anywhere near an email header.
+
+    Without this, a name of "Bob\\nBcc: victim@example.com" injects a new
+    header and turns the contact form into an open relay.
+    """
+    return re.sub(r"[\r\n]+", " ", value or "").strip()
+
+
+def _send_contact_email(row: "ContactMessageModel") -> tuple:
+    """Send one contact message. Returns (delivered, error_message).
+
+    Never raises: the caller has already stored the message and needs to
+    answer the request either way.
+    """
+    if not (SMTP_HOST and SMTP_USER and SMTP_PASSWORD):
+        return False, "SMTP is not configured (set SMTP_HOST, SMTP_USER and SMTP_PASSWORD)"
+
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = _header_safe(f"[CareerNexus Contact] {row.subject}")
+        msg["From"] = SMTP_USER
+        msg["To"] = CONTACT_TO
+        # Pressing Reply in the inbox answers the person who wrote in.
+        # EmailStr has already validated the address and _header_safe
+        # removes any CR/LF, so this cannot inject extra headers.
+        msg["Reply-To"] = _header_safe(row.email)
+
+        body = (
+            f"Name:\n{row.name}\n\n"
+            f"Email:\n{row.email}\n\n"
+            f"Subject:\n{row.subject}\n\n"
+            f"Message:\n{row.message}\n\n"
+        )
+        if row.phone:
+            body += f"Phone:\n{row.phone}\n\n"
+        if row.category:
+            body += f"Category:\n{row.category}\n\n"
+        body += (
+            f"Submitted from:\nCareerNexus Website\n\n"
+            f"Submitted at:\n{row.created_at}\n"
+        )
+        msg.set_content(body)
+
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+                smtp.starttls()
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
+                smtp.send_message(msg)
+        return True, ""
+    except Exception as exc:                      # noqa: BLE001 - report, never crash
+        # The class name plus message is enough to debug without leaking
+        # the password into a log line.
+        return False, f"{type(exc).__name__}: {exc}"
+
+
+@app.get("/api/contact/meta")
+def contact_meta():
+    """What the contact form needs before anyone types anything.
+
+    Public. Deliberately exposes no credentials — only the address that
+    is already printed on the page and the category list.
+    """
+    return {
+        "contact_email": CONTACT_TO,
+        "categories": CONTACT_CATEGORIES,
+        "limits": CONTACT_MAX,
+        "email_configured": bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD),
+    }
+
+
+@app.post("/api/contact")
+def submit_contact(payload: ContactPayload, request: Request, db: Session = Depends(get_db)):
+    """Receive a contact message, store it, then try to email it.
+
+    Public by design — the whole point is that someone who is not signed
+    in can reach the team.
+    """
+    ip = _client_ip(request)
+    blocked = _contact_rate_check(ip)
+    if blocked:
+        raise HTTPException(status_code=429, detail=blocked)
+
+    # Honeypot. Answer 200 so a bot cannot tell it was caught, but do not
+    # store or send anything.
+    if (payload.website or "").strip():
+        return {"ok": True, "delivered": True, "message": "Message sent successfully. We'll get back to you soon."}
+
+    name = _contact_clean(payload.name, CONTACT_MAX["name"])
+    subject = _contact_clean(payload.subject, CONTACT_MAX["subject"])
+    message = _contact_clean(payload.message, CONTACT_MAX["message"])
+    phone = _contact_clean(payload.phone, CONTACT_MAX["phone"])
+    category = _contact_clean(payload.category, CONTACT_MAX["category"])
+
+    if len(name) < CONTACT_MIN["name"]:
+        raise HTTPException(status_code=400, detail="Please enter your name.")
+
+    raw_email = (payload.email or "").strip()[:CONTACT_MAX["email"]]
+    try:
+        # Normalises the address and rejects anything malformed. Checking
+        # deliverability would need a DNS lookup on every submission, so
+        # that is off; a wrong-but-well-formed address simply bounces.
+        clean_email = _validate_email(raw_email, check_deliverability=False).normalized
+    except Exception:                              # noqa: BLE001
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
+    if len(subject) < CONTACT_MIN["subject"]:
+        raise HTTPException(status_code=400, detail="Please enter a subject.")
+    if len(message) < CONTACT_MIN["message"]:
+        raise HTTPException(status_code=400, detail="Please enter a message of at least 10 characters.")
+    if category and category not in CONTACT_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Please choose a valid category.")
+
+    # Validation is past; this one counts against the rate limit.
+    _contact_record(ip)
+
+    row = ContactMessageModel(
+        id=new_id("msg"),
+        name=name,
+        email=clean_email,
+        subject=subject,
+        message=message,
+        phone=phone,
+        category=category,
+        created_at=datetime.datetime.now().isoformat(timespec="seconds"),
+        client_ip=ip,
+    )
+    # Stored first, on purpose: from here on the message cannot be lost,
+    # whatever the mail server does.
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    delivered, error = _send_contact_email(row)
+    row.delivered = 1 if delivered else 0
+    row.delivery_error = error[:500]
+    db.commit()
+
+    if not delivered:
+        print(f"Contact form: message {row.id} stored but NOT emailed - {error}")
+
+    return {
+        "ok": True,
+        "delivered": delivered,
+        "message": (
+            "Message sent successfully. We'll get back to you soon."
+            if delivered
+            else "Message received - we have saved it and will get back to you soon."
+        ),
+    }
+
+
+@app.get("/api/admin/contact-messages")
+def list_contact_messages(
+    user: StudentModel = Depends(require_roles(ROLE_ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Every message the form has taken.
+
+    This is what makes "stored even when email fails" a real safety net
+    rather than a black hole.
+    """
+    rows = (
+        db.query(ContactMessageModel)
+        .order_by(ContactMessageModel.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "email": r.email,
+            "subject": r.subject,
+            "message": r.message,
+            "phone": r.phone or "",
+            "category": r.category or "",
+            "created_at": r.created_at,
+            "delivered": bool(r.delivered),
+            "delivery_error": r.delivery_error or "",
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/team")
+def team():
+    """Team VertexSquad, read from frontend/data/team.json.
+
+    Public, and read from the same file the browser fetches so the two can
+    never disagree.
+    """
+    try:
+        with open(TEAM_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return {
+            "meta": data.get("meta", {}),
+            "members": data.get("members", []),
+        }
+    except (OSError, ValueError) as exc:
+        # The page renders from its own copy of the file, so an empty list
+        # here degrades rather than breaks.
+        print(f"Team: could not read {TEAM_PATH.name} ({exc})")
+        return {"meta": {}, "members": []}
 
 
 

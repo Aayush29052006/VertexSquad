@@ -160,6 +160,8 @@ const PAGE_KEYWORDS = {
   'admin.html': ['platform', 'manage', 'operator', 'moderation'],
   'settings.html': ['theme', 'password', 'preferences', 'dark mode', 'logout'],
   'search.html': ['find', 'discover', 'browse', 'explore', 'opportunity search'],
+  'team.html': ['team', 'contact', 'contact us', 'about', 'who made this', 'support',
+                'help', 'email', 'feedback', 'get in touch', 'vertexsquad', 'developers'],
 };
 
 /**
@@ -174,11 +176,14 @@ function searchLocalPages(terms, limit = 5) {
   const role = typeof currentRole === 'function' ? currentRole() : 'student';
   const visible = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
-  // Settings and this page are not in NAV_ITEMS but are reachable by all.
+  // Reachable by everyone but not necessarily in NAV_ITEMS. Filtered
+  // against what the sidebar already offers, or a page that lives in both
+  // lists is ranked and shown twice.
   const extras = [
     { href: 'settings.html', icon: '⚙️', label: 'Settings' },
     { href: 'search.html', icon: '🔍', label: 'Opportunity Search' },
-  ];
+    { href: 'team.html', icon: '👥', label: 'Team & Contact' },
+  ].filter((extra) => !visible.some((item) => item.href === extra.href));
 
   return [...visible, ...extras]
     .map((item) => {

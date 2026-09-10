@@ -55,6 +55,9 @@ const NAV_ITEMS = [
 
   // --- Platform operator only.
   { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', roles: [ROLES.ADMIN] },
+
+  // --- Who built this, and how to reach them. Everyone sees it.
+  { href: 'team.html', icon: '👥', label: 'Team & Contact', roles: ALL_ROLES },
 ];
 
 /* ---------- Opened straight from the hard disk? ----------

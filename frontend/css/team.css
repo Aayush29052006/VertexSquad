@@ -1,0 +1,157 @@
+/* =========================================================
+   CareerNexus — Team & Contact
+   Uses the existing tokens, card and form primitives; nothing
+   here introduces a colour, radius or shadow of its own.
+   ========================================================= */
+
+/* ---------- Team ---------- */
+
+.team-block { margin-bottom: var(--space-7); }
+.team-intro { margin-bottom: var(--space-5); }
+
+.team-grid {
+  display: grid;
+  /* min() so a card never demands more width than it has — the same
+     rule the rest of the app's grids use. */
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.team-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.team-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.team-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+
+/* Shown when a member has no photo yet. Initials are honest — a stock
+   or generated face would be a fake person. */
+.team-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--primary);
+  background: var(--primary-light);
+  border-color: transparent;
+}
+
+.team-id { min-width: 0; }
+.team-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.team-role {
+  font-size: 0.82rem;
+  color: var(--primary);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.team-bio,
+.team-contrib {
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.team-contrib { color: var(--text-muted); }
+
+.team-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+/* ---------- Contact ---------- */
+
+.contact-block { margin-bottom: var(--space-6); }
+.contact-intro { margin-bottom: var(--space-4); }
+
+.contact-form {
+  max-width: 720px;
+}
+
+.contact-form .form-label .req { color: var(--danger); margin-left: 2px; }
+.contact-form .form-label .opt {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.contact-meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.contact-count {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+/* The honeypot. Positioned off-screen rather than display:none, because
+   some bots skip hidden inputs but happily fill a positioned one. Kept
+   out of the tab order and off the accessibility tree by the markup. */
+.contact-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.contact-status {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.contact-status--ok   { border-left-color: var(--success); background: var(--success-bg); color: var(--success); }
+/* Stored but not emailed — a real outcome, and neither a success nor a
+   failure, so it gets its own colour rather than being dressed as one. */
+.contact-status--warn { border-left-color: var(--warning); background: var(--warning-bg); color: var(--warning); }
+.contact-status--err  { border-left-color: var(--danger);  background: var(--danger-bg);  color: var(--danger); }
+
+/* ---------- Public (signed-out) view ---------- */
+
+.public-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .team-grid { grid-template-columns: 1fr; }
+  .contact-form { max-width: none; }
+}

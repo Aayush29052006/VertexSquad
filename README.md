@@ -188,6 +188,57 @@ own them.
   site rather than an aggregator. When a link rots, fix the URL — never
   substitute an unofficial mirror to make a card work.
 
+**Team & Contact**
+
+A permanent Team section and a working contact form at
+[`/pages/team.html`](frontend/pages/team.html), reachable from the sidebar,
+the landing-page navigation and the footer. **Public** — reaching the team
+never requires an account, so the page renders a plain header when nobody is
+signed in and the full app shell when someone is.
+
+- **The team list is real.** Every name in
+  [`frontend/data/team.json`](frontend/data/team.json) is a contributor to
+  this repository, taken from git history (`git shortlog -sne --all`).
+  Nobody was invented.
+- **Empty fields stay empty on purpose.** `role`, `bio`, `photo` and
+  `linkedin` are blank because they are not recorded anywhere in the project,
+  and guessing them would put fiction on a public page. Fill them in and they
+  appear; a field with no value is simply not rendered, so a half-filled entry
+  still looks intentional. No photo means initials, never a stock face.
+- **Personal email addresses are deliberately not listed.** Commit history has
+  them, but publishing someone's address is their call. Everyone reaches the
+  team through the form.
+
+The contact flow is the real one — form → API → SMTP → `CONTACT_TO`:
+
+| | |
+|---|---|
+| `POST /api/contact` | public; validates, stores, then emails |
+| `GET /api/contact/meta` | destination address and category list |
+| `GET /api/admin/contact-messages` | **admin** — every message, delivered or not |
+
+- **Every message is stored before the send is attempted**, so a wrong
+  password or a down mail server costs delivery, not the message.
+- **The UI never claims an email was sent when it was not.** The response
+  carries `delivered`, and the page shows a green "Message sent successfully"
+  only when SMTP really accepted it, an amber "Message received — we have
+  saved it" when it was stored but not emailed, and a red error when the
+  request failed outright.
+- Reply-To is set to the sender, so pressing Reply answers the right person.
+  CR/LF is stripped from every header value and the address is validated, so
+  the form cannot be turned into an open relay by header injection.
+- Protections: per-IP rate limit (20s between messages, 5 per hour, charged
+  only on accepted submissions so a typo does not lock you out), a honeypot
+  field, length caps, and server-side validation that does not trust the
+  browser.
+- **`X-Forwarded-For` is ignored unless `TRUST_PROXY_HEADERS=true`.**
+  Honouring it by default would let anyone spoof the header and walk past the
+  rate limit.
+
+Run `python backend/test_contact.py` to exercise all of it — 37 checks
+covering message format, Reply-To, header injection, the stored-but-not-sent
+path, rate limiting and the honeypot.
+
 **One file for every external link**
 
 `frontend/data/website-links.json` is the register of every external website
@@ -297,7 +348,8 @@ VertexSquad/
 │   ├── index.html                  #   Landing page
 │   ├── serve.py                    #   Static server, directory listings off
 │   ├── data/
-│   │   └── website-links.json      #   ★ EDIT HERE to change any external URL
+│   │   ├── website-links.json      #   ★ EDIT HERE to change any external URL
+│   │   └── team.json               #   ★ EDIT HERE to change the Team section
 │   ├── pages/                      #   Application pages
 │   │   ├── login.html              #     Student authentication
 │   │   ├── admin-login.html        #     Team / admin sign-in (separate door)
@@ -318,6 +370,7 @@ VertexSquad/
 │   │   ├── documents.html          #     Secure certificates & reports
 │   │   ├── portfolio.html          #     Verified portfolio (+ public view)
 │   │   ├── search.html             #     Opportunity Search + filters
+│   │   ├── team.html               #     Meet the Team + Contact form (public)
 │   │   ├── aiia.html               #     AIIA Opportunity Hub
 │   │   ├── updates.html            #     Live official feeds & deadlines
 │   │   │
@@ -349,6 +402,7 @@ VertexSquad/
 │
 └── backend/                        # FastAPI service
     ├── app/main.py                 #   Routes, models, matching engine, admin API
+    ├── test_contact.py             #   Contact-form / email test suite
     ├── requirements.txt            #   Python dependencies
     └── .env.example                #   Environment variable template
 ```
@@ -457,6 +511,10 @@ Then open `backend/.env` and set:
 | `JWT_SECRET_KEY` | Long random string that signs login tokens. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Falls back to an insecure dev key (with a startup warning) if unset. |
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. Default: `http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://127.0.0.1:3000` |
 | `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup (default: `aayushswapnali@gmail.com`) |
+| `CONTACT_TO` | Where contact-form messages are delivered (default: `aayushswapnali@gmail.com`) |
+| `SMTP_HOST` `SMTP_PORT` | Mail server. Gmail: `smtp.gmail.com` / `587` |
+| `SMTP_USER` `SMTP_PASSWORD` | **Gmail needs an [App Password](https://myaccount.google.com/apppasswords), not your account password** — turn on 2-Step Verification first. Leave blank and the form still stores every message; it just does not email, and the page says so instead of pretending. |
+| `TRUST_PROXY_HEADERS` | Only `true` behind a proxy you control that sets `X-Forwarded-For`. Otherwise the contact rate limit can be bypassed by spoofing the header. |
 
 > **Already have a `.env` from before the admin panel?** Add the three new keys —
 > `JWT_SECRET_KEY`, `ALLOWED_ORIGINS`, `ADMIN_EMAILS` — from `.env.example`.
@@ -617,6 +675,10 @@ All endpoints are prefixed with `/api`. Full interactive docs at `/docs`.
 | `GET` `POST` `PUT` `DELETE` | `/admin/internships[/{id}]` | **admin** — manage postings |
 | `GET` `PATCH` | `/admin/applications[/{id}]` | **admin** — review applications |
 | `POST` | `/search` | Search the verified opportunity collection (filters, sort, paging) |
+| `GET` | `/team` | Team VertexSquad (public) |
+| `GET` | `/contact/meta` | Contact destination + categories (public) |
+| `POST` | `/contact` | Submit a contact message (public) |
+| `GET` | `/admin/contact-messages` | **admin** — every message received |
 | `GET` | `/website-links` | The central external-website register (public) |
 | `GET` | `/aiia` | AIIA opportunity hub |
 | `GET` | `/feeds/items` | Official notices, vacancies and tenders |

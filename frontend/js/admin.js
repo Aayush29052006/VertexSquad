@@ -353,11 +353,17 @@ async function renderSkillGaps(el) {
     return;
   }
   const tier = (pct) => (pct >= 70 ? 'gap-high' : pct >= 40 ? 'gap-med' : 'gap-low');
+  const noProfile = data.students_without_profile || 0;
+  // Say out loud who is not in the denominator. A percentage over an unstated
+  // population is the kind of number a judge asks about and nobody can answer.
+  const caveat = noProfile
+    ? ` ${noProfile} more student${noProfile === 1 ? ' has' : 's have'} no skills recorded yet and ${noProfile === 1 ? 'is' : 'are'} not counted.`
+    : '';
 
   el.innerHTML = `
     <div class="card">
-      <h2 class="text-card-heading mb-1">Skill shortage across ${data.total_students} active students</h2>
-      <p class="text-caption mb-4">Share of students who don't yet have each skill our internships ask for.</p>
+      <h2 class="text-card-heading mb-1">Skill shortage across ${data.total_students} student${data.total_students === 1 ? '' : 's'} with a skill profile</h2>
+      <p class="text-caption mb-4">Share of students who don't yet have each skill our internships ask for.${escapeHtml(caveat)}</p>
       <div class="gap-legend">
         <span><i class="gap-high"></i>Critical (70%+ missing)</span>
         <span><i class="gap-med"></i>Moderate (40–69%)</span>

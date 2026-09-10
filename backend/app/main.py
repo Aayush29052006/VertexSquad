@@ -2019,31 +2019,65 @@ def admin_stats(admin: StudentModel = Depends(get_current_admin), db: Session = 
 
 @app.get("/api/admin/skill-gaps")
 def admin_skill_gaps(admin: StudentModel = Depends(get_current_admin), db: Session = Depends(get_db)):
-    """For every skill any internship asks for, what share of active students lack it."""
-    students = [s for s in db.query(StudentModel).all() if s.is_active]
+    """For every skill any internship asks for, what share of students lack it.
+
+    Two things this deliberately does NOT count:
+
+    - Non-student accounts. A recruiter, faculty member or admin has no skill
+      profile, so counting them made every skill look 100% missing and put
+      the headline at "15 active students" when only 10 were students.
+    - Students who have no skills recorded at all. They have not completed an
+      assessment or uploaded a resume, so they are missing DATA, not missing
+      the skill - averaging them in says "nobody knows Python" when the truth
+      is "we have not asked them yet". They are reported separately as
+      students_without_profile so the number stays honest rather than hidden.
+    """
+    everyone = [s for s in db.query(StudentModel).all() if s.is_active]
+    students = [s for s in everyone if (s.role or ROLE_STUDENT) == ROLE_STUDENT]
+
+    profiled, unprofiled = [], 0
+    for s in students:
+        try:
+            have = json.loads(s.skills or "[]")
+        except Exception:
+            have = []
+        if have:
+            profiled.append({x.lower() for x in have if isinstance(x, str)})
+        else:
+            unprofiled += 1
+
     internships = db.query(InternshipModel).all()
-    if not students:
-        return {"total_students": 0, "gaps": []}
+    if not profiled:
+        return {
+            "total_students": 0,
+            "students_without_profile": unprofiled,
+            "gaps": [],
+        }
 
     demanded = set()
     for i in internships:
-        for sk in json.loads(i.required_skills or "[]"):
-            demanded.add(sk)
+        try:
+            for sk in json.loads(i.required_skills or "[]"):
+                if isinstance(sk, str) and sk.strip():
+                    demanded.add(sk)
+        except Exception:
+            continue
 
     gaps = []
     for skill in demanded:
-        lacking = 0
-        for s in students:
-            have = [x.lower() for x in json.loads(s.skills or "[]")]
-            if skill.lower() not in have:
-                lacking += 1
+        needle = skill.lower()
+        lacking = sum(1 for have in profiled if needle not in have)
         gaps.append({
             "skill": skill,
             "students_missing": lacking,
-            "pct_missing": round(lacking * 100 / len(students)),
+            "pct_missing": round(lacking * 100 / len(profiled)),
         })
-    gaps.sort(key=lambda g: g["students_missing"], reverse=True)
-    return {"total_students": len(students), "gaps": gaps}
+    gaps.sort(key=lambda g: (-g["students_missing"], g["skill"]))
+    return {
+        "total_students": len(profiled),
+        "students_without_profile": unprofiled,
+        "gaps": gaps,
+    }
 
 
 @app.get("/api/admin/students")

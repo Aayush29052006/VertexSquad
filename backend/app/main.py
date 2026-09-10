@@ -434,7 +434,7 @@ class AppMetaModel(Base):
 # accounts, the learning programmes, anything the seed_* functions write.
 # Startup compares it against what is recorded in app_meta and re-runs the
 # seeders only when the two differ.
-SEED_VERSION = "2026-09-10a"
+SEED_VERSION = "2026-09-10b"
 
 
 # Create tables
@@ -5057,33 +5057,18 @@ EXTERNAL_OPPORTUNITIES = [
     },
     {
         "id": "ext_aiia_goa_faculty",
-        "title": "Faculty Positions (Contractual) — AIIA Goa",
+        "title": "Recruitment at AIIA Goa (Faculty, Research & Contractual)",
         "company": "All India Institute of Ayurveda, Goa",
-        "source_name": "AIIA Goa — Official",
-        "official_url": "https://aiia.gov.in/pdf/Advertisement-for-recruitment-to-various-faculty-positions-at-AIIA-Goa.pdf",
+        "source_name": "AIIA — Official Vacancy Board",
+        "official_url": "https://aiia.gov.in/#/archivesVacancies",
         "opportunity_type": "job",
         "location": "AIIA Goa",
         "work_mode": "On-site",
-        "stipend": "As per institute norms",
-        "duration": "Contractual",
-        "eligibility": "Varies by position — see the official advertisement",
-        "description": "Recruitment to various faculty positions at the AIIA Goa campus. Run by AIIA Goa, not the Delhi campus.",
+        "stipend": "As per Government of India / institute norms",
+        "duration": "Direct, deputation & contractual",
+        "eligibility": "Varies by post — see the current advertisement on the vacancy board",
+        "description": "Faculty, non-teaching, research-fellow and contractual posts at the AIIA Goa satellite campus. AIIA publishes and updates these on its live vacancy board — check there for the advertisement that is currently open, as individual advertisements open and close through the year.",
         "required_skills": ["Communication"],
-    },
-    {
-        "id": "ext_aiia_goa_srf",
-        "title": "Senior Research Fellow (Contractual) — AIIA Goa",
-        "company": "All India Institute of Ayurveda, Goa",
-        "source_name": "AIIA Goa — Official",
-        "official_url": "https://aiia.gov.in/pdf/Advt.-for-SRF-on-contractual-basis-AIIA-Goa.pdf",
-        "opportunity_type": "project",
-        "location": "AIIA Goa",
-        "work_mode": "On-site",
-        "stipend": "As per institute norms",
-        "duration": "Contractual",
-        "eligibility": "See the official advertisement",
-        "description": "Senior Research Fellow position on a contractual basis at the AIIA Goa campus.",
-        "required_skills": ["Python", "Communication"],
     },
 
     # ---------- Company student programmes ----------
@@ -5363,8 +5348,8 @@ EXTERNAL_LEARNING = [
         "title": "Panchakarma Technician Course (AIIA)",
         "provider": "All India Institute of Ayurveda",
         "program_type": "certification",
-        "url": "https://aiia.gov.in/pdf/Academic_Brochure_10072026.pdf",
-        "description": "One-year technician training in Panchakarma therapy, accredited by HSSC and the Ayurveda Training Accreditation Board.",
+        "url": "https://aiia.gov.in/#/coursesAvailable",
+        "description": "One-year technician training in Panchakarma therapy, accredited by HSSC and the Ayurveda Training Accreditation Board. Applications for the 2026 batch have closed (provisional selection list published 21 August 2026). Check the courses page for the next intake.",
         "skills_covered": ["Communication", "Teamwork"],
         "duration": "One year",
         "cost": "See the official brochure",
@@ -5376,8 +5361,8 @@ EXTERNAL_LEARNING = [
         "title": "Yoga Wellness Trainer Course (AIIA)",
         "provider": "All India Institute of Ayurveda",
         "program_type": "certification",
-        "url": "https://aiia.gov.in/pdf/Academic_Brochure_Yoga.pdf",
-        "description": "Six-month Yoga Wellness Trainer course affiliated with HSSC and NSDC, 3 hours per day.",
+        "url": "https://aiia.gov.in/#/coursesAvailable",
+        "description": "Six-month Yoga Wellness Trainer course affiliated with HSSC and NSDC, 3 hours per day, run as an AYUSH Skill Development course under COEDAKSHYA. Applications for the 2026-27 intake closed on 5 July 2026. Check the courses page for the next intake.",
         "skills_covered": ["Communication", "Leadership"],
         "duration": "Six months",
         "cost": "See the official brochure",
@@ -5389,11 +5374,11 @@ EXTERNAL_LEARNING = [
         "title": "Molecular Biology Techniques Training (AIIA)",
         "provider": "All India Institute of Ayurveda",
         "program_type": "workshop",
-        "url": "https://aiia.gov.in/pdf/skill_training_adv_final.pdf",
-        "description": "Thirty-day hands-on training integrating Ayurveda classics with molecular biology techniques at ITMBU, AIIA New Delhi.",
+        "url": "https://aiia.gov.in/#/trainingWorkshop",
+        "description": "Thirty-day hands-on training integrating Ayurveda classics with molecular biology techniques at ITMBU, AIIA New Delhi. The most recent intake ran 25 June to 24 July 2026 and applications for it have closed. New intakes are announced on the training and workshops page.",
         "skills_covered": ["Python", "Problem Solving"],
         "duration": "30 days",
-        "cost": "Rs. 7,000 (excluding accommodation)",
+        "cost": "See the official notice",
         "eligibility": "MD Ayurveda or M.Sc Life Sciences",
         "certificate": 1,
     },
@@ -5619,6 +5604,16 @@ def seed_external_catalogue():
     db = SessionLocal()
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
+        # Catalogue entries that have been retired (source went dead, or the
+        # entry was merged into another). Their rows are deleted so a stale
+        # listing does not linger in the shared database after the code that
+        # created it is gone.
+        RETIRED_CATALOGUE_IDS = ["ext_aiia_goa_srf"]
+        for _rid in RETIRED_CATALOGUE_IDS:
+            db.query(InternshipModel).filter(InternshipModel.id == _rid).delete()
+            db.query(LearningProgramModel).filter(LearningProgramModel.id == _rid).delete()
+        db.commit()
+
         # Fetch every row this function owns up front, in one query per table,
         # rather than one SELECT per catalogue entry. Against a remote Supabase
         # instance each round trip costs ~350ms, so the per-row lookups were
@@ -5921,11 +5916,11 @@ AIIA_PROGRAMMES = [
         "title": "Panchakarma Technician Course, Batch 2026-27",
         "category": "Certificate Course",
         "department": "Department of Panchakarma",
-        "description": "Technician training in Panchakarma therapy procedures, run as a full batch intake by the institute.",
+        "description": "Technician training in Panchakarma therapy procedures, run as a full batch intake by the institute. Applications for the 2026 batch have closed — AIIA published the provisional selection list on 21 August 2026 and the selection process is under way. Watch the courses page for the next batch.",
         "announced": "2026-07-10",
         "mode": "Offline",
         "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/Academic_Brochure_10072026.pdf",
+        "url": f"{AIIA_SITE}/#/coursesAvailable",
         "section_url": f"{AIIA_SITE}/#/coursesAvailable",
     },
     {
@@ -5933,11 +5928,11 @@ AIIA_PROGRAMMES = [
         "title": "Yoga Wellness Trainer Course",
         "category": "Certificate Course",
         "department": "Department of Swasthavritta",
-        "description": "Trainer-level certification in yoga for wellness. AIIA extended the application deadline for this intake by a separate notice.",
+        "description": "Six-month trainer-level certification in yoga for wellness, an AYUSH Skill Development course under COEDAKSHYA. Applications for the 2026-27 intake closed on 5 July 2026 (the last date was extended once by notice). Watch the courses page for the next intake.",
         "announced": "2026-05-14",
         "mode": "Offline",
         "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/Academic_Brochure_Yoga.pdf",
+        "url": f"{AIIA_SITE}/#/coursesAvailable",
         "section_url": f"{AIIA_SITE}/#/coursesAvailable",
     },
     {
@@ -5957,8 +5952,9 @@ AIIA_PROGRAMMES = [
         "title": "Garbhini Mitra Course",
         "category": "Certificate Course",
         "department": "Department of Prasuti Tantra & Stri Roga",
-        "description": "Course on Ayurvedic maternal care. AIIA publishes the brochure together with the application form.",
+        "description": "Course on Ayurvedic maternal care. AIIA publishes the brochure together with the application form. Applications for this intake are open; AIIA extended the last date to 15 September 2026 by a separate notice.",
         "announced": "2026-08-10",
+        "deadline": "2026-09-15",
         "mode": "Offline",
         "certificate": True,
         "url": f"{AIIA_SITE}/pdf/Academic_Brochure_08082026.pdf",
@@ -5992,11 +5988,12 @@ AIIA_PROGRAMMES = [
         "id": "aiia_molecular_biology",
         "title": "Skill Development Training Programme in Molecular Biology Techniques",
         "category": "Training Programme",
-        "department": "Research laboratories, AIIA",
-        "description": "Laboratory skill training in molecular biology techniques for research students.",
+        "department": "Integrated Translational Molecular Biology Unit (ITMBU), AIIA",
+        "description": "Hands-on laboratory training in molecular biology techniques at ITMBU for MD (Ayurveda) and M.Sc Life Sciences candidates. The most recent 30-day intake ran 25 June to 24 July 2026 and applications for it have closed. AIIA announces new intakes on its training and workshops page.",
+        "announced": "2026-05-15",
         "mode": "Offline",
         "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/skill_training_adv_final.pdf",
+        "url": f"{AIIA_SITE}/#/trainingWorkshop",
         "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
     },
     {
@@ -6039,7 +6036,7 @@ AIIA_PROGRAMMES = [
         "title": "PhD in Ayurveda 2026-2027",
         "category": "Research / Doctoral",
         "department": "All India Institute of Ayurveda",
-        "description": "Doctoral admission in Ayurveda, through the AIIA PhD entrance examination. Entrance notices, answer keys and results are all published on the institute's notice board.",
+        "description": "Doctoral admission in Ayurveda, through the AIIA PhD entrance examination. The 2026-27 entrance cycle is complete — AIIA declared the entrance result on 30 May 2026. The next cycle is announced on the academic admissions page, usually early in the year.",
         "announced": "2026-03-16",
         "mode": "Offline",
         "certificate": True,
@@ -6063,7 +6060,7 @@ AIIA_PROGRAMMES = [
         "title": "Ayurveda Dietician and Poshan Sahayak Course",
         "category": "Certificate Course",
         "department": "All India Institute of Ayurveda",
-        "description": "Course in Ayurvedic dietetics and nutrition support. AIIA invited applications by public notice.",
+        "description": "Course in Ayurvedic dietetics and nutrition support. AIIA invited applications by public notice with a last date of 28 February 2026; that intake has closed. Watch the courses page for the next session.",
         "announced": "2026-02-06",
         "mode": "Offline",
         "certificate": True,
@@ -6075,7 +6072,7 @@ AIIA_PROGRAMMES = [
         "title": "e-CME Courses on the Ayurvidya Portal",
         "category": "Online Course",
         "department": "All India Institute of Ayurveda",
-        "description": "Continuing medical education delivered online through the Ayurvidya portal, run in scheduled batches.",
+        "description": "Continuing medical education delivered online through the Ayurvidya portal, run in scheduled batches. AIIA published the schedule for the 2nd batch in July 2026; new batch schedules appear on the notice board.",
         "announced": "2026-07-14",
         "mode": "Online",
         "certificate": True,

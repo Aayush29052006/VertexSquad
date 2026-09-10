@@ -641,9 +641,26 @@ For things there is no UI for yet, run `backend/manage.py` (venv active):
 cd backend
 python manage.py list-admins                     # who has admin access
 python manage.py reseed                          # clear the seed marker
-python manage.py make-admin  teammate@email.com   # promote a registered account
-python manage.py set-password you@email.com       # prompts for a new password (hidden)
+python manage.py make-admin  teammate@email.com  # promote a registered account
+python manage.py set-password you@email.com      # prompts for a new password (hidden)
 ```
+
+### Test suites
+
+Run the API and security suites against a THROWAWAY database, never the
+shared one — they create accounts and post messages:
+
+```bash
+cd backend
+set DATABASE_URL=sqlite:///./qa_test.db
+venv\Scripts\python -m uvicorn app.main:app --port 8100
+venv\Scripts\python test_api_qa.py        # 69 checks: auth, RBAC, IDOR, injection
+venv\Scripts\python test_upload_ai_qa.py  # 18 checks: upload allowlist, AI endpoint
+venv\Scripts\python test_contact.py       # 50 checks: contact form
+```
+
+`test_contact.py` brings its own app up in-process, so it only needs
+`DATABASE_URL` set. The other two talk to a running server on port 8100.
 
 ### Running the frontend without a backend
 

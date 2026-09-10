@@ -14,6 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, Text, text, or_ as sa_or
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import io
@@ -550,6 +551,10 @@ run_migrations()
 
 # Emails in ADMIN_EMAILS (comma-separated, from .env) are promoted to admin on
 # startup so there is always a way in. Everyone else stays a student.
+# Shortest password a new account may be created with. Checked only at
+# registration, so no existing account is ever locked out by it.
+MIN_PASSWORD_LENGTH = 8
+
 ADMIN_EMAILS = [
     e.strip().lower()
     for e in os.environ.get("ADMIN_EMAILS", "aayushswapnali@gmail.com").split(",")
@@ -972,7 +977,12 @@ class WhatIfPayload(BaseModel):
 
 @app.post("/api/auth/login")
 def login(payload: LoginPayload, db: Session = Depends(get_db)):
-    student = db.query(StudentModel).filter(StudentModel.email == payload.email).first()
+    # Case-insensitive: a mailbox is the same mailbox however it was typed.
+    # Matching on lower() rather than forcing the stored value keeps any
+    # pre-existing mixed-case row working instead of locking it out.
+    student = db.query(StudentModel).filter(
+        func.lower(StudentModel.email) == (payload.email or "").strip().lower()
+    ).first()
 
     # Verify the password. The same generic message is returned whether the
     # email is unknown or the password is wrong, so this endpoint cannot be
@@ -1032,9 +1042,25 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
 
 @app.post("/api/auth/register")
 def register(payload: RegisterPayload, db: Session = Depends(get_db)):
-    existing = db.query(StudentModel).filter(StudentModel.email == payload.email).first()
+    # Email is an identity, and mailboxes are not case sensitive. Storing it
+    # as typed let Foo@x.com and foo@x.com become two separate accounts for
+    # one real person - and the ADMIN_EMAILS bootstrap, which lowercases,
+    # would then match only one of them.
+    email = (payload.email or "").strip().lower()
+
+    existing = db.query(StudentModel).filter(
+        func.lower(StudentModel.email) == email
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    # A password short enough to guess protects nothing. Checked here rather
+    # than in the model so the message says what to do about it.
+    if len(payload.password or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.",
+        )
 
     # Anyone may sign up as a student, faculty member, recruiter or
     # institution. Admin is never self-assignable — it is granted only by an
@@ -1052,7 +1078,7 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
     student_id = new_id("stu")
     student = StudentModel(
         id=student_id,
-        email=payload.email,
+        email=email,
         password_hash=hash_password(payload.password),
         full_name=payload.full_name,
         role=requested_role,

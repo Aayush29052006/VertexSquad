@@ -196,18 +196,17 @@ the landing-page navigation and the footer. **Public** — reaching the team
 never requires an account, so the page renders a plain header when nobody is
 signed in and the full app shell when someone is.
 
-- **The team list is real.** Every name in
-  [`frontend/data/team.json`](frontend/data/team.json) is a contributor to
-  this repository, taken from git history (`git shortlog -sne --all`).
-  Nobody was invented.
-- **Empty fields stay empty on purpose.** `role`, `bio`, `photo` and
-  `linkedin` are blank because they are not recorded anywhere in the project,
-  and guessing them would put fiction on a public page. Fill them in and they
-  appear; a field with no value is simply not rendered, so a half-filled entry
-  still looks intentional. No photo means initials, never a stock face.
-- **Personal email addresses are deliberately not listed.** Commit history has
-  them, but publishing someone's address is their call. Everyone reaches the
-  team through the form.
+- **Name and work title, nothing else.** No bios, photos, skills, profile
+  links or personal contact details. That is a deliberate decision about what
+  belongs on a public page, not an unfinished section — everyone reaches the
+  team through the contact form.
+- **The list lives in [`frontend/data/team.json`](frontend/data/team.json).**
+  Type a title into a member's `title` field and it appears on the next load;
+  the order in the file is the order on the page. That is the only edit
+  needed.
+- **Titles are never invented.** A member with no title yet shows a muted,
+  italic *"Work title to be added"* placeholder, which cannot be mistaken for
+  a real job title.
 
 The contact flow is the real one — form → API → SMTP → `CONTACT_TO`:
 
@@ -349,7 +348,7 @@ VertexSquad/
 │   ├── serve.py                    #   Static server, directory listings off
 │   ├── data/
 │   │   ├── website-links.json      #   ★ EDIT HERE to change any external URL
-│   │   └── team.json               #   ★ EDIT HERE to change the Team section
+│   │   └── team.json               #   ★ EDIT HERE for team names & titles
 │   ├── pages/                      #   Application pages
 │   │   ├── login.html              #     Student authentication
 │   │   ├── admin-login.html        #     Team / admin sign-in (separate door)

@@ -11,78 +11,43 @@
 
 .team-grid {
   display: grid;
-  /* min() so a card never demands more width than it has — the same
-     rule the rest of the app's grids use. */
-  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
-  gap: var(--space-4);
+  /* Six short cards: min() so a card never demands more width than the
+     column has, which is what keeps this from overflowing on a phone or
+     when the sidebar is dragged wide. */
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-3);
 }
 
+/* Name and work title, nothing else. The card is deliberately plain —
+   this is a credit list, not a set of profiles. */
 .team-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
   min-width: 0;
+  padding: var(--space-4);
 }
 
-.team-card-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.team-photo {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  object-fit: cover;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-}
-
-/* Shown when a member has no photo yet. Initials are honest — a stock
-   or generated face would be a fake person. */
-.team-initials {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--primary);
-  background: var(--primary-light);
-  border-color: transparent;
-}
-
-.team-id { min-width: 0; }
 .team-name {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
+
 .team-role {
+  margin-top: 2px;
   font-size: 0.82rem;
-  color: var(--primary);
   font-weight: 500;
-  margin-top: 1px;
-}
-
-.team-bio,
-.team-contrib {
-  font-size: 0.86rem;
-  line-height: 1.55;
-  color: var(--text-secondary);
+  color: var(--primary);
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
-.team-contrib { color: var(--text-muted); }
 
-.team-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: auto;
-  padding-top: var(--space-2);
+/* The stand-in shown until a real title is supplied. Muted and italic so
+   it reads as "not filled in yet", never as somebody's actual role. */
+.team-role--empty {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
 }
 
 /* ---------- Contact ---------- */

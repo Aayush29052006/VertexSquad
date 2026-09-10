@@ -7,10 +7,11 @@
  * the team page and send a message, so the page renders a plain header
  * when there is no session and the full app shell when there is.
  *
- * Every person shown comes from data/team.json, which is populated from
- * this repository's git history. Nobody is invented, and a field that
- * has not been filled in is simply not rendered — no placeholder faces,
- * no made-up job titles.
+ * The team list comes from data/team.json and shows two things only:
+ * name and work title. No bios, photos, skills, profile links or personal
+ * contact details — that is a deliberate choice about what belongs on a
+ * public page, not an unfinished section. A title nobody has supplied
+ * shows as a visible placeholder rather than an invented job title.
  */
 
 const TEAM_FALLBACK_MSG =
@@ -25,52 +26,17 @@ let contactSubmitting = false;
 
 /* ---------- Team ---------- */
 
-function initialsOf(name) {
-  return (name || '?')
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
 function memberCard(m) {
-  const photo = safeUrl(m.photo) || (m.photo || '').trim();
-  const linkedin = safeUrl(m.linkedin);
-  const github = safeUrl(m.github);
-  const skills = Array.isArray(m.skills) ? m.skills.filter(Boolean) : [];
-
+  const title = (m.title || '').trim();
   return `
     <article class="card team-card">
-      <div class="team-card-head">
-        ${
-          photo
-            ? `<img class="team-photo" src="${escapeHtml(photo)}" alt="" loading="lazy" />`
-            : `<span class="team-photo team-initials" aria-hidden="true">${escapeHtml(initialsOf(m.name))}</span>`
-        }
-        <div class="team-id">
-          <p class="team-name">${escapeHtml(m.name)}</p>
-          ${m.role ? `<p class="team-role">${escapeHtml(m.role)}</p>` : ''}
-        </div>
-      </div>
-
-      ${m.bio ? `<p class="team-bio">${escapeHtml(m.bio)}</p>` : ''}
-      ${m.contribution ? `<p class="team-contrib">${escapeHtml(m.contribution)}</p>` : ''}
-
+      <p class="team-name">${escapeHtml(m.name)}</p>
       ${
-        skills.length
-          ? `<div class="internship-chips">${skills.map((sk) => skillChip(sk)).join('')}</div>`
-          : ''
-      }
-
-      ${
-        linkedin || github
-          ? `<div class="team-links">
-               ${linkedin ? `<a class="btn btn-ghost btn-sm external-link" href="${escapeHtml(linkedin)}" target="_blank" rel="noopener noreferrer">LinkedIn <span class="ext-arrow" aria-hidden="true">↗</span></a>` : ''}
-               ${github ? `<a class="btn btn-ghost btn-sm external-link" href="${escapeHtml(github)}" target="_blank" rel="noopener noreferrer">GitHub <span class="ext-arrow" aria-hidden="true">↗</span></a>` : ''}
-             </div>`
-          : ''
+        title
+          ? `<p class="team-role">${escapeHtml(title)}</p>`
+          // Shown until someone fills in the title. Visibly a placeholder,
+          // so it can never be mistaken for a real job title.
+          : '<p class="team-role team-role--empty">Work title to be added</p>'
       }
     </article>`;
 }

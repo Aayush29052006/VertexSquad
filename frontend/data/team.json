@@ -2,37 +2,26 @@
   "_readme": [
     "CareerNexus — Team VertexSquad.",
     "",
-    "THIS IS THE FILE TO EDIT to change the Team section. Add, remove or",
-    "update a member here and the page follows. Nothing is hard-coded.",
+    "THIS IS THE FILE TO EDIT to change the Team section.",
     "",
-    "HOW THE NAMES GOT HERE: every person listed is a real contributor to",
-    "this repository, taken from git commit history. Nobody was invented.",
-    "Run `git shortlog -sne --all` to see the same list.",
+    "TO ADD A WORK TITLE: find the person below and type it into their",
+    "\"title\" field. That is the only edit needed — the page picks it up on",
+    "the next load. Until a title is filled in, the card shows a muted",
+    "\"Work title to be added\" placeholder rather than a guess.",
     "",
-    "FIELDS LEFT EMPTY ARE DELIBERATE. role, bio, photo, linkedin and some",
-    "github handles are blank because they are not recorded anywhere in the",
-    "project, and guessing them would put made-up facts on a public page.",
-    "Fill them in yourself — the page shows a field only when it has a",
-    "value, so a half-filled entry still looks intentional rather than",
-    "broken.",
+    "  { \"name\": \"Yash Barkale\", \"title\": \"Backend Developer\" }",
     "",
-    "TO FILL IN A MEMBER:",
-    "  role      a short job title, e.g. \"Backend & API\"",
-    "  bio       one or two sentences, max ~200 characters",
-    "  photo     a path under assets/, e.g. \"assets/team/sneha.jpg\".",
-    "            Leave blank and the page draws initials instead.",
-    "  skills    a list of strings, e.g. [\"Python\", \"FastAPI\"]",
-    "  linkedin  full https:// profile URL",
-    "  github    full https:// profile URL",
+    "TO ADD OR REMOVE A MEMBER: add or delete an entry in \"members\". The",
+    "order here is the order shown on the page.",
     "",
-    "PERSONAL EMAIL ADDRESSES ARE NOT LISTED HERE ON PURPOSE. The commit",
-    "history contains each contributor's email, but publishing someone's",
-    "personal address on a public web page is their decision to make, not",
-    "the project's. Everyone reaches the team through the contact form,",
-    "which goes to the single address in CONTACT_TO (backend/.env).",
+    "WHAT THIS SECTION SHOWS: name and work title, nothing else. No bios,",
+    "no photos, no skills, no profile links, no personal contact details —",
+    "that is deliberate, not unfinished. Everyone reaches the team through",
+    "the contact form, which goes to the address in CONTACT_TO",
+    "(backend/.env).",
     "",
-    "The `contribution` lines below are facts from git history, not job",
-    "titles. Replace them with whatever the person prefers."
+    "Titles are never invented. If a title is not in this file, it is",
+    "because nobody has supplied it yet."
   ],
 
   "meta": {
@@ -40,44 +29,15 @@
     "tagline": "Built by students who are passionate about technology, learning, and career development.",
     "event": "Smart India Hackathon 2026",
     "problem_statement": "SIH26044",
-    "repository": "https://github.com/snehaajadhav06/VertexSquad",
-    "source_of_names": "git commit history of this repository",
     "last_updated": "2026-09-10"
   },
 
   "members": [
-    {
-      "id": "sneha_jadhav",
-      "name": "Sneha Jadhav",
-      "role": "",
-      "bio": "",
-      "contribution": "Created the CareerNexus repository and owns it on GitHub.",
-      "skills": [],
-      "photo": "",
-      "linkedin": "",
-      "github": "https://github.com/snehaajadhav06"
-    },
-    {
-      "id": "yash_barkale",
-      "name": "Yash Barkale",
-      "role": "",
-      "bio": "",
-      "contribution": "Brought up the first full-stack build — FastAPI backend, Supabase database and the initial frontend.",
-      "skills": [],
-      "photo": "",
-      "linkedin": "",
-      "github": ""
-    },
-    {
-      "id": "aayush_chaudhari",
-      "name": "Aayush Jivan Chaudhari",
-      "role": "",
-      "bio": "",
-      "contribution": "Most of the ongoing development: matching engine, the four stakeholder portals, AIIA hub, search and the admin panel.",
-      "skills": [],
-      "photo": "",
-      "linkedin": "",
-      "github": "https://github.com/Aayush29052006"
-    }
+    { "id": "yash_barkale",       "name": "Yash Barkale",           "title": "" },
+    { "id": "rugved_patil",       "name": "Rugved Patil",           "title": "" },
+    { "id": "tanmay_wagh",        "name": "Tanmay Wagh",            "title": "" },
+    { "id": "sneha_jadhav",       "name": "Sneha Jadhav",           "title": "" },
+    { "id": "chaitanya_badgujar", "name": "Chaitanya Badgujar",     "title": "" },
+    { "id": "aayush_chaudhari",   "name": "Aayush Jivan Chaudhari", "title": "" }
   ]
 }

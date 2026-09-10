@@ -363,6 +363,7 @@ jQuery — so it runs from any static file server with zero build step.
 VertexSquad/
 ├── README.md
 ├── start.bat                       # One-click: starts both servers (Windows)
+├── stop.bat                        # Stops both servers and frees the ports
 │
 ├── frontend/                       # Static site — no build step, no npm
 │   ├── index.html                  #   Landing page
@@ -620,6 +621,8 @@ Open **http://localhost:5500** in your browser.
 ### One-click (Windows)
 
 `start.bat` in the repo root launches both servers and opens the browser.
+`stop.bat` shuts them down again — it frees ports 8000 and 5500 and closes
+the two server windows, so you can restart cleanly without hunting for them.
 
 ### Admin tasks from the command line
 

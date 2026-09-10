@@ -1667,7 +1667,14 @@ def get_interview_prep(internship_id: str, student: StudentModel = Depends(get_c
     if raw:
         try:
             data = json.loads(raw)
-            questions = data.get("questions", [])
+            # Gemini sometimes returns the bare array instead of the
+            # {"questions": [...]} object it was asked for.
+            if isinstance(data, dict):
+                questions = data.get("questions", [])
+            elif isinstance(data, list):
+                questions = data
+            else:
+                questions = []
             if questions:
                 return {
                     "role": internship.title,
@@ -1675,7 +1682,7 @@ def get_interview_prep(internship_id: str, student: StudentModel = Depends(get_c
                     "source": "ai",
                     "questions": questions[:3],
                 }
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, AttributeError, TypeError):
             pass
 
     # Non-AI fallback so the feature still works if Gemini is unavailable

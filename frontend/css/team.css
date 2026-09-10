@@ -42,19 +42,19 @@
   overflow-wrap: anywhere;
 }
 
-/* One line about what the person did. Clamped to three lines so a longer
-   bio cannot leave one card towering over the others in the grid; cards
-   stretch to the tallest in their row either way. */
+/* One line about what the person did, shown in full.
+   No line clamp: truncating with an ellipsis cut real sentences off
+   mid-word ("...the four stakeholder portals, AI..."), which looks like
+   a rendering fault rather than a design. Grid rows already stretch every
+   card to the tallest in the row, so a longer bio costs a little height,
+   not a broken-looking card. Keep bios to a sentence and this stays
+   tidy. */
 .team-bio {
   margin-top: var(--space-2);
   font-size: 0.82rem;
   line-height: 1.5;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* The stand-in shown until a real title is supplied. Muted and italic so

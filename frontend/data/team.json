@@ -14,15 +14,19 @@
     "rather than a guess. Titles are never invented — if one is missing, it",
     "is because nobody has supplied it yet.",
     "",
+    "TO CHANGE A BIO: edit that person's \"bio\" field. Keep it to one",
+    "sentence — the card clamps at three lines. An empty bio renders",
+    "nothing at all, so the card falls back to just name and title.",
+    "",
     "TO REORDER: move an entry in \"members\". The order in this file is the",
     "order shown on the page.",
     "",
     "TO ADD OR REMOVE A MEMBER: add or delete an entry in \"members\", giving",
     "any new one a unique \"id\".",
     "",
-    "WHAT THIS SECTION SHOWS: name and work title, nothing else. No bios,",
-    "no photos, no skills, no profile links, no personal contact details —",
-    "that is deliberate, not unfinished. Everyone reaches the team through",
+    "WHAT THIS SECTION SHOWS: name, work title and a one-line bio. No",
+    "photos, skills, profile links or personal contact details — that is",
+    "deliberate, not unfinished. Everyone reaches the team through the",
     "the contact form, which goes to the address in CONTACT_TO",
     "(backend/.env)."
   ],
@@ -37,32 +41,38 @@
     {
       "id": "aayush_chaudhari",
       "name": "Aayush Jivan Chaudhari",
-      "title": "Developer"
+      "title": "Developer",
+      "bio": "Built most of the platform: the matching engine, the four stakeholder portals, AIIA Hub, search and the admin panel."
     },
     {
       "id": "yash_barkale",
       "name": "Yash Barkale",
-      "title": "Developer"
+      "title": "Developer",
+      "bio": "Set up the first full-stack build — the FastAPI backend, the Supabase database and the initial frontend."
     },
     {
       "id": "sneha_jadhav",
       "name": "Sneha Jadhav",
-      "title": "Leader"
+      "title": "Leader",
+      "bio": "Started the project and maintains the repository, coordinating what the team works on."
     },
     {
       "id": "rugved_patil",
       "name": "Rugved Patil",
-      "title": "Tester"
+      "title": "Tester",
+      "bio": ""
     },
     {
       "id": "tanmay_wagh",
       "name": "Tanmay Wagh",
-      "title": "Tester"
+      "title": "Tester",
+      "bio": ""
     },
     {
       "id": "chaitanya_badgujar",
       "name": "Chaitanya Badgujar",
-      "title": "Tester"
+      "title": "Tester",
+      "bio": ""
     }
   ]
 }

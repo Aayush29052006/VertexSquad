@@ -14,7 +14,7 @@
   /* Six short cards: min() so a card never demands more width than the
      column has, which is what keeps this from overflowing on a phone or
      when the sidebar is dragged wide. */
-  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: var(--space-3);
 }
 
@@ -40,6 +40,21 @@
   color: var(--primary);
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* One line about what the person did. Clamped to three lines so a longer
+   bio cannot leave one card towering over the others in the grid; cards
+   stretch to the tallest in their row either way. */
+.team-bio {
+  margin-top: var(--space-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* The stand-in shown until a real title is supplied. Muted and italic so

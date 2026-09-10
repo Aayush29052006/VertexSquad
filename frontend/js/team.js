@@ -28,6 +28,7 @@ let contactSubmitting = false;
 
 function memberCard(m) {
   const title = (m.title || '').trim();
+  const bio = (m.bio || '').trim();
   return `
     <article class="card team-card">
       <p class="team-name">${escapeHtml(m.name)}</p>
@@ -37,6 +38,12 @@ function memberCard(m) {
           // Shown until someone fills in the title. Visibly a placeholder,
           // so it can never be mistaken for a real job title.
           : '<p class="team-role team-role--empty">Work title to be added</p>'
+      }
+      ${
+        // No bio means no element at all — a card without one falls back
+        // to name and title rather than showing an empty gap or a
+        // stand-in sentence nobody wrote.
+        bio ? `<p class="team-bio">${escapeHtml(bio)}</p>` : ''
       }
     </article>`;
 }

@@ -196,10 +196,13 @@ the landing-page navigation and the footer. **Public** — reaching the team
 never requires an account, so the page renders a plain header when nobody is
 signed in and the full app shell when someone is.
 
-- **Name and work title, nothing else.** No bios, photos, skills, profile
-  links or personal contact details. That is a deliberate decision about what
+- **Name, work title and a one-line bio.** No photos, skills, profile links
+  or personal contact details. That is a deliberate decision about what
   belongs on a public page, not an unfinished section — everyone reaches the
   team through the contact form.
+- **Bios are short and sourced.** Each one describes what that person did on
+  this project and is checkable against the repository's own history; a
+  member with no bio yet simply shows name and title.
 - **The list lives in [`frontend/data/team.json`](frontend/data/team.json).**
   Type a title into a member's `title` field and it appears on the next load;
   the order in the file is the order on the page. That is the only edit

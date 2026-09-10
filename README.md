@@ -624,6 +624,12 @@ Open **http://localhost:5500** in your browser.
 Chrome incognito window, so a demo never picks up a stale login or cached
 assets from the last run. If Chrome is not installed it says so and prints
 the URL instead of falling back to another browser.
+
+It waits for the backend to actually answer before opening the browser. A
+cold start takes over a minute because the app connects to Supabase first,
+and opening the site early meant every page loaded against a dead API. If
+the backend never comes up, or a previous run still holds a port, the
+script says so instead of opening a broken page.
 `stop.bat` shuts them down again — it frees ports 8000 and 5500 and closes
 the two server windows, so you can restart cleanly without hunting for them.
 

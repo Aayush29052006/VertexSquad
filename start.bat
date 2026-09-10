@@ -32,14 +32,33 @@ if exist "%BACKEND%\.env" (
 ) else (
     echo  Config   : no backend\.env - local SQLite, no Google/AI
 )
+REM  A server left over from a previous run holds the port, so the new
+REM  one dies instantly with "address already in use" and the app looks
+REM  broken. Catch that here and say what to do about it.
+call :PORTBUSY 8000
+if errorlevel 1 goto ALREADY_RUNNING
+call :PORTBUSY 5500
+if errorlevel 1 goto ALREADY_RUNNING
+
 echo  Starting servers...
 echo.
 
 start "CareerNexus Backend"  /D "%BACKEND%"  cmd /k ""%VPY%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
-timeout /t 4 /nobreak >nul
+
+REM  Wait for the backend to actually accept connections before opening
+REM  the browser. It takes over a minute on a cold start - it has to
+REM  reach Supabase first - and a fixed pause opened the site against a
+REM  dead API, so every page came up full of errors.
+echo  Waiting for the backend ^(first start can take up to two minutes^)...
+call :WAITPORT 8000 180
+if errorlevel 1 goto BACKEND_SLOW
+echo        Backend is up.
 
 start "CareerNexus Frontend" /D "%FRONTEND%" cmd /k ""%VPY%" serve.py 5500"
-timeout /t 3 /nobreak >nul
+call :WAITPORT 5500 30
+if errorlevel 1 goto FRONTEND_FAILED
+echo        Frontend is up.
+echo.
 
 REM  Open in a Chrome incognito window. A clean profile every time
 REM  means no stale login, no cached CSS and no leftover local storage
@@ -93,6 +112,59 @@ if exist "%CHROME%" exit /b 0
 
 set "CHROME="
 exit /b 0
+
+REM ------------------------------------------------------------
+REM  :WAITPORT <port> <seconds>  ->  errorlevel 1 if it never opened
+REM  Polls with a real TCP connect rather than netstat, so it waits
+REM  for the server to be answering, not merely bound.
+REM ------------------------------------------------------------
+:WAITPORT
+powershell -NoProfile -Command "$end=(Get-Date).AddSeconds(%~2); while((Get-Date) -lt $end){ try{ $c=New-Object Net.Sockets.TcpClient('127.0.0.1',%~1); $c.Close(); exit 0 } catch { Start-Sleep -Milliseconds 700 } }; exit 1"
+exit /b %errorlevel%
+
+REM ------------------------------------------------------------
+REM  :PORTBUSY <port>  ->  errorlevel 1 if something already holds it
+REM ------------------------------------------------------------
+:PORTBUSY
+netstat -aon | findstr /r /c:"TCP.*:%~1 .*LISTENING" >nul 2>&1
+if errorlevel 1 exit /b 0
+set "BUSYPORT=%~1"
+exit /b 1
+
+REM ------------------------------------------------------------
+:ALREADY_RUNNING
+echo.
+echo  [X] Port %BUSYPORT% is already in use - CareerNexus is probably
+echo      still running from an earlier session.
+echo.
+echo      Run stop.bat first, then start.bat again.
+echo.
+pause
+exit /b 1
+
+REM ------------------------------------------------------------
+:BACKEND_SLOW
+echo.
+echo  [X] The backend did not come up within two minutes.
+echo.
+echo      Look at the "CareerNexus Backend" window for the real error.
+echo      The usual cause is no internet: on start it connects to the
+echo      Supabase database, and that attempt has to time out first.
+echo.
+echo      You can still demo offline - rename backend\.env to
+echo      backend\.env.off and run this again to use local SQLite.
+echo.
+pause
+exit /b 1
+
+REM ------------------------------------------------------------
+:FRONTEND_FAILED
+echo.
+echo  [X] The frontend did not come up on port 5500.
+echo      Look at the "CareerNexus Frontend" window for the error.
+echo.
+pause
+exit /b 1
 
 REM ------------------------------------------------------------
 :NEED_SETUP

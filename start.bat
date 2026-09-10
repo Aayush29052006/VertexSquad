@@ -41,7 +41,18 @@ timeout /t 4 /nobreak >nul
 start "CareerNexus Frontend" /D "%FRONTEND%" cmd /k ""%VPY%" serve.py 5500"
 timeout /t 3 /nobreak >nul
 
-start "" "http://localhost:5500"
+REM  Open in a Chrome incognito window. A clean profile every time
+REM  means no stale login, no cached CSS and no leftover local storage
+REM  from the last run - which is what you want in front of judges.
+call :FINDCHROME
+if defined CHROME (
+    start "" "%CHROME%" --incognito "http://localhost:5500"
+) else (
+    echo  [!] Chrome was not found, so no browser was opened.
+    echo      Open an incognito window yourself and go to:
+    echo        http://localhost:5500
+    echo.
+)
 
 echo ============================================================
 echo    Frontend : http://localhost:5500
@@ -54,6 +65,33 @@ echo    presenting. Closing them stops the app.
 echo ============================================================
 echo.
 pause
+exit /b 0
+
+REM ------------------------------------------------------------
+REM  :FINDCHROME  ->  sets CHROME to chrome.exe, or leaves it unset
+REM  Registry first: that is where Chrome records its own location,
+REM  so this still works if it was installed somewhere unusual. The
+REM  hard-coded paths are a fallback, including the per-user install
+REM  that lands in AppData when there were no admin rights.
+REM ------------------------------------------------------------
+:FINDCHROME
+set "CHROME="
+set "APPKEY=SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+
+for /f "tokens=2,*" %%A in ('reg query "HKCU\%APPKEY%" /ve 2^>nul ^| findstr /i "REG_SZ"') do set "CHROME=%%B"
+if defined CHROME if exist "%CHROME%" exit /b 0
+
+for /f "tokens=2,*" %%A in ('reg query "HKLM\%APPKEY%" /ve 2^>nul ^| findstr /i "REG_SZ"') do set "CHROME=%%B"
+if defined CHROME if exist "%CHROME%" exit /b 0
+
+set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if exist "%CHROME%" exit /b 0
+set "CHROME=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+if exist "%CHROME%" exit /b 0
+set "CHROME=%LocalAppData%\Google\Chrome\Application\chrome.exe"
+if exist "%CHROME%" exit /b 0
+
+set "CHROME="
 exit /b 0
 
 REM ------------------------------------------------------------

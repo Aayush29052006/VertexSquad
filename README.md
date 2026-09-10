@@ -620,7 +620,10 @@ Open **http://localhost:5500** in your browser.
 
 ### One-click (Windows)
 
-`start.bat` in the repo root launches both servers and opens the browser.
+`start.bat` in the repo root launches both servers and opens the site in a
+Chrome incognito window, so a demo never picks up a stale login or cached
+assets from the last run. If Chrome is not installed it says so and prints
+the URL instead of falling back to another browser.
 `stop.bat` shuts them down again — it frees ports 8000 and 5500 and closes
 the two server windows, so you can restart cleanly without hunting for them.
 

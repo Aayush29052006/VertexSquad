@@ -6867,8 +6867,8 @@ CONTACT_CATEGORIES = [
 # and therefore per-worker — fine for a single-instance deployment, and
 # the honest limitation is noted in the README.
 CONTACT_RATE_WINDOW = 3600      # seconds
-CONTACT_RATE_MAX = 5            # submissions per IP per window
-CONTACT_MIN_GAP = 20            # seconds between two submissions
+CONTACT_RATE_MAX = 12           # submissions per IP per window
+CONTACT_MIN_GAP = 8             # seconds between two submissions
 _contact_hits: dict = {}
 
 
@@ -6894,9 +6894,15 @@ def _contact_rate_check(ip: str) -> Optional[str]:
     _contact_hits[ip] = hits
 
     if hits and now - hits[-1] < CONTACT_MIN_GAP:
-        return "You just sent a message. Please wait a moment before sending another."
+        return (
+            f"Please wait about {CONTACT_MIN_GAP} seconds between messages, "
+            "then try again."
+        )
     if len(hits) >= CONTACT_RATE_MAX:
-        return "Too many messages from this address. Please try again later."
+        return (
+            f"That is {CONTACT_RATE_MAX} messages in an hour from this address. "
+            "Please try again later."
+        )
 
     # Keep the table from growing without bound on a long-running server.
     if len(_contact_hits) > 5000:

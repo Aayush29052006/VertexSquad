@@ -12,7 +12,8 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, F
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, Text, text
+from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, Text, text, or_ as sa_or
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import io
@@ -416,7 +417,26 @@ class DocumentModel(Base):
 
 
 # Create tables
-Base.metadata.create_all(bind=engine)
+def create_missing_tables():
+    """Create any table that does not exist yet, in ONE round trip.
+
+    Base.metadata.create_all() asks the server "does this table exist?" for
+    every table separately. That is 38 queries, and against a remote Supabase
+    instance at ~350ms each it was adding twelve seconds to every startup to
+    confirm nothing had changed. One reflection call answers it all, and
+    checkfirst=False is then safe because we already know what is missing.
+    """
+    try:
+        existing = set(sa_inspect(engine).get_table_names())
+    except Exception:
+        Base.metadata.create_all(bind=engine)   # reflection failed; slow path
+        return
+    missing = [t for name, t in Base.metadata.tables.items() if name not in existing]
+    if missing:
+        Base.metadata.create_all(bind=engine, tables=missing, checkfirst=False)
+
+
+create_missing_tables()
 
 
 # --- LIGHTWEIGHT MIGRATIONS ---
@@ -447,31 +467,63 @@ def run_migrations():
         ("learning_programs", "certificate", "INTEGER DEFAULT 0"),
         ("learning_programs", "source_type", "VARCHAR DEFAULT 'industry'"),
     ]
+    backfills = (
+        "UPDATE students SET role = 'student' WHERE role IS NULL",
+        "UPDATE students SET is_active = 1 WHERE is_active IS NULL",
+        "UPDATE internships SET opportunity_type = 'internship' WHERE opportunity_type IS NULL",
+        "UPDATE internships SET audience = 'student' WHERE audience IS NULL",
+        "UPDATE internships SET source_type = 'platform' WHERE source_type IS NULL",
+        "UPDATE learning_programs SET source_type = 'industry' WHERE source_type IS NULL",
+    )
+
     with engine.connect() as conn:
-        for table, column, ddl in add_columns:
-            try:
-                if is_sqlite:
-                    # SQLite has no ADD COLUMN IF NOT EXISTS; just try and ignore.
+        if is_sqlite:
+            # SQLite has no ADD COLUMN IF NOT EXISTS, so each one has to be
+            # attempted on its own and the "duplicate column" error swallowed.
+            # It is a local file, so the round trips cost nothing.
+            for table, column, ddl in add_columns:
+                try:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
-                else:
+                    conn.commit()
+                except Exception:
+                    conn.rollback()  # column already exists
+            for stmt in backfills:
+                try:
+                    conn.execute(text(stmt))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+            return
+
+        # PostgreSQL: every statement here is idempotent, so the whole set can
+        # go in ONE round trip instead of 24. That matters more than it looks -
+        # against a remote Supabase instance a round trip costs ~350ms, so
+        # sending these one at a time was adding ~20 seconds to every startup
+        # for work that is a no-op after the first run.
+        script = ";\n".join(
+            [f"ALTER TABLE {t} ADD COLUMN IF NOT EXISTS {c} {d}" for t, c, d in add_columns]
+            + list(backfills)
+        )
+        try:
+            conn.exec_driver_sql(script)
+            conn.commit()
+        except Exception as exc:
+            # One bad statement rolls back the whole script, so fall back to
+            # the slow path rather than leaving the schema half-patched.
+            conn.rollback()
+            print(f"Schema patch: batch failed ({exc}); applying one at a time")
+            for table, column, ddl in add_columns:
+                try:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl}"))
-                conn.commit()
-            except Exception:
-                conn.rollback()  # column already exists
-        # Normalise any NULLs left over from the ALTER.
-        for stmt in (
-            "UPDATE students SET role = 'student' WHERE role IS NULL",
-            "UPDATE students SET is_active = 1 WHERE is_active IS NULL",
-            "UPDATE internships SET opportunity_type = 'internship' WHERE opportunity_type IS NULL",
-            "UPDATE internships SET audience = 'student' WHERE audience IS NULL",
-            "UPDATE internships SET source_type = 'platform' WHERE source_type IS NULL",
-            "UPDATE learning_programs SET source_type = 'industry' WHERE source_type IS NULL",
-        ):
-            try:
-                conn.execute(text(stmt))
-                conn.commit()
-            except Exception:
-                conn.rollback()
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+            for stmt in backfills:
+                try:
+                    conn.execute(text(stmt))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
 
 
 run_migrations()
@@ -4203,7 +4255,21 @@ def seed_platform_v2():
 
         # Attribute the original seed internships to the demo recruiter so the
         # recruiter portal has a pipeline to show on first run.
-        for opp in db.query(InternshipModel).filter(InternshipModel.posted_by.is_(None)).all():
+        #
+        # Only rows this seeder owns. Catalogue rows are deliberately left
+        # unattributed - seed_external_catalogue() sets their posted_by back to
+        # None, so claiming them here started a tug of war that rewrote every
+        # external row twice on EVERY startup for no net change. It also would
+        # have been a false attribution: an AICTE listing was not posted by our
+        # demo recruiter.
+        OWNED_BY_SEED = ("", "platform")
+        for opp in db.query(InternshipModel).filter(
+            InternshipModel.posted_by.is_(None),
+            sa_or(
+                InternshipModel.source_type.is_(None),
+                InternshipModel.source_type.in_(OWNED_BY_SEED),
+            ),
+        ).all():
             opp.posted_by = "rec_2001"
             if not opp.opportunity_type:
                 opp.opportunity_type = "internship"
@@ -5427,8 +5493,25 @@ def seed_external_catalogue():
     db = SessionLocal()
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
+        # Fetch every row this function owns up front, in one query per table,
+        # rather than one SELECT per catalogue entry. Against a remote Supabase
+        # instance each round trip costs ~350ms, so the per-row lookups were
+        # spending half a minute on startup asking about rows we could have
+        # loaded in a single statement.
+        opp_ids = [item["id"] for item in EXTERNAL_OPPORTUNITIES]
+        existing_opps = {
+            r.id: r for r in db.query(InternshipModel)
+            .filter(InternshipModel.id.in_(opp_ids)).all()
+        } if opp_ids else {}
+
+        learn_ids = [item["id"] for item in EXTERNAL_LEARNING]
+        existing_learn = {
+            r.id: r for r in db.query(LearningProgramModel)
+            .filter(LearningProgramModel.id.in_(learn_ids)).all()
+        } if learn_ids else {}
+
         for item in EXTERNAL_OPPORTUNITIES:
-            row = db.query(InternshipModel).filter(InternshipModel.id == item["id"]).first()
+            row = existing_opps.get(item["id"])
             if row is None:
                 row = InternshipModel(id=item["id"])
                 db.add(row)
@@ -5451,7 +5534,7 @@ def seed_external_catalogue():
             row.posted_by = None
 
         for item in EXTERNAL_LEARNING:
-            row = db.query(LearningProgramModel).filter(LearningProgramModel.id == item["id"]).first()
+            row = existing_learn.get(item["id"])
             if row is None:
                 row = LearningProgramModel(id=item["id"], created_at=now)
                 db.add(row)
@@ -5489,15 +5572,20 @@ def seed_external_catalogue():
             "InsightWorks", "PixelForge Studio",
         )
         DEMO_EMPLOYER = "CareerNexus Demo Employer"
-        for name in RETIRED_NAMES:
-            for row in db.query(InternshipModel).filter(InternshipModel.company == name).all():
-                row.company = DEMO_EMPLOYER
-            for row in db.query(LearningProgramModel).filter(LearningProgramModel.provider == name).all():
-                row.provider = DEMO_EMPLOYER
-            for row in db.query(CollaborationModel).filter(CollaborationModel.organisation == name).all():
-                row.organisation = DEMO_EMPLOYER
-            for row in db.query(StudentModel).filter(StudentModel.org_name == name).all():
-                row.org_name = DEMO_EMPLOYER
+        # One query per table with IN (...), not one per table PER NAME - that
+        # was 20 round trips to rename at most a handful of demo rows.
+        for row in db.query(InternshipModel).filter(
+                InternshipModel.company.in_(RETIRED_NAMES)).all():
+            row.company = DEMO_EMPLOYER
+        for row in db.query(LearningProgramModel).filter(
+                LearningProgramModel.provider.in_(RETIRED_NAMES)).all():
+            row.provider = DEMO_EMPLOYER
+        for row in db.query(CollaborationModel).filter(
+                CollaborationModel.organisation.in_(RETIRED_NAMES)).all():
+            row.organisation = DEMO_EMPLOYER
+        for row in db.query(StudentModel).filter(
+                StudentModel.org_name.in_(RETIRED_NAMES)).all():
+            row.org_name = DEMO_EMPLOYER
 
         db.commit()
     finally:
@@ -6035,7 +6123,7 @@ class FeedSyncModel(Base):
     items_new = Column(Integer, default=0)
 
 
-Base.metadata.create_all(bind=engine)
+create_missing_tables()
 
 
 def _fetch_json(url: str):
@@ -6954,7 +7042,7 @@ class ContactMessageModel(Base):
 # ContactMessageModel is declared after the two create_all() calls higher
 # up, so it needs its own or the table is never created and the first
 # submission dies on "no such table: contact_messages".
-Base.metadata.create_all(bind=engine)
+create_missing_tables()
 
 
 class ContactPayload(BaseModel):

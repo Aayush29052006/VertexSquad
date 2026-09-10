@@ -4,26 +4,28 @@
     "",
     "THIS IS THE FILE TO EDIT to change the Team section.",
     "",
-    "TO ADD A WORK TITLE: find the person below and type it into their",
-    "\"title\" field. That is the only edit needed — the page picks it up on",
-    "the next load. Until a title is filled in, the card shows a muted",
-    "\"Work title to be added\" placeholder rather than a guess.",
+    "TO CHANGE A WORK TITLE: edit that person's \"title\" field. It is shown",
+    "exactly as written here, so expanding one is just typing the fuller",
+    "version in:",
     "",
     "  { \"name\": \"Yash Barkale\", \"title\": \"Backend Developer\" }",
     "",
-    "TO ADD OR REMOVE A MEMBER: add or delete an entry in \"members\". The",
-    "order here is the order shown on the page.",
+    "An empty title renders a muted \"Work title to be added\" placeholder",
+    "rather than a guess. Titles are never invented — if one is missing, it",
+    "is because nobody has supplied it yet.",
+    "",
+    "TO REORDER: move an entry in \"members\". The order in this file is the",
+    "order shown on the page.",
+    "",
+    "TO ADD OR REMOVE A MEMBER: add or delete an entry in \"members\", giving",
+    "any new one a unique \"id\".",
     "",
     "WHAT THIS SECTION SHOWS: name and work title, nothing else. No bios,",
     "no photos, no skills, no profile links, no personal contact details —",
     "that is deliberate, not unfinished. Everyone reaches the team through",
     "the contact form, which goes to the address in CONTACT_TO",
-    "(backend/.env).",
-    "",
-    "Titles are never invented. If a title is not in this file, it is",
-    "because nobody has supplied it yet."
+    "(backend/.env)."
   ],
-
   "meta": {
     "team_name": "Team VertexSquad",
     "tagline": "Built by students who are passionate about technology, learning, and career development.",
@@ -31,13 +33,36 @@
     "problem_statement": "SIH26044",
     "last_updated": "2026-09-10"
   },
-
   "members": [
-    { "id": "yash_barkale",       "name": "Yash Barkale",           "title": "" },
-    { "id": "rugved_patil",       "name": "Rugved Patil",           "title": "" },
-    { "id": "tanmay_wagh",        "name": "Tanmay Wagh",            "title": "" },
-    { "id": "sneha_jadhav",       "name": "Sneha Jadhav",           "title": "" },
-    { "id": "chaitanya_badgujar", "name": "Chaitanya Badgujar",     "title": "" },
-    { "id": "aayush_chaudhari",   "name": "Aayush Jivan Chaudhari", "title": "" }
+    {
+      "id": "aayush_chaudhari",
+      "name": "Aayush Jivan Chaudhari",
+      "title": "Developer"
+    },
+    {
+      "id": "yash_barkale",
+      "name": "Yash Barkale",
+      "title": "Developer"
+    },
+    {
+      "id": "sneha_jadhav",
+      "name": "Sneha Jadhav",
+      "title": "Leader"
+    },
+    {
+      "id": "rugved_patil",
+      "name": "Rugved Patil",
+      "title": "Tester"
+    },
+    {
+      "id": "tanmay_wagh",
+      "name": "Tanmay Wagh",
+      "title": "Tester"
+    },
+    {
+      "id": "chaitanya_badgujar",
+      "name": "Chaitanya Badgujar",
+      "title": "Tester"
+    }
   ]
 }

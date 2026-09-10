@@ -221,16 +221,17 @@ async function handleContactSubmit(e) {
 
   try {
     const res = await api.sendContactMessage(values);
-    // The backend reports whether the email actually went out. Only the
-    // delivered case may claim it was sent; the other is still true —
-    // the message is stored — but it does not pretend.
-    setContactStatus(
-      res.delivered ? 'ok' : 'warn',
-      res.message ||
-        (res.delivered
-          ? "Message sent successfully. We'll get back to you soon."
-          : "Message received - we have saved it and will get back to you soon.")
-    );
+    // Success is only ever claimed when the backend confirms the email
+    // actually went out. It answers 502 when the send failed, so this
+    // branch is not even reached then — but the flag is checked as well,
+    // because "the request worked" and "the email arrived" are different
+    // things and only the second one earns a success message.
+    if (!res.delivered) {
+      throw new Error('Unable to send your message right now. Please try again.');
+    }
+    setContactStatus('ok', res.message || "Message sent successfully. We'll get back to you soon.");
+    // Cleared only on a real send, so a failed attempt keeps what was
+    // typed and can be retried without writing it all out again.
     document.getElementById('contactForm').reset();
     document.getElementById('cfCount').textContent = `0 / ${CONTACT_LIMITS.message}`;
   } catch (err) {

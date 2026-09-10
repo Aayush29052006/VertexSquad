@@ -23,7 +23,21 @@ import urllib.parse
 
 # Load environment variables FIRST — every os.environ read below depends on it.
 from dotenv import load_dotenv
-load_dotenv()
+
+# Pinned to backend/.env rather than bare load_dotenv(), which searches
+# upward from the current working directory: launch uvicorn from the repo
+# root instead of backend/ and it silently finds nothing, leaving every
+# credential empty with no error.
+#
+# override stays False (the default) on purpose. A real environment
+# variable must beat the file, because that is how a deploy injects
+# config and how a one-off run overrides it. Setting override=True made
+# .env win over the shell, which quietly redirected a local SQLite run at
+# the production database.
+_ENV_PATH = pathlib.Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=_ENV_PATH)
+if not _ENV_PATH.exists():
+    print(f"Config: no {_ENV_PATH} - using defaults (local SQLite, no Google, no contact email)")
 
 # Initialize FastAPI app
 app = FastAPI(title="CareerNexus Backend", version="1.0")
@@ -5564,6 +5578,25 @@ def site_url(link_id: str, default: str = "") -> str:
 if WEBSITE_LINKS:
     print(f"Website links: {len(WEBSITE_LINKS)} external destinations loaded from the central register")
 
+
+def _report_contact_email_config() -> None:
+    """Say at startup whether the contact form can actually send.
+
+    Silence here previously meant the first anyone knew about missing
+    credentials was a message that never arrived.
+    """
+    missing = [k for k, v in (
+        ("SMTP_HOST", SMTP_HOST), ("SMTP_USER", SMTP_USER), ("SMTP_PASSWORD", SMTP_PASSWORD),
+    ) if not v]
+    if missing:
+        print(
+            "Contact email: DISABLED - " + ", ".join(missing) + " not set in backend/.env. "
+            "The contact form will store messages and return an error to the sender "
+            "instead of pretending they were delivered."
+        )
+    else:
+        print(f"Contact email: enabled - {SMTP_HOST}:{SMTP_PORT} as {SMTP_USER} -> {CONTACT_TO}")
+
 # Read from the register, with the previously hard-coded value as the
 # fallback so a missing file degrades quietly rather than breaking links.
 AIIA_SITE = site_url("aiia_delhi", "https://aiia.gov.in")
@@ -6823,6 +6856,8 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 CONTACT_MAX = {"name": 120, "email": 254, "subject": 200, "message": 5000, "phone": 40, "category": 60}
 CONTACT_MIN = {"name": 2, "subject": 3, "message": 10}
 
+_report_contact_email_config()
+
 CONTACT_CATEGORIES = [
     "General question", "Feedback", "Bug report",
     "Partnership", "Institution enquiry", "Other",
@@ -6925,10 +6960,32 @@ class ContactPayload(BaseModel):
     website: Optional[str] = ""
 
 
-def _contact_clean(value: Optional[str], limit: int) -> str:
-    """Trim, collapse newlines that only pad the message, and cap length."""
+# Human-readable names for the length errors below.
+CONTACT_FIELD_LABELS = {
+    "name": "name", "email": "email address", "subject": "subject",
+    "message": "message", "phone": "phone number", "category": "reason",
+}
+
+
+def _contact_clean(value: Optional[str], field: str) -> str:
+    """Trim a field and reject it if it is over its cap.
+
+    Rejecting rather than truncating: silently cutting the end off a
+    message means the sender believes they sent something they did not.
+    The caller sees an HTTPException with the field named.
+    """
     text = (value or "").strip()
-    return text[:limit]
+    limit = CONTACT_MAX[field]
+    if len(text) > limit:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Your {CONTACT_FIELD_LABELS[field]} is too long "
+                f"({len(text)} characters, maximum {limit}). "
+                "Please shorten it and try again."
+            ),
+        )
+    return text
 
 
 def _header_safe(value: str) -> str:
@@ -7023,16 +7080,16 @@ def submit_contact(payload: ContactPayload, request: Request, db: Session = Depe
     if (payload.website or "").strip():
         return {"ok": True, "delivered": True, "message": "Message sent successfully. We'll get back to you soon."}
 
-    name = _contact_clean(payload.name, CONTACT_MAX["name"])
-    subject = _contact_clean(payload.subject, CONTACT_MAX["subject"])
-    message = _contact_clean(payload.message, CONTACT_MAX["message"])
-    phone = _contact_clean(payload.phone, CONTACT_MAX["phone"])
-    category = _contact_clean(payload.category, CONTACT_MAX["category"])
+    name = _contact_clean(payload.name, "name")
+    subject = _contact_clean(payload.subject, "subject")
+    message = _contact_clean(payload.message, "message")
+    phone = _contact_clean(payload.phone, "phone")
+    category = _contact_clean(payload.category, "category")
 
     if len(name) < CONTACT_MIN["name"]:
         raise HTTPException(status_code=400, detail="Please enter your name.")
 
-    raw_email = (payload.email or "").strip()[:CONTACT_MAX["email"]]
+    raw_email = _contact_clean(payload.email, "email")
     try:
         # Normalises the address and rejects anything malformed. Checking
         # deliverability would need a DNS lookup on every submission, so
@@ -7073,16 +7130,24 @@ def submit_contact(payload: ContactPayload, request: Request, db: Session = Depe
     db.commit()
 
     if not delivered:
+        # Loud, and with the reason, because this is the operator's problem
+        # to fix - most often SMTP_* missing from backend/.env.
         print(f"Contact form: message {row.id} stored but NOT emailed - {error}")
+        # 502, not 200. The message is safe in the database and readable at
+        # /api/admin/contact-messages, but the sender was NOT reached, so
+        # the response must not be a success. Answering 200 here is what
+        # let the page show "Message received" for an email that never
+        # left the building. A non-2xx cannot be rendered as success by
+        # the API layer even if the page's own logic regressed.
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to send your message right now. Please try again.",
+        )
 
     return {
         "ok": True,
-        "delivered": delivered,
-        "message": (
-            "Message sent successfully. We'll get back to you soon."
-            if delivered
-            else "Message received - we have saved it and will get back to you soon."
-        ),
+        "delivered": True,
+        "message": "Message sent successfully. We'll get back to you soon.",
     }
 
 

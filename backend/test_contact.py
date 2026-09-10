@@ -161,14 +161,44 @@ r2 = client.post("/api/contact", json={
     "message": "This one should be stored even though the mail server rejects the login.",
 })
 after = db.query(m.ContactMessageModel).count()
-check("HTTP 200", r2.status_code == 200, r2.text)
-check("delivered is False", r2.json().get("delivered") is False, r2.text)
-check("does NOT claim it was sent", "sent successfully" not in r2.json().get("message", ""))
+check("answers 502, not 200", r2.status_code == 502, r2.text)
+check("error text is the one the UI shows",
+      r2.json().get("detail") == "Unable to send your message right now. Please try again.", r2.text)
+check("does NOT claim it was sent", "sent successfully" not in r2.text)
 check("message was still stored", after == before + 1, f"{before} -> {after}")
 stored = db.query(m.ContactMessageModel).filter(
     m.ContactMessageModel.email == "second.person@example.com").first()
 check("stored row records the failure", stored is not None and stored.delivered == 0)
 check("failure reason recorded", bool(stored and stored.delivery_error), stored.delivery_error if stored else "")
+
+print("\n=== 4b. Validation: rejected, never silently truncated ===")
+m._contact_hits.clear()
+for label, payload, expect in [
+    ("invalid email", {"name": "A Tester", "email": "nope", "subject": "Subject here",
+                       "message": "A long enough message body."}, "valid email address"),
+    ("empty name", {"name": "", "email": "a@b.com", "subject": "Subject here",
+                    "message": "A long enough message body."}, "enter your name"),
+    ("empty subject", {"name": "A Tester", "email": "a@b.com", "subject": "",
+                       "message": "A long enough message body."}, "enter a subject"),
+    ("short message", {"name": "A Tester", "email": "a@b.com", "subject": "Subject here",
+                       "message": "hi"}, "at least 10 characters"),
+    ("over-long message", {"name": "A Tester", "email": "a@b.com", "subject": "Subject here",
+                           "message": "m" * 9000}, "too long"),
+    ("over-long name", {"name": "N" * 500, "email": "a@b.com", "subject": "Subject here",
+                        "message": "A long enough message body."}, "too long"),
+]:
+    rr = client.post("/api/contact", json=payload)
+    check(label + " -> 400", rr.status_code == 400, str(rr.status_code) + " " + rr.text)
+    check(label + " -> readable reason", expect in rr.text, rr.text)
+
+# A rejected attempt must not cost the sender their allowance, or a typo
+# locks them out for 20 seconds.
+before_len = len(m._contact_hits.get("testclient", []))
+client.post("/api/contact", json={"name": "", "email": "a@b.com",
+                                  "subject": "x", "message": "y"})
+check("a rejected attempt does not consume the rate limit",
+      len(m._contact_hits.get("testclient", [])) == before_len)
+
 
 print("\n=== 5. Rate limiting ===")
 m._contact_hits.clear()

@@ -220,12 +220,24 @@ The contact flow is the real one — form → API → SMTP → `CONTACT_TO`:
 | `GET /api/admin/contact-messages` | **admin** — every message, delivered or not |
 
 - **Every message is stored before the send is attempted**, so a wrong
-  password or a down mail server costs delivery, not the message.
-- **The UI never claims an email was sent when it was not.** The response
-  carries `delivered`, and the page shows a green "Message sent successfully"
-  only when SMTP really accepted it, an amber "Message received — we have
-  saved it" when it was stored but not emailed, and a red error when the
-  request failed outright.
+  password or a down mail server costs delivery, not the message. Anything
+  that failed to send is still readable at `GET /api/admin/contact-messages`.
+- **The UI never claims an email was sent when it was not.** If the send
+  fails the endpoint answers **502**, not 200, so a non-2xx cannot be
+  rendered as success even if the page's own logic regressed. There is no
+  "stored but not sent" state: green success only on confirmed delivery,
+  red "Unable to send your message right now. Please try again." otherwise
+  — and a failed attempt keeps what was typed so it can be retried.
+- **Over-length input is rejected, never truncated**, with the field and
+  the limit named ("Your message is too long (9000 characters, maximum
+  5000)"). Silently cutting the end off a message would leave the sender
+  believing they sent something they did not.
+- **Startup says whether email can work.** The log prints either
+  `Contact email: enabled — smtp.gmail.com:587 as … → …` or
+  `Contact email: DISABLED — SMTP_HOST, SMTP_USER, SMTP_PASSWORD not set`.
+- **`python manage.py test-email` sends a real test message** using the
+  live `.env` and prints the mail server's own error if it fails. This is
+  the way to answer "is the contact form actually working".
 - Reply-To is set to the sender, so pressing Reply answers the right person.
   CR/LF is stripped from every header value and the address is validated, so
   the form cannot be turned into an open relay by header injection.
@@ -237,9 +249,15 @@ The contact flow is the real one — form → API → SMTP → `CONTACT_TO`:
   Honouring it by default would let anyone spoof the header and walk past the
   rate limit.
 
-Run `python backend/test_contact.py` to exercise all of it — 37 checks
-covering message format, Reply-To, header injection, the stored-but-not-sent
-path, rate limiting and the honeypot.
+Run `python backend/test_contact.py` to exercise all of it — 50 checks
+covering message format, Reply-To, header injection, the 502-on-failure
+path, every validation rule, rate limiting and the honeypot.
+
+> **The form cannot send until `SMTP_USER` and `SMTP_PASSWORD` are in
+> `backend/.env`.** `.env` is gitignored, so copying the new keys out of
+> `.env.example` is a manual step on every machine. Until then the page
+> shows the red error rather than pretending — which is the intended
+> behaviour, not a bug. Verify with `python manage.py test-email`.
 
 **One file for every external link**
 

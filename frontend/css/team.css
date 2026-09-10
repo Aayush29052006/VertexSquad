@@ -116,11 +116,10 @@
   font-size: 0.88rem;
   line-height: 1.5;
 }
-.contact-status--ok   { border-left-color: var(--success); background: var(--success-bg); color: var(--success); }
-/* Stored but not emailed — a real outcome, and neither a success nor a
-   failure, so it gets its own colour rather than being dressed as one. */
-.contact-status--warn { border-left-color: var(--warning); background: var(--warning-bg); color: var(--warning); }
-.contact-status--err  { border-left-color: var(--danger);  background: var(--danger-bg);  color: var(--danger); }
+/* Two outcomes only. There is no "stored but not sent" state any more:
+   if the email did not go out, that is a failure and it looks like one. */
+.contact-status--ok  { border-left-color: var(--success); background: var(--success-bg); color: var(--success); }
+.contact-status--err { border-left-color: var(--danger);  background: var(--danger-bg);  color: var(--danger); }
 
 /* ---------- Public (signed-out) view ---------- */
 

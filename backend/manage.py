@@ -9,6 +9,7 @@ Run from the backend/ folder with the venv active (or use venv\Scripts\python):
 set-password prompts for the new password (twice, hidden) and never echoes it.
 """
 import sys
+import app.main
 import getpass
 
 from app.main import SessionLocal, StudentModel, hash_password
@@ -67,6 +68,73 @@ def list_admins():
         db.close()
 
 
+def test_email():
+    """Send one real email using the settings in backend/.env.
+
+    This is the honest way to answer "is the contact form actually
+    working" - it uses the same _send_contact_email() the website calls,
+    against the real mail server, and prints the provider's own error if
+    it fails.
+    """
+    import datetime
+
+    print("Contact email configuration")
+    print(f"  SMTP_HOST     {app.main.SMTP_HOST or '(not set)'}")
+    print(f"  SMTP_PORT     {app.main.SMTP_PORT}")
+    print(f"  SMTP_USER     {app.main.SMTP_USER or '(not set)'}")
+    print(f"  SMTP_PASSWORD {'set (' + str(len(app.main.SMTP_PASSWORD)) + ' chars)' if app.main.SMTP_PASSWORD else '(not set)'}")
+    print(f"  CONTACT_TO    {app.main.CONTACT_TO}")
+    print()
+
+    missing = [k for k, v in (("SMTP_HOST", app.main.SMTP_HOST),
+                              ("SMTP_USER", app.main.SMTP_USER),
+                              ("SMTP_PASSWORD", app.main.SMTP_PASSWORD)) if not v]
+    if missing:
+        print("NOT CONFIGURED - missing: " + ", ".join(missing))
+        print()
+        print("Add these to backend/.env, then run this again:")
+        print()
+        print("  SMTP_HOST=smtp.gmail.com")
+        print("  SMTP_PORT=587")
+        print("  SMTP_USER=your.address@gmail.com")
+        print("  SMTP_PASSWORD=<16-character Gmail App Password>")
+        print("  CONTACT_TO=aayushswapnali@gmail.com")
+        print()
+        print("Gmail rejects your normal account password. Turn on 2-Step")
+        print("Verification, then create an App Password at")
+        print("  https://myaccount.google.com/apppasswords")
+        sys.exit(1)
+
+    row = app.main.ContactMessageModel(
+        id="manage-test",
+        name="CareerNexus Test",
+        email=app.main.CONTACT_TO,
+        subject="Contact form delivery test",
+        message="Sent by `python manage.py test-email`. If this arrived, the "
+                "contact form can deliver mail.",
+        phone="",
+        category="",
+        created_at=datetime.datetime.now().isoformat(timespec="seconds"),
+    )
+    print(f"Sending to {app.main.CONTACT_TO} ...")
+    delivered, error = app.main._send_contact_email(row)
+    if delivered:
+        print()
+        print(f"ACCEPTED by {app.main.SMTP_HOST}.")
+        print(f"Check {app.main.CONTACT_TO} - including Spam and Promotions.")
+        print("The mail server accepting it is not the same as it landing in")
+        print("the inbox, so confirm it visually before calling this done.")
+    else:
+        print()
+        print("FAILED - the mail server refused it:")
+        print(f"  {error}")
+        print()
+        if "Authentication" in error or "535" in error:
+            print("535/Authentication usually means SMTP_PASSWORD is a normal")
+            print("account password rather than a Gmail App Password.")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if not args:
@@ -79,6 +147,8 @@ if __name__ == "__main__":
         make_admin(args[1])
     elif cmd == "list-admins":
         list_admins()
+    elif cmd == "test-email":
+        test_email()
     else:
         print(__doc__)
         sys.exit(1)

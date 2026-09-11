@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => syncThemeControls(getTheme()
   }
 
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'A' || e.key === 'a')) {
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'KeyA') {
       e.preventDefault();
       openTeamSignIn();
     }

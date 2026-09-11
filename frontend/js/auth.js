@@ -146,69 +146,21 @@ if (loginForm) {
     showToast('If an account exists for that email, a reset link has been sent.', 'success');
   });
 
-  /* ---------- Team entrance ----------
+  /* ---------- Team entrance (fine-print tap) ----------
      The team sign-in lives at admin-login.html. This page shows no link to
      it, so a student who is not looking for it never sees one.
 
-     Be clear about what that is worth: it is tidiness, not security. Anyone
-     who opens View Source can read this. The actual gate is the server —
-     admin-login.html refuses to keep a session whose role is not "admin",
-     and every /api/admin/* route re-checks the role on its own, so knowing
-     the address gets an outsider precisely nowhere without the password.
+     Typing "admin" and Ctrl+Alt+A also open it, and work from ANY page -
+     see initTeamEntrance() in theme.js, which every page loads. This file
+     only adds the third gesture, because it targets .auth-links, an
+     element that exists on this page and not elsewhere.
 
-     Three ways in:
-       - type "admin" anywhere on the page (not inside a field)
-       - Ctrl+Alt+A / Cmd+Alt+A
-       - five quick taps on the small print at the bottom of the card
-
-     Typing the word is the reliable one. Browsers reserve most Ctrl+Shift
-     combinations for themselves — Ctrl+Shift+A is Chrome's tab search, and
-     Chrome consumes it before the page ever sees the event, so a shortcut
-     built on it silently does nothing. Ctrl+Alt+A is unclaimed, and a
-     plain typed word cannot collide with a browser shortcut at all.
-
-     The gesture deliberately targets the fine print rather than the logo:
-     the logo is a link home, so its first tap would navigate away before
-     the fifth ever landed. */
+     The gesture targets the fine print rather than the logo: the logo is
+     a link home, so its first tap would navigate away before the fifth
+     ever landed. */
   function openTeamSignIn() {
     window.location.href = 'admin-login.html';
   }
-
-  function typingInAField(target) {
-    return !!target && (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT' ||
-      target.isContentEditable
-    );
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'A' || e.key === 'a')) {
-      e.preventDefault();
-      openTeamSignIn();
-    }
-  });
-
-  // Type the word. Skipped while a field has focus, so it can never steal
-  // a keystroke meant for the email or password box.
-  const SECRET_WORD = 'admin';
-  let typed = '';
-  let typedTimer = null;
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (typingInAField(e.target)) return;
-    if (e.key.length !== 1) return;
-
-    typed = (typed + e.key.toLowerCase()).slice(-SECRET_WORD.length);
-    clearTimeout(typedTimer);
-    typedTimer = setTimeout(() => { typed = ''; }, 1500);
-    if (typed === SECRET_WORD) {
-      typed = '';
-      clearTimeout(typedTimer);
-      openTeamSignIn();
-    }
-  });
 
   const tapTarget = document.querySelector('.auth-links');
   if (tapTarget) {

@@ -50,6 +50,75 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => syncThemeControls(getTheme()));
 
+/* ---------- Team entrance ----------
+   Two ways to reach admin-login.html without a visible link on any page:
+     - type "admin" anywhere (not inside a field)
+     - Ctrl+Alt+A / Cmd+Alt+A
+
+   This lives here rather than in auth.js because auth.js only loads on
+   login.html/register.html, and the entrance needs to work from wherever
+   someone actually lands - starting with the homepage, which is what
+   start.bat opens. theme.js is the one script every page already includes,
+   so putting it here is what makes it work site-wide instead of on two
+   pages nobody necessarily visits first. (A third gesture - five taps on
+   the fine print - stays local to auth.js, since it targets an element
+   that only exists on the login page.)
+
+   Be clear about what this is worth: it is tidiness, not security. Anyone
+   who opens View Source can read this. The actual gate is the server -
+   admin-login.html refuses to keep a session whose role is not "admin",
+   and every /api/admin/* route re-checks the role on its own, so knowing
+   the address gets an outsider precisely nowhere without the password.
+
+   Ctrl+Alt+A rather than Ctrl+Shift+A: browsers reserve most Ctrl+Shift
+   combinations for themselves - Ctrl+Shift+A is Chrome's tab search, and
+   Chrome consumes it before the page ever sees the event. Ctrl+Alt+A is
+   unclaimed, and a plain typed word cannot collide with a browser
+   shortcut at all. */
+(function initTeamEntrance() {
+  function openTeamSignIn() {
+    if (/\/pages\//.test(location.pathname)) {
+      if (!/admin-login\.html$/.test(location.pathname)) window.location.href = 'admin-login.html';
+    } else if (!/admin-login\.html$/.test(location.pathname)) {
+      window.location.href = 'pages/admin-login.html';
+    }
+  }
+
+  function typingInAField(target) {
+    return !!target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    );
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'A' || e.key === 'a')) {
+      e.preventDefault();
+      openTeamSignIn();
+    }
+  });
+
+  const SECRET_WORD = 'admin';
+  let typed = '';
+  let typedTimer = null;
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (typingInAField(e.target)) return;
+    if (e.key.length !== 1) return;
+
+    typed = (typed + e.key.toLowerCase()).slice(-SECRET_WORD.length);
+    clearTimeout(typedTimer);
+    typedTimer = setTimeout(() => { typed = ''; }, 1500);
+    if (typed === SECRET_WORD) {
+      typed = '';
+      clearTimeout(typedTimer);
+      openTeamSignIn();
+    }
+  });
+})();
+
 /* ---------- Scroll reveal ----------
    Fades content in as it scrolls into view. Purely decorative: if the user
    prefers reduced motion, or IntersectionObserver is missing, we do nothing

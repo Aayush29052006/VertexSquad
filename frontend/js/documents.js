@@ -12,7 +12,7 @@ const DOC_TYPES = {
   other: { label: 'Other', icon: '📎' },
 };
 
-let documents = [];
+let myDocuments = [];
 
 function docRow(d) {
   const meta = DOC_TYPES[d.doc_type] || DOC_TYPES.other;
@@ -34,8 +34,8 @@ function docRow(d) {
 
 function renderList() {
   const list = document.getElementById('docList');
-  list.innerHTML = documents.length
-    ? `<div class="verified-list">${documents.map(docRow).join('')}</div>`
+  list.innerHTML = myDocuments.length
+    ? `<div class="verified-list">${myDocuments.map(docRow).join('')}</div>`
     : emptyState('🗂️', 'No documents yet', 'Upload a certificate or internship report to keep it with your profile.');
 }
 
@@ -77,17 +77,17 @@ function openDocument(doc) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-(async function initDocuments() {
-  if (!requireAuth()) return;
-  const name = localStorage.getItem('cn_student_name') || 'Student';
-  const pageBody = mountAppShell('documents.html', name);
-  pageBody.innerHTML = loadingState('Loading your documents...');
+/* Called by the Resume & Documents shell - see initResumeDocumentsPage() at
+   the bottom of this file. Renders into whatever container it is given,
+   rather than mounting the app shell itself, so this section can live next
+   to the resume section on one page. */
+async function initDocumentsSection(container) {
+  container.innerHTML = loadingState('Loading your documents...');
 
   try {
-    documents = await api.listDocuments();
+    myDocuments = await api.listDocuments();
 
-    pageBody.innerHTML = `
-      <h1 class="text-page-heading mb-1">My Documents</h1>
+    container.innerHTML = `
       <p class="text-body mb-5">
         Certificates, internship reports and academic records, kept with your profile. Only you and
         the staff who verify your portfolio can open these — never another student.
@@ -146,7 +146,7 @@ function openDocument(doc) {
           document.getElementById('docTitle').value.trim(),
           document.getElementById('docType').value
         );
-        documents.unshift(saved);
+        myDocuments.unshift(saved);
         renderList();
         e.target.reset();
         showToast('Document uploaded.', 'success');
@@ -159,7 +159,7 @@ function openDocument(doc) {
       }
     });
 
-    pageBody.addEventListener('click', async (e) => {
+    container.addEventListener('click', async (e) => {
       const openBtn = e.target.closest('[data-open]');
       if (openBtn) {
         openBtn.disabled = true;
@@ -175,12 +175,12 @@ function openDocument(doc) {
 
       const delBtn = e.target.closest('[data-delete]');
       if (delBtn) {
-        const doc = documents.find((d) => d.id === delBtn.dataset.delete);
+        const doc = myDocuments.find((d) => d.id === delBtn.dataset.delete);
         if (!window.confirm(`Delete "${doc ? doc.title : 'this document'}"? This cannot be undone.`)) return;
         delBtn.disabled = true;
         try {
           await api.deleteDocument(delBtn.dataset.delete);
-          documents = documents.filter((d) => d.id !== delBtn.dataset.delete);
+          myDocuments = myDocuments.filter((d) => d.id !== delBtn.dataset.delete);
           renderList();
           showToast('Document deleted.', 'success');
         } catch (err) {
@@ -190,6 +190,67 @@ function openDocument(doc) {
       }
     });
   } catch (err) {
-    pageBody.innerHTML = errorState(err.message || 'Could not load your documents.', 'location.reload');
+    container.innerHTML = errorState(err.message || 'Could not load your documents.', 'location.reload');
   }
-})();
+}
+
+/* ---------- Resume & Documents shell ----------
+   One page, two roles worth of content: every documents.html role
+   (student/faculty/admin) plus resume.html's narrower one
+   (student/admin) — a faculty account sees only the Documents tab, a
+   student or admin sees both. Tabs render only when there is more than
+   one section to switch between, so a faculty account gets a plain
+   Documents page rather than a tab bar with nothing to tab to. */
+function initResumeDocumentsPage() {
+  if (!requireAuth()) return;
+  const studentName = localStorage.getItem('cn_student_name') || 'Student';
+  const pageBody = mountAppShell('resume.html', studentName);
+
+  const role = currentRole();
+  const showResume = [ROLES.STUDENT, ROLES.ADMIN].includes(role);
+  const showDocuments = [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN].includes(role);
+  const sections = [
+    showResume && { key: 'resume', label: '📄 Resume Upload', init: initResumeSection },
+    showDocuments && { key: 'documents', label: '🗂️ Documents', init: initDocumentsSection },
+  ].filter(Boolean);
+
+  if (!sections.length) {
+    pageBody.innerHTML = emptyState('🗂️', 'Nothing here for this account.', 'This page has no sections available for your role.');
+    return;
+  }
+
+  const requested = (window.location.hash || '').replace('#', '');
+  const startKey = sections.some((s) => s.key === requested) ? requested : sections[0].key;
+
+  pageBody.innerHTML = `
+    <h1 class="text-page-heading mb-1">Resume & Documents</h1>
+    <p class="text-body mb-4">Everything you have given CareerNexus to read — your resume, and the certificates and reports you keep on file.</p>
+    ${sections.length > 1 ? `
+      <div class="tab-bar mb-4" role="tablist">
+        ${sections.map((s) => `<button type="button" class="tab-btn${s.key === startKey ? ' active' : ''}" data-tab="${s.key}" role="tab" aria-selected="${s.key === startKey}">${s.label}</button>`).join('')}
+      </div>` : ''}
+    ${sections.map((s) => `<div class="tab-panel" data-panel="${s.key}" ${s.key === startKey ? '' : 'hidden'}></div>`).join('')}
+  `;
+
+  const loaded = new Set();
+  function activate(key) {
+    window.location.hash = key;
+    document.querySelectorAll('.tab-btn').forEach((b) => {
+      const isActive = b.dataset.tab === key;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-selected', String(isActive));
+    });
+    document.querySelectorAll('.tab-panel').forEach((p) => { p.hidden = p.dataset.panel !== key; });
+    if (!loaded.has(key)) {
+      loaded.add(key);
+      const section = sections.find((s) => s.key === key);
+      section.init(document.querySelector(`[data-panel="${key}"]`));
+    }
+  }
+
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => activate(btn.dataset.tab));
+  });
+
+  activate(startKey);
+}

@@ -62,6 +62,8 @@ function renderDetails(pageBody, item) {
           ${renderBreakdown(item.breakdown, item.match_score)}
         </div>
 
+        <div class="card mb-5">${matchFormulaExplainer()}</div>
+
         <div class="card mb-5">
           <h2 class="text-section-heading mb-2">Why You're a Match</h2>
           <p class="text-body mb-3">You match ${item.matched_skills.length}/${item.required_skills.length} required skills.</p>

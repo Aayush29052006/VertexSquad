@@ -437,6 +437,30 @@ html[data-theme='dark'] .status-interview { background: rgba(244, 114, 182, 0.18
 .sidebar-group[open] > .sidebar-group-label::before { transform: rotate(45deg); }
 .sidebar-group-label:hover { color: var(--text-secondary); }
 .sidebar-group-links { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+
+/* ---------- In-page tabs ----------
+   Same visual language as the sidebar's active state: a tinted pill for
+   the current tab rather than an underline, so a page that uses both
+   (sidebar + tabs) reads as one system. Used where one page holds more
+   than one section a user switches between (e.g. Resume & Documents). */
+.tab-bar {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-2);
+}
+.tab-btn {
+  padding: 0.5rem var(--space-4);
+  border-radius: var(--radius-md, 10px);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.tab-btn:hover { background: var(--surface-alt); color: var(--text-primary); }
+.tab-btn.active { background: var(--primary-light); color: var(--text-primary); }
 /* Settings and Logout stay pinned to the bottom and never get squeezed. */
 .sidebar-footer { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 

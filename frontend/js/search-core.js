@@ -140,7 +140,7 @@ const PAGE_KEYWORDS = {
   'dashboard.html': ['home', 'overview', 'summary', 'progress'],
   'assessment.html': ['test', 'quiz', 'exam', 'evaluate', 'skill test'],
   'profile.html': ['account', 'details', 'college', 'degree', 'edit profile'],
-  'resume.html': ['cv', 'curriculum vitae', 'biodata', 'resume builder', 'upload resume', 'make my cv'],
+  'resume.html': ['cv', 'curriculum vitae', 'biodata', 'resume builder', 'upload resume', 'make my cv', 'certificates', 'documents', 'files', 'marksheet'],
   'skill-gap.html': ['gap', 'missing skills', 'what to learn', 'weakness'],
   'learning.html': ['course', 'courses', 'certification', 'learning path', 'study', 'training'],
   'internships.html': ['internship', 'intern', 'apply', 'matches'],
@@ -149,7 +149,6 @@ const PAGE_KEYWORDS = {
   'aiia.html': ['aiia', 'ayurveda', 'ayush', 'panchakarma', 'yoga', 'institute'],
   'applications.html': ['applied', 'status', 'tracker', 'my applications'],
   'what-if.html': ['simulate', 'scenario', 'what if', 'forecast'],
-  'documents.html': ['certificates', 'upload', 'files', 'marksheet'],
   'portfolio.html': ['achievements', 'verified', 'showcase', 'share profile'],
   'collaborations.html': ['industry', 'academia', 'guest lecture', 'workshop', 'mou'],
   'recruiter.html': ['hiring', 'applicants', 'shortlist', 'postings'],
@@ -183,6 +182,9 @@ function searchLocalPages(terms, limit = 5) {
     { href: 'settings.html', icon: '⚙️', label: 'Settings' },
     { href: 'search.html', icon: '🔍', label: 'Opportunity Search' },
     { href: 'team.html', icon: '👥', label: 'Team & Contact' },
+    // Not a sidebar item (it needs a specific opportunity to mean
+    // anything - see the comment on it in ui.js) but still a real page.
+    { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap' },
   ].filter((extra) => !visible.some((item) => item.href === extra.href));
 
   return [...visible, ...extras]

@@ -31,13 +31,20 @@ const NAV_ITEMS = [
   // --- The student journey, in the order a student actually walks it:
   // assess -> see the gap -> learn -> find a role -> apply -> track -> portfolio.
   { href: 'assessment.html', icon: '📝', label: 'Skill Assessment', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
-  { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
+  // Skill Gap is not a top-level destination on its own — it needs a
+  // specific opportunity (?id=) to mean anything, and with none given it
+  // just falls back to whichever recommendation loads first. It is reached
+  // from where it is actually relevant: the "Where Your Gaps Show Up" card
+  // on the assessment result, each opportunity's own details page, and
+  // What-If. The page itself still exists at skill-gap.html.
   { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
   { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Development' },
 
   { href: 'profile.html', icon: '👤', label: 'My Profile', roles: ALL_ROLES, group: 'Career Profile' },
-  { href: 'resume.html', icon: '📄', label: 'Resume Upload', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Profile' },
-  { href: 'documents.html', icon: '🗂️', label: 'My Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Profile' },
+  // Resume upload + Documents merged onto one page (resume.html) - a
+  // faculty account sees only the Documents tab there, so it keeps the
+  // wider role list of the two.
+  { href: 'resume.html', icon: '📄', label: 'Resume & Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Profile' },
   { href: 'portfolio.html', icon: '🏅', label: 'My Portfolio', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Profile' },
 
   { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Opportunities & Applications' },
@@ -862,6 +869,44 @@ function skillChip(name, variant = 'default') {
    on four pages would mean four places that can drift out of sync with
    each other, for a fact ("go check Live Updates") that doesn't need its
    own copy of the data to be true. */
+/* One explanation of the match formula, reused wherever a match score is
+   shown, instead of a separate write-up per page that could quietly drift
+   out of sync with the others (or with the real formula) over time. The
+   weights and the worked example are both real - 50/20/15/15 is what
+   calculate_match_score_breakdown() in the backend actually uses, and the
+   example numbers are a real, checkable computation, not the illustrative
+   skills-only formula a generic prompt would suggest. */
+function matchFormulaExplainer() {
+  return `
+    <details class="callout" style="cursor:default;">
+      <summary style="cursor:pointer;font-weight:600;color:var(--text-primary);">How Match Percentage Works</summary>
+      <div class="mt-3">
+        <p class="text-body mb-2">
+          Every match score is four factors, weighted and added together — never guessed, and never the
+          same two ways on two pages.
+        </p>
+        <table class="table-wrap" style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+          <tbody>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Required skills you have</td><td style="text-align:right;font-weight:600;">50%</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Preferences (location, work mode)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Education eligibility (CGPA)</td><td style="text-align:right;font-weight:600;">15%</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Relevant projects</td><td style="text-align:right;font-weight:600;">15%</td></tr>
+          </tbody>
+        </table>
+        <p class="text-caption mt-3 mb-1"><strong>Worked example</strong> — a role needing 4 skills, of which you have 3:</p>
+        <p class="text-caption mb-1">Skills 3/4 = 75% → 75 × 0.50 = <strong>37.5</strong></p>
+        <p class="text-caption mb-1">Preferences match half → 50% → 50 × 0.20 = <strong>10</strong></p>
+        <p class="text-caption mb-1">CGPA in the 7.0–8.4 band → 90% → 90 × 0.15 = <strong>13.5</strong></p>
+        <p class="text-caption mb-3">One relevant project → 80% → 80 × 0.15 = <strong>12</strong></p>
+        <p class="text-body mb-2">37.5 + 10 + 13.5 + 12 = <strong>73%</strong> overall — capped between 10% and 100%.</p>
+        <p class="text-caption" style="font-style:italic;">
+          A match percentage estimates fit against this one posting's stated requirements. It is not a
+          guarantee of selection — the employer decides that.
+        </p>
+      </div>
+    </details>`;
+}
+
 function liveUpdatesTeaser(text) {
   return `
     <a class="callout callout-info live-updates-teaser" href="updates.html">

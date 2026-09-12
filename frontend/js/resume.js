@@ -212,16 +212,21 @@ function attachChipEvents() {
   });
 }
 
-(async function initResume() {
-  if (!requireAuth()) return;
-  const studentName = localStorage.getItem('cn_student_name') || 'Student';
-  const pageBody = mountAppShell('resume.html', studentName);
-  pageBody.innerHTML = loadingState('Loading resume status...');
-
+/* Called by the Resume & Documents shell below - see initResumeDocumentsPage()
+   at the bottom of documents.js, which owns the tab bar and mounts the shell
+   once for both sections. This function only ever renders into the container
+   it is given. */
+async function initResumeSection(container) {
+  container.innerHTML = loadingState('Loading resume status...');
   try {
     const resume = await api.getResumeStatus();
-    renderResumeIdle(pageBody, resume && resume.file_name ? resume : null);
+    renderResumeIdle(container, resume && resume.file_name ? resume : null);
   } catch (err) {
-    pageBody.innerHTML = errorState(err.message || 'Unable to load resume information.', 'location.reload');
+    container.innerHTML = errorState(err.message || 'Unable to load resume information.', 'location.reload');
   }
-})();
+}
+
+// initResumeDocumentsPage() lives in documents.js (loaded just before this
+// file) and owns the tab bar; it calls initResumeSection/initDocumentsSection
+// as needed. Invoked here, last, so both section functions already exist.
+initResumeDocumentsPage();

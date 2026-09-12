@@ -41,6 +41,8 @@ function renderWhatIf(pageBody, item) {
       <button class="btn btn-primary btn-lg mt-4" id="calcBtn" disabled>Calculate Potential Match</button>
       <p id="whatIfError" class="form-error mt-3" hidden></p>
     </div>
+
+    <div class="card mt-5">${matchFormulaExplainer()}</div>
   `;
 
   const skillInput = document.getElementById('skillInput');

@@ -106,6 +106,8 @@ function renderResult(pageBody, result, isFresh) {
         : ''
     }
 
+    <div class="card mb-5" id="crossGapCard"></div>
+
     <div class="flex gap-3" style="flex-wrap:wrap;">
       <a class="btn btn-primary" href="learning.html">See My Learning Path</a>
       <a class="btn btn-secondary" href="opportunities.html">Browse Matching Roles</a>
@@ -114,6 +116,65 @@ function renderResult(pageBody, result, isFresh) {
   `;
 
   document.getElementById('retakeBtn')?.addEventListener('click', () => startAssessment(pageBody));
+  renderCrossOpportunityGaps();
+}
+
+/* ---------- Where the gaps actually bite ----------
+   The assessment scores skill CATEGORIES in the abstract. This answers the
+   next question a student actually has: "missing which skill costs me the
+   most real opportunities?" Built from data the student already has access
+   to (their own ranked opportunity list) rather than a new endpoint, and
+   it links straight into the existing per-opportunity Skill Gap page for
+   the deep dive — this is a summary of that page's data, not a
+   replacement for it. */
+async function renderCrossOpportunityGaps() {
+  const card = document.getElementById('crossGapCard');
+  if (!card) return;
+  try {
+    const opportunities = await api.listOpportunities();
+    const topMatches = [...opportunities].sort((a, b) => b.match_score - a.match_score).slice(0, 10);
+    if (!topMatches.length) { card.remove(); return; }
+
+    const tally = new Map(); // skill -> { count, example: {id, title} }
+    topMatches.forEach((opp) => {
+      (opp.missing_skills || []).forEach((skill) => {
+        const key = skill.toLowerCase();
+        const entry = tally.get(key) || { skill, count: 0, example: opp };
+        entry.count += 1;
+        tally.set(key, entry);
+      });
+    });
+    const ranked = [...tally.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+
+    if (!ranked.length) {
+      card.innerHTML = `
+        <h2 class="text-section-heading mb-1">Where Your Gaps Show Up</h2>
+        <p class="text-body">You already have every skill your top ${topMatches.length} matched opportunities ask for.</p>`;
+      return;
+    }
+
+    card.innerHTML = `
+      <h2 class="text-section-heading mb-1">Where Your Gaps Show Up</h2>
+      <p class="text-caption mb-3">Across your top ${topMatches.length} matched opportunities, these missing skills come up most often.</p>
+      ${ranked
+        .map(
+          (r) => `
+        <div class="priority-item">
+          <div>
+            <strong>${escapeHtml(r.skill)}</strong>
+            <span class="text-caption" style="margin-left:8px;">missing from ${r.count} of ${topMatches.length}</span>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="skill-gap.html?id=${encodeURIComponent(r.example.id)}">View Example →</a>
+        </div>`
+        )
+        .join('')}
+    `;
+  } catch (_) {
+    // Non-critical enrichment — the assessment result above still stands
+    // on its own, so a failure here just removes the card rather than
+    // showing an error state for something the user didn't explicitly ask for.
+    card.remove();
+  }
 }
 
 function categoryRow(name, value) {

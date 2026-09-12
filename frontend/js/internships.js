@@ -37,7 +37,9 @@ function applyFiltersAndRender() {
 
   pageBody.innerHTML = `
     <h1 class="text-page-heading mb-2">Discover Internships</h1>
-    <p class="text-body mb-5">Search and filter opportunities matched to your skills.</p>
+    <p class="text-body mb-3">Search and filter opportunities matched to your skills.</p>
+    ${liveUpdatesTeaser('New vacancies and application deadlines are posted continuously.')}
+    <div class="mb-2"></div>
 
     <div class="search-bar">
       <input class="form-input" id="searchInput" placeholder="Search by role, skill, or company..." />

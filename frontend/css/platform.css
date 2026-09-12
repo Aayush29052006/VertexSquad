@@ -172,6 +172,18 @@
 }
 .callout-success { border-left-color: #4faf82; }
 .callout-warning { border-left-color: #d69a52; }
+.callout-info { border-left-color: var(--primary); }
+
+/* A callout that is itself the link (liveUpdatesTeaser in ui.js), rather
+   than a block of text with a link buried inside it. */
+a.callout {
+  display: flex; align-items: center; gap: var(--space-3);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+a.callout:hover { background: var(--surface-alt); border-color: var(--primary); }
+a.callout strong { color: var(--primary); }
 
 /* ---------- Assessment ---------- */
 

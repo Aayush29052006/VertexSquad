@@ -18,46 +18,52 @@ const ROLES = {
 const ALL_ROLES = Object.values(ROLES);
 const STAFF = [ROLES.FACULTY, ROLES.RECRUITER, ROLES.INSTITUTION, ROLES.ADMIN];
 
+/* `group` sorts a role's items into labelled, collapsible sections in the
+   sidebar (see renderAppShell). It changes nothing about routing, access or
+   search — search-core.js reads href/label/roles only and never looks at
+   this field. Grouping exists purely so a 17-link list reads as five short
+   ones instead of one long scroll. */
 const NAV_ITEMS = [
-  { href: 'dashboard.html', icon: '📊', label: 'Dashboard', roles: ALL_ROLES },
+  { href: 'dashboard.html', icon: '📊', label: 'Dashboard', roles: ALL_ROLES, group: 'Main' },
   // Discovery across every verified source in one place.
-  { href: 'search.html', icon: '🔍', label: 'Search Opportunities', roles: ALL_ROLES },
+  { href: 'search.html', icon: '🔍', label: 'Search Opportunities', roles: ALL_ROLES, group: 'Main' },
 
   // --- The student journey, in the order a student actually walks it:
   // assess -> see the gap -> learn -> find a role -> apply -> track -> portfolio.
-  { href: 'assessment.html', icon: '📝', label: 'Skill Assessment', roles: [ROLES.STUDENT, ROLES.ADMIN] },
-  { href: 'profile.html', icon: '👤', label: 'My Profile', roles: ALL_ROLES },
-  { href: 'resume.html', icon: '📄', label: 'Resume', roles: [ROLES.STUDENT, ROLES.ADMIN] },
-  { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap', roles: [ROLES.STUDENT, ROLES.ADMIN] },
-  { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
-  { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN] },
-  { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
-  // Auto-collected official notices, vacancies and tenders, with deadlines.
-  { href: 'updates.html', icon: '🔔', label: 'Live Updates', roles: ALL_ROLES },
-  // The institute behind SIH26044. Everything on this page is AIIA's own.
-  { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES },
-  { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN] },
-  { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis', roles: [ROLES.STUDENT, ROLES.ADMIN] },
-  { href: 'documents.html', icon: '🗂️', label: 'My Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN] },
-  { href: 'portfolio.html', icon: '🏅', label: 'My Portfolio', roles: [ROLES.STUDENT, ROLES.ADMIN] },
+  { href: 'assessment.html', icon: '📝', label: 'Skill Assessment', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
+  { href: 'skill-gap.html', icon: '🎯', label: 'Skill Gap', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
+  { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
+  { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Development' },
 
+  { href: 'profile.html', icon: '👤', label: 'My Profile', roles: ALL_ROLES, group: 'Career Profile' },
+  { href: 'resume.html', icon: '📄', label: 'Resume Upload', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Profile' },
+  { href: 'documents.html', icon: '🗂️', label: 'My Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Profile' },
+  { href: 'portfolio.html', icon: '🏅', label: 'My Portfolio', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Profile' },
+
+  { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Opportunities & Applications' },
+  { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Opportunities & Applications' },
+  { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Opportunities & Applications' },
+
+  // Auto-collected official notices, vacancies and tenders, with deadlines.
+  { href: 'updates.html', icon: '🔔', label: 'Live Updates', roles: ALL_ROLES, group: 'Community & Updates' },
+  // The institute behind SIH26044. Everything on this page is AIIA's own.
+  { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES, group: 'Community & Updates' },
   // --- Shared across academia and industry.
-  { href: 'collaborations.html', icon: '🤝', label: 'Collaborations', roles: ALL_ROLES },
+  { href: 'collaborations.html', icon: '🤝', label: 'Collaborations', roles: ALL_ROLES, group: 'Community & Updates' },
+  // --- Who built this, and how to reach them. Everyone sees it.
+  { href: 'team.html', icon: '👥', label: 'Team & Contact', roles: ALL_ROLES, group: 'Community & Updates' },
 
   // --- Industry.
-  { href: 'recruiter.html', icon: '🏢', label: 'Recruiter Portal', roles: [ROLES.RECRUITER, ROLES.ADMIN] },
-  { href: 'post-opportunity.html', icon: '➕', label: 'Post Opportunity', roles: STAFF },
+  { href: 'recruiter.html', icon: '🏢', label: 'Recruiter Portal', roles: [ROLES.RECRUITER, ROLES.ADMIN], group: 'Industry' },
+  { href: 'post-opportunity.html', icon: '➕', label: 'Post Opportunity', roles: STAFF, group: 'Industry' },
 
   // --- Academia.
-  { href: 'faculty.html', icon: '🎒', label: 'Faculty Portal', roles: [ROLES.FACULTY, ROLES.ADMIN] },
-  { href: 'verify.html', icon: '✅', label: 'Verify Students', roles: STAFF },
-  { href: 'institution.html', icon: '📈', label: 'Institution Analytics', roles: [ROLES.INSTITUTION, ROLES.FACULTY, ROLES.ADMIN] },
+  { href: 'faculty.html', icon: '🎒', label: 'Faculty Portal', roles: [ROLES.FACULTY, ROLES.ADMIN], group: 'Academia' },
+  { href: 'verify.html', icon: '✅', label: 'Verify Students', roles: STAFF, group: 'Academia' },
+  { href: 'institution.html', icon: '📈', label: 'Institution Analytics', roles: [ROLES.INSTITUTION, ROLES.FACULTY, ROLES.ADMIN], group: 'Academia' },
 
   // --- Platform operator only.
-  { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', roles: [ROLES.ADMIN] },
-
-  // --- Who built this, and how to reach them. Everyone sees it.
-  { href: 'team.html', icon: '👥', label: 'Team & Contact', roles: ALL_ROLES },
+  { href: 'admin.html', icon: '🛡️', label: 'Admin Panel', roles: [ROLES.ADMIN], group: 'Platform' },
 ];
 
 /* ---------- Opened straight from the hard disk? ----------
@@ -177,6 +183,36 @@ function clampSidebarWidth(px) {
   const n = Number(px);
   if (!Number.isFinite(n)) return SIDEBAR_DEFAULT;
   return Math.round(Math.min(sidebarMaxWidth(), Math.max(SIDEBAR_MIN, n)));
+}
+
+/* Which sidebar nav groups the user has manually collapsed. Everything is
+   open by default (a first-time visitor should see the whole map, not a
+   wall of closed accordions); we only remember it once someone actually
+   closes one, so most people never touch this key at all. */
+const SIDEBAR_COLLAPSED_KEY = 'cn_sidebar_collapsed_groups';
+
+function storedCollapsedGroups() {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return []; // private mode, storage disabled, or corrupted value
+  }
+}
+
+function sidebarGroupOpen(groupName) {
+  return !storedCollapsedGroups().includes(groupName);
+}
+
+function setSidebarGroupOpen(groupName, isOpen) {
+  try {
+    const collapsed = storedCollapsedGroups().filter((g) => g !== groupName);
+    if (!isOpen) collapsed.push(groupName);
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(collapsed));
+  } catch (_) {
+    /* not being able to remember this is not worth an error */
+  }
 }
 
 function storedSidebarWidth() {
@@ -308,15 +344,40 @@ function renderAppShell(activeHref, studentName) {
     .toUpperCase();
 
   const role = currentRole();
-  const links = NAV_ITEMS
-    .filter((item) => item.roles.includes(role))
-    .map(
-      (item) => `
-      <a class="sidebar-link${item.href === (activeHref || page) ? ' active' : ''}" href="${item.href}">
+  const activePage = activeHref || page;
+  const visible = NAV_ITEMS.filter((item) => item.roles.includes(role));
+
+  // Group in first-seen order rather than alphabetically, so "Main" still
+  // leads and "Platform" still trails regardless of which groups a given
+  // role even has.
+  const order = [];
+  const byGroup = {};
+  visible.forEach((item) => {
+    const g = item.group || 'Main';
+    if (!byGroup[g]) { byGroup[g] = []; order.push(g); }
+    byGroup[g].push(item);
+  });
+
+  const linkHtml = (item) => `
+      <a class="sidebar-link${item.href === activePage ? ' active' : ''}" href="${item.href}">
         <span class="icon" aria-hidden="true">${item.icon}</span>
         <span>${item.label}</span>
-      </a>`
-    )
+      </a>`;
+
+  // A single-item group (usually "Platform", admin-only) isn't worth a
+  // collapsible header of its own - it renders as a bare link instead.
+  const links = order
+    .map((g) => {
+      const items = byGroup[g];
+      if (items.length === 1) return linkHtml(items[0]);
+      const label = escapeHtml(g);
+      const isOpenGroup = items.some((item) => item.href === activePage);
+      return `
+      <details class="sidebar-group" ${isOpenGroup || sidebarGroupOpen(g) ? 'open' : ''} data-group="${label}">
+        <summary class="sidebar-group-label"><span>${label}</span></summary>
+        <div class="sidebar-group-links">${items.map(linkHtml).join('')}</div>
+      </details>`;
+    })
     .join('');
 
   return `
@@ -380,6 +441,11 @@ function mountAppShell(activeHref, studentName) {
   const closeMenu = () => { sidebar.classList.remove('open'); backdrop.classList.remove('open'); };
   toggle?.addEventListener('click', () => { sidebar.classList.add('open'); backdrop.classList.add('open'); });
   backdrop?.addEventListener('click', closeMenu);
+  document.querySelectorAll('.sidebar-group').forEach((details) => {
+    details.addEventListener('toggle', () => {
+      setSidebarGroupOpen(details.dataset.group, details.open);
+    });
+  });
   document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     const wasAdmin = isAdmin();
@@ -790,6 +856,20 @@ function skillChip(name, variant = 'default') {
 }
 
 /* ---------- State builders ---------- */
+/* A one-line pointer to Live Updates, dropped into the pages where an
+   official deadline is exactly what someone here is looking for. This is
+   deliberately a link, not a re-fetched feed: repeating the same live data
+   on four pages would mean four places that can drift out of sync with
+   each other, for a fact ("go check Live Updates") that doesn't need its
+   own copy of the data to be true. */
+function liveUpdatesTeaser(text) {
+  return `
+    <a class="callout callout-info live-updates-teaser" href="updates.html">
+      <span aria-hidden="true">🔔</span>
+      <span>${escapeHtml(text)} <strong>See Live Updates →</strong></span>
+    </a>`;
+}
+
 function loadingState(message = 'Loading...') {
   return `<div class="loading-state"><div class="spinner spinner-lg"></div><p>${escapeHtml(message)}</p></div>`;
 }

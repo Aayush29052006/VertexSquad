@@ -17,7 +17,9 @@ const STATUS_LABELS = {
 
   pageBody.innerHTML = `
     <h1 class="text-page-heading mb-2">My Applications</h1>
-    <p class="text-body mb-5">Track the status of every internship you've applied to.</p>
+    <p class="text-body mb-3">Track the status of every internship you've applied to.</p>
+    ${liveUpdatesTeaser('Interview calls and result announcements often show up as official notices first.')}
+    <div class="mb-2"></div>
     <div class="card" id="applicationsCard">${loadingState('Loading your applications...')}</div>
   `;
 

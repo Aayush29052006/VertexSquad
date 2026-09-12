@@ -33,6 +33,7 @@ const ROLE_HOMES = {
       <h1 class="text-page-heading">${getTimeOfDayGreeting()}, ${escapeHtml(studentName.split(' ')[0])} 👋</h1>
       <p class="text-body mt-1">Here is your career overview.</p>
     </div>
+    <div class="mt-4">${liveUpdatesTeaser('New official notices, vacancies and deadlines land here automatically.')}</div>
 
     <div id="assessmentNudge"></div>
 

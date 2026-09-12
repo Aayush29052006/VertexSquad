@@ -833,7 +833,8 @@ def user_role(user: StudentModel) -> str:
 # --- PAIRED ALGORITHMS ---
 
 def calculate_match_score_breakdown(student: StudentModel, internship: InternshipModel):
-    # 1. Required Skills Match (60% weight)
+    # 1. Required Skills Match (50% weight - see the 0.5 multiplier below;
+    #    this comment previously said 60%, which the code never did)
     req_skills = json.loads(internship.required_skills)
     stu_skills = json.loads(student.skills)
     

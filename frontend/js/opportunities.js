@@ -139,6 +139,10 @@ function applyFilters() {
             : 'Internships, full-time roles, apprenticeships and live projects, ranked by how well they match your skill profile.'
         }
       </p>
+      ${liveUpdatesTeaser(faculty
+        ? 'Official notices and FDP deadlines are posted continuously.'
+        : 'New postings and application deadlines are posted continuously.')}
+      <div class="mb-2"></div>
 
       <div class="admin-toolbar">
         <input class="form-input" id="searchInput" placeholder="Search role, company or skill" />

@@ -52,7 +52,13 @@ function renderDetails(pageBody, item) {
     <div class="details-grid">
       <div>
         <div class="card mb-5">
-          <h2 class="text-section-heading mb-3">Match Breakdown</h2>
+          <h2 class="text-section-heading mb-1">Match Breakdown</h2>
+          <p class="text-caption mb-3">
+            Each row below is that factor's own score out of 100. They combine at
+            <strong>50% skills · 20% preferences · 15% education · 15% projects</strong>
+            to produce the overall match — which is why a single strong factor can't
+            carry the score on its own.
+          </p>
           ${renderBreakdown(item.breakdown, item.match_score)}
         </div>
 

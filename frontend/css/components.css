@@ -518,7 +518,29 @@ html[data-theme='dark'] .status-interview { background: rgba(244, 114, 182, 0.18
 }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
 .modal-close { background: none; border: none; font-size: 1.4rem; color: var(--text-muted); line-height: 1; }
+/* A repo-selection list needs more room than a two-field edit form. */
+.modal.modal-wide { max-width: 680px; }
 [hidden] { display: none !important; }
+
+/* ---------- Connected Profiles ---------- */
+.social-link-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.social-icon { font-size: 1.3rem; flex-shrink: 0; width: 28px; text-align: center; }
+.social-link-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.social-link-url { color: var(--primary); font-size: 0.875rem; word-break: break-all; }
+
+/* ---------- GitHub import list ---------- */
+.gh-repo-list { display: flex; flex-direction: column; gap: var(--space-3); max-height: 320px; overflow-y: auto; }
+.gh-repo-row {
+  display: flex; gap: var(--space-3); align-items: flex-start;
+  padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+}
+.gh-repo-row:has(input:disabled) { cursor: default; opacity: 0.75; }
+.gh-repo-row input[type="checkbox"] { margin-top: 4px; flex-shrink: 0; }
+.gh-repo-body { min-width: 0; flex: 1; }
 
 /* ---------- Loading ---------- */
 .spinner {

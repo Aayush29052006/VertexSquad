@@ -224,6 +224,13 @@ class StudentModel(Base):
     duration = Column(String, nullable=True, default="3-6 months")
     profile_completion = Column(Integer, default=80)
     placement_readiness = Column(Integer, default=70)
+    # Connected Profiles. Links only - never a credential, never a scraped
+    # copy of the profile itself. GitHub's public repos can additionally be
+    # imported into `projects` below, one at a time, with the student's
+    # explicit selection; LinkedIn has no equivalent public API, so it stays
+    # a link plus manual entry into the fields that already exist.
+    linkedin_url = Column(String, nullable=True, default="")
+    github_url = Column(String, nullable=True, default="")
 
 
 class InternshipModel(Base):
@@ -473,6 +480,9 @@ def run_migrations():
         ("students", "org_name", "VARCHAR DEFAULT ''"),
         ("students", "department", "VARCHAR DEFAULT ''"),
         ("students", "designation", "VARCHAR DEFAULT ''"),
+        # Connected Profiles (LinkedIn / GitHub) - see /api/social/github-import.
+        ("students", "linkedin_url", "VARCHAR DEFAULT ''"),
+        ("students", "github_url", "VARCHAR DEFAULT ''"),
         ("internships", "opportunity_type", "VARCHAR DEFAULT 'internship'"),
         ("internships", "audience", "VARCHAR DEFAULT 'student'"),
         ("internships", "description", "TEXT DEFAULT ''"),
@@ -967,6 +977,8 @@ class ProfileUpdatePayload(BaseModel):
     org_name: Optional[str] = None
     department: Optional[str] = None
     designation: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
 
 class ConfirmSkillsPayload(BaseModel):
     skills: List[str] = []
@@ -1017,6 +1029,8 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
+        "linkedin_url": student.linkedin_url or "",
+        "github_url": student.github_url or "",
         "college": student.college or "",
         "degree": student.degree or "",
         "branch": student.branch or "",
@@ -1126,6 +1140,8 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
+        "linkedin_url": student.linkedin_url or "",
+        "github_url": student.github_url or "",
         "college": student.college or "",
         "degree": student.degree or "",
         "branch": student.branch or "",
@@ -1257,6 +1273,8 @@ def get_profile(student: StudentModel = Depends(get_current_student)):
         "phone": student.phone or "",
         "location": student.location or "",
         "photo_url": student.photo_url or "",
+        "linkedin_url": student.linkedin_url or "",
+        "github_url": student.github_url or "",
         "college": student.college or "",
         "degree": student.degree or "",
         "branch": student.branch or "",
@@ -1296,6 +1314,10 @@ def update_profile(payload: ProfileUpdatePayload, student: StudentModel = Depend
     if payload.org_name is not None: student.org_name = payload.org_name
     if payload.department is not None: student.department = payload.department
     if payload.designation is not None: student.designation = payload.designation
+    if payload.linkedin_url is not None:
+        student.linkedin_url = _validate_social_url(payload.linkedin_url, "linkedin_url", "linkedin.com")
+    if payload.github_url is not None:
+        student.github_url = _validate_social_url(payload.github_url, "github_url", "github.com")
 
     # Update list properties (serialized as JSON strings)
     if payload.skills is not None: student.skills = json.dumps(payload.skills)
@@ -1335,6 +1357,130 @@ def update_profile(payload: ProfileUpdatePayload, student: StudentModel = Depend
 
     # Return updated profile
     return get_profile(student)
+
+
+# =====================================================================
+# CONNECTED PROFILES — GitHub import
+#
+# GitHub's public REST API needs no key or OAuth for public data, so this
+# calls it directly, server-side, and returns exactly what GitHub returned
+# — no description, language or topic here is generated, only read.
+#
+# LinkedIn has no equivalent. Its official API only ever returns the data
+# of whoever is signed in through it (a handful of fields via OpenID
+# Connect — name, email, photo — not education, experience or skills),
+# and reading someone else's profile from a pasted URL is exactly the
+# scraping LinkedIn's terms forbid and its abuse-detection actively blocks.
+# There is no "extraction" endpoint for LinkedIn here: the profile link is
+# stored and shown, and everything else is entered by hand into fields
+# that already exist (Experience, Education). Claiming a live LinkedIn
+# import would be the "pretend it works" outcome this feature explicitly
+# has to avoid.
+# =====================================================================
+
+GITHUB_API = "https://api.github.com"
+GITHUB_TIMEOUT = 12
+_GITHUB_USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
+
+
+def _github_username_from_input(raw: str) -> str:
+    """A student may paste a full profile URL or just type their handle —
+    accept either. Whatever comes out still goes through the strict regex
+    check below before it touches a URL we build ourselves."""
+    s = (raw or "").strip()
+    s = re.sub(r"^https?://", "", s, flags=re.I)
+    s = re.sub(r"^(www\.)?github\.com/", "", s, flags=re.I)
+    return s.split("/")[0].split("?")[0].strip()
+
+
+def _github_get(path: str):
+    req = urllib.request.Request(
+        f"{GITHUB_API}{path}",
+        headers={
+            "User-Agent": FEED_USER_AGENT,
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=GITHUB_TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise HTTPException(status_code=404, detail="No public GitHub profile exists at that username.")
+        if e.code in (403, 429):
+            remaining = e.headers.get("X-RateLimit-Remaining") if e.headers else None
+            if remaining == "0":
+                raise HTTPException(
+                    status_code=429,
+                    detail="GitHub's public API rate limit was reached for this server. Please try again in a few minutes.",
+                )
+            raise HTTPException(status_code=502, detail="GitHub declined this request.")
+        raise HTTPException(status_code=502, detail=f"GitHub returned an unexpected error ({e.code}).")
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise HTTPException(status_code=503, detail="Could not reach GitHub right now. Please try again shortly.")
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=502, detail="GitHub returned a response that could not be read.")
+
+
+@app.get("/api/social/github-import")
+def github_import(
+    username: str = Query(..., min_length=1),
+    student: StudentModel = Depends(get_current_student),
+):
+    """Public profile + public, non-fork repositories for one GitHub user.
+
+    Read-only against GitHub — nothing is saved here. The student reviews
+    this list and picks what to import; saving happens through the normal
+    PUT /api/student/profile with the fields they actually chose.
+    """
+    handle = _github_username_from_input(username)
+    if not handle or not _GITHUB_USERNAME_RE.match(handle):
+        raise HTTPException(status_code=400, detail="That doesn't look like a valid GitHub username or profile URL.")
+
+    profile = _github_get(f"/users/{handle}")
+    repos_raw = _github_get(f"/users/{handle}/repos?type=owner&sort=updated&per_page=50")
+    if not isinstance(repos_raw, list):
+        repos_raw = []
+
+    repos = []
+    for r in repos_raw:
+        if not isinstance(r, dict) or r.get("private"):
+            continue  # a public listing should never include one, but never trust it blindly
+        repos.append({
+            "name": r.get("name") or "",
+            "description": r.get("description") or "",
+            "html_url": clean_public_url(r.get("html_url") or ""),
+            "language": r.get("language") or "",
+            "topics": (r.get("topics") or [])[:8],
+            "stars": r.get("stargazers_count") or 0,
+            "forks": r.get("forks_count") or 0,
+            "updated_at": (r.get("updated_at") or "")[:10],
+            "is_fork": bool(r.get("fork")),
+        })
+    # Original work first, then most recently updated within each group —
+    # two stable sorts composed (sort by the minor key, then the major key)
+    # rather than one comparator, so the intent reads without unpacking a
+    # tuple. A fork of someone else's project is real activity but not this
+    # student's own project, hence the grouping.
+    repos.sort(key=lambda r: r["updated_at"], reverse=True)
+    repos.sort(key=lambda r: r["is_fork"])
+
+    languages = sorted({r["language"] for r in repos if r["language"] and not r["is_fork"]})
+
+    return {
+        "profile": {
+            "login": profile.get("login") or handle,
+            "name": profile.get("name") or profile.get("login") or handle,
+            "bio": profile.get("bio") or "",
+            "avatar_url": clean_public_url(profile.get("avatar_url") or ""),
+            "html_url": clean_public_url(profile.get("html_url") or f"https://github.com/{handle}"),
+            "public_repos": profile.get("public_repos") or 0,
+            "followers": profile.get("followers") or 0,
+        },
+        "repos": repos[:30],
+        "languages_detected": languages,
+    }
 
 
 # gemini-1.5-flash and 2.5-flash are retired and 404 for new keys.
@@ -2908,6 +3054,24 @@ def clean_public_url(url: str) -> str:
     if not raw:
         return ""
     return raw if raw.lower().startswith(("http://", "https://")) else ""
+
+
+def _validate_social_url(url: str, field_name: str, required_domain: str) -> str:
+    """Same http(s)-only rule as clean_public_url, plus a domain check so a
+    LinkedIn field cannot silently hold a github.com link (or vice versa) -
+    every other page that reads linkedin_url/github_url assumes it got the
+    platform it asked for. An empty string clears the field, which is the
+    only way to disconnect a profile."""
+    raw = clean_public_url(url)
+    if not raw:
+        return ""
+    host = urllib.parse.urlparse(raw).netloc.lower()
+    if not (host == required_domain or host.endswith("." + required_domain)):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} must be a {required_domain} link.",
+        )
+    return raw
 
 
 @app.get("/api/learning/programs")

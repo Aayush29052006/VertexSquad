@@ -42,6 +42,19 @@ function renderProfile(pageBody, student) {
         </div>
 
         <div class="card profile-section">
+          <div class="flex items-center gap-2 mb-3" style="justify-content:space-between;">
+            <h2 class="text-section-heading" style="margin:0;">Professional Profile Links</h2>
+            <button class="btn btn-ghost btn-sm" id="editLinksBtn" type="button">Edit</button>
+          </div>
+          <p class="text-caption mb-3">
+            Connect your LinkedIn and GitHub so recruiters can find them, and pull real GitHub projects
+            straight into your portfolio.
+          </p>
+          <div id="socialLinksView">${renderSocialLinksView(student)}</div>
+          <div id="socialLinksEdit" hidden>${renderSocialLinksEdit(student)}</div>
+        </div>
+
+        <div class="card profile-section">
           <h2 class="text-section-heading mb-3">Skills</h2>
           <div class="chip-row">${student.skills.map((s) => `<span class="skill-chip">${escapeHtml(s)}</span>`).join('')}</div>
         </div>
@@ -97,6 +110,253 @@ function renderProfile(pageBody, student) {
 
   document.getElementById('editProfileBtn').addEventListener('click', openEditModal);
   document.getElementById('downloadResumeBtn').addEventListener('click', downloadAtsResume);
+  wireSocialLinks();
+}
+
+/* ---------- Connected Profiles (LinkedIn / GitHub) ----------
+   LinkedIn is a link only — see the long comment on /api/social/github-import
+   in the backend for why there is no "import" for it. GitHub gets both a
+   link and a real import, because its public API actually allows one. */
+
+function socialRow(icon, label, url, placeholder) {
+  return `
+    <div class="social-link-row">
+      <span class="social-icon" aria-hidden="true">${icon}</span>
+      <div class="social-link-body">
+        <span class="field-label">${escapeHtml(label)}</span>
+        ${url
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="social-link-url">${escapeHtml(url)}</a>`
+          : `<span class="text-caption" style="font-style:italic;">${escapeHtml(placeholder)}</span>`}
+      </div>
+    </div>`;
+}
+
+function renderSocialLinksView(student) {
+  const hasGithub = !!student.github_url;
+  return `
+    ${socialRow('💼', 'LinkedIn', student.linkedin_url, 'Not connected yet')}
+    ${socialRow('🐙', 'GitHub', student.github_url, 'Not connected yet')}
+    ${hasGithub ? `
+      <button class="btn btn-secondary btn-sm mt-2" id="importGithubBtn" type="button">
+        Import GitHub Projects
+      </button>` : `
+      <p class="text-caption mt-2">Add your GitHub link and save to unlock project import.</p>`}
+  `;
+}
+
+function renderSocialLinksEdit(student) {
+  return `
+    <div class="form-group">
+      <label class="form-label" for="linkedinUrlInput">LinkedIn Profile URL</label>
+      <input class="form-input" id="linkedinUrlInput" placeholder="https://www.linkedin.com/in/your-name"
+             value="${escapeHtml(student.linkedin_url || '')}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="githubUrlInput">GitHub Profile URL</label>
+      <input class="form-input" id="githubUrlInput" placeholder="https://github.com/your-username"
+             value="${escapeHtml(student.github_url || '')}" />
+    </div>
+    <p class="form-error mt-1 mb-2" id="socialLinksError" hidden></p>
+    <div class="flex gap-2">
+      <button class="btn btn-primary btn-sm" id="saveSocialLinksBtn" type="button">Save Links</button>
+      <button class="btn btn-ghost btn-sm" id="cancelSocialLinksBtn" type="button">Cancel</button>
+    </div>
+  `;
+}
+
+function wireSocialLinks() {
+  const viewEl = document.getElementById('socialLinksView');
+  const editEl = document.getElementById('socialLinksEdit');
+
+  function showView() {
+    viewEl.innerHTML = renderSocialLinksView(currentStudent);
+    viewEl.hidden = false;
+    editEl.hidden = true;
+    document.getElementById('importGithubBtn')?.addEventListener('click', openGithubImportModal);
+  }
+
+  document.getElementById('editLinksBtn').addEventListener('click', () => {
+    editEl.innerHTML = renderSocialLinksEdit(currentStudent);
+    viewEl.hidden = true;
+    editEl.hidden = false;
+    document.getElementById('cancelSocialLinksBtn').addEventListener('click', showView);
+    document.getElementById('saveSocialLinksBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('saveSocialLinksBtn');
+      const errorEl = document.getElementById('socialLinksError');
+      errorEl.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        currentStudent = await api.updateStudentProfile({
+          linkedin_url: document.getElementById('linkedinUrlInput').value.trim(),
+          github_url: document.getElementById('githubUrlInput').value.trim(),
+        });
+        showView();
+        showToast('Profile links saved.', 'success');
+      } catch (err) {
+        errorEl.textContent = err.message || 'Could not save those links. Check they are the right platform’s URL.';
+        errorEl.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Save Links';
+      }
+    });
+  });
+
+  document.getElementById('importGithubBtn')?.addEventListener('click', openGithubImportModal);
+}
+
+/* ---------- GitHub project import ----------
+   Fetch -> preview -> the student picks what to keep -> confirm. Nothing
+   reaches student.projects or student.skills without that explicit pick,
+   and re-running the import never creates a second copy of a repo already
+   imported once (matched by its GitHub URL) or a skill already present
+   (matched case-insensitively, same rule the match engine itself uses). */
+
+function _githubUsernameFromUrl(url) {
+  return (url || '').trim().replace(/^https?:\/\//i, '').replace(/^(www\.)?github\.com\//i, '').split('/')[0].split('?')[0];
+}
+
+function _isProjectAlreadySaved(repo) {
+  return currentStudent.projects.some((p) => p.url && p.url.toLowerCase() === repo.html_url.toLowerCase());
+}
+
+function _isSkillAlreadySaved(skill) {
+  return currentStudent.skills.some((s) => s.toLowerCase() === skill.toLowerCase());
+}
+
+function githubRepoRow(repo, index) {
+  const already = _isProjectAlreadySaved(repo);
+  return `
+    <label class="gh-repo-row${already ? ' gh-repo-row-saved' : ''}">
+      <input type="checkbox" data-repo-index="${index}" ${already ? 'disabled' : ''} />
+      <div class="gh-repo-body">
+        <div class="flex items-center gap-2">
+          <strong>${escapeHtml(repo.name)}</strong>
+          ${repo.is_fork ? '<span class="badge badge-neutral">Fork</span>' : ''}
+          ${already ? '<span class="badge badge-success">Already in your portfolio</span>' : ''}
+        </div>
+        ${repo.description ? `<p class="text-caption mt-1">${escapeHtml(repo.description)}</p>` : '<p class="text-caption mt-1" style="font-style:italic;">No description on GitHub.</p>'}
+        <div class="entity-tags mt-1">
+          ${repo.language ? `<span class="entity-tag">${escapeHtml(repo.language)}</span>` : ''}
+          ${repo.topics.map((t) => `<span class="entity-tag">${escapeHtml(t)}</span>`).join('')}
+        </div>
+        <p class="text-caption mt-1">
+          ⭐ ${repo.stars} &nbsp; \u{1F374} ${repo.forks} &nbsp; updated ${escapeHtml(repo.updated_at || 'unknown date')}
+          &nbsp; <a href="${escapeHtml(repo.html_url)}" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a>
+        </p>
+      </div>
+    </label>`;
+}
+
+function githubSkillChip(skill) {
+  const already = _isSkillAlreadySaved(skill);
+  return `
+    <label class="skill-confirm-chip ${already ? 'kept' : ''}" style="cursor:${already ? 'default' : 'pointer'};">
+      <input type="checkbox" data-skill-name="${escapeHtml(skill)}" ${already ? 'checked disabled' : ''} style="margin-right:4px;" />
+      ${escapeHtml(skill)}${already ? ' (already added)' : ''}
+    </label>`;
+}
+
+let _githubImportData = null;
+
+function openGithubImportModal() {
+  const modal = document.getElementById('githubModal');
+  const body = document.getElementById('githubModalBody');
+  modal.hidden = false;
+  body.innerHTML = loadingState('Reading the public GitHub profile...');
+
+  const username = _githubUsernameFromUrl(currentStudent.github_url);
+  api.githubImport(username)
+    .then((data) => {
+      _githubImportData = data;
+      const p = data.profile;
+      body.innerHTML = `
+        <div class="flex items-center gap-3 mb-4">
+          ${p.avatar_url ? `<img src="${escapeHtml(p.avatar_url)}" alt="" style="width:56px;height:56px;border-radius:50%;" />` : ''}
+          <div>
+            <strong>${escapeHtml(p.name)}</strong>
+            <p class="text-caption">@${escapeHtml(p.login)} · ${p.public_repos} public repos · ${p.followers} followers</p>
+          </div>
+        </div>
+        ${p.bio ? `<p class="text-body mb-4">${escapeHtml(p.bio)}</p>` : ''}
+
+        <h4 class="text-card-heading mb-2">Select repositories to add to your Portfolio</h4>
+        ${data.repos.length
+          ? `<div class="gh-repo-list">${data.repos.map(githubRepoRow).join('')}</div>`
+          : `<p class="text-body mb-3">No public repositories found on this account.</p>`}
+
+        ${data.languages_detected.length ? `
+          <h4 class="text-card-heading mt-4 mb-2">Languages detected — add any to Skills?</h4>
+          <p class="text-caption mb-2">Detected from your public repos. Nothing here is added unless you tick it.</p>
+          <div class="chip-row">${data.languages_detected.map(githubSkillChip).join('')}</div>
+        ` : ''}
+
+        <p class="form-error mt-3" id="githubImportError" hidden></p>
+        <div class="flex gap-2 mt-4">
+          <button class="btn btn-primary" id="confirmGithubImportBtn" type="button">Import Selected</button>
+          <button class="btn btn-ghost" id="cancelGithubImportBtn" type="button">Cancel</button>
+        </div>
+      `;
+
+      document.getElementById('cancelGithubImportBtn').addEventListener('click', () => { modal.hidden = true; });
+      document.getElementById('confirmGithubImportBtn').addEventListener('click', confirmGithubImport);
+    })
+    .catch((err) => {
+      body.innerHTML = errorState(
+        err.message || 'Could not read that GitHub profile right now.',
+        null
+      );
+      body.innerHTML += `<div class="flex gap-2 mt-3"><button class="btn btn-secondary" id="closeGithubErrorBtn" type="button">Close</button></div>`;
+      document.getElementById('closeGithubErrorBtn').addEventListener('click', () => { modal.hidden = true; });
+    });
+}
+
+async function confirmGithubImport() {
+  const btn = document.getElementById('confirmGithubImportBtn');
+  const errorEl = document.getElementById('githubImportError');
+  errorEl.hidden = true;
+
+  const selectedRepos = [...document.querySelectorAll('[data-repo-index]:checked')]
+    .map((el) => _githubImportData.repos[Number(el.dataset.repoIndex)]);
+  const selectedSkills = [...document.querySelectorAll('[data-skill-name]:checked:not(:disabled)')]
+    .map((el) => el.dataset.skillName);
+
+  if (!selectedRepos.length && !selectedSkills.length) {
+    errorEl.textContent = 'Select at least one repository or skill to import — or Cancel.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Importing...';
+  try {
+    const newProjects = selectedRepos.map((repo) => ({
+      title: repo.name,
+      description: repo.description || '(No description provided on GitHub.)',
+      tech: [repo.language, ...repo.topics].filter(Boolean),
+      url: repo.html_url,
+      source: 'github',
+    }));
+    const mergedProjects = [...currentStudent.projects, ...newProjects];
+    const mergedSkills = [...currentStudent.skills];
+    selectedSkills.forEach((s) => {
+      if (!mergedSkills.some((existing) => existing.toLowerCase() === s.toLowerCase())) mergedSkills.push(s);
+    });
+
+    currentStudent = await api.updateStudentProfile({ projects: mergedProjects, skills: mergedSkills });
+    document.getElementById('githubModal').hidden = true;
+    renderProfile(document.getElementById('pageBody'), currentStudent);
+    showToast(
+      `Imported ${newProjects.length} project${newProjects.length === 1 ? '' : 's'}` +
+      (selectedSkills.length ? ` and ${selectedSkills.length} skill${selectedSkills.length === 1 ? '' : 's'}.` : '.'),
+      'success'
+    );
+  } catch (err) {
+    errorEl.textContent = err.message || 'Could not save the imported items. Please try again.';
+    errorEl.hidden = false;
+    btn.disabled = false;
+    btn.textContent = 'Import Selected';
+  }
 }
 
 /* ---------- ATS-friendly resume export ----------
@@ -111,7 +371,8 @@ function atsSection(title, innerHtml) {
 }
 
 function buildAtsResume(s) {
-  const contact = [s.email, s.phone, s.location].filter(Boolean).map(escapeHtml).join('  |  ');
+  const contact = [s.email, s.phone, s.location, s.linkedin_url, s.github_url]
+    .filter(Boolean).map(escapeHtml).join('  |  ');
 
   const education = `
     <p><strong>${escapeHtml(s.degree || '')}${s.branch ? ', ' + escapeHtml(s.branch) : ''}</strong></p>
@@ -203,6 +464,10 @@ function openEditModal() {
   const editModal = document.getElementById('editModal');
   document.getElementById('closeEdit').addEventListener('click', () => { editModal.hidden = true; });
   editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.hidden = true; });
+
+  const githubModal = document.getElementById('githubModal');
+  document.getElementById('closeGithubModal').addEventListener('click', () => { githubModal.hidden = true; });
+  githubModal.addEventListener('click', (e) => { if (e.target === githubModal) githubModal.hidden = true; });
 
   document.getElementById('editForm').addEventListener('submit', async (e) => {
     e.preventDefault();

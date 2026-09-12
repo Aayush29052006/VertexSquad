@@ -97,6 +97,21 @@ const api = {
     return apiRequest('/student/profile', { method: 'PUT', body: JSON.stringify(payload) });
   },
 
+  // ---------- Connected Profiles ----------
+  async githubImport(username) {
+    if (CONFIG.USE_MOCK_DATA) {
+      await delay(600);
+      return {
+        profile: { login: username, name: username, bio: 'Sample bio (mock data mode).', avatar_url: '', html_url: `https://github.com/${username}`, public_repos: 2, followers: 0 },
+        repos: [
+          { name: 'sample-project', description: 'A sample repository shown in mock data mode.', html_url: `https://github.com/${username}/sample-project`, language: 'JavaScript', topics: ['demo'], stars: 3, forks: 1, updated_at: '2026-01-01', is_fork: false },
+        ],
+        languages_detected: ['JavaScript'],
+      };
+    }
+    return apiRequest(`/social/github-import?username=${encodeURIComponent(username)}`);
+  },
+
   // ---------- Resume ----------
   async uploadResume(file) {
     if (CONFIG.USE_MOCK_DATA) {

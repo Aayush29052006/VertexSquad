@@ -116,20 +116,8 @@ function renderProfile(pageBody, student) {
 /* ---------- Connected Profiles (LinkedIn / GitHub) ----------
    LinkedIn is a link only — see the long comment on /api/social/github-import
    in the backend for why there is no "import" for it. GitHub gets both a
-   link and a real import, because its public API actually allows one. */
-
-function socialRow(icon, label, url, placeholder) {
-  return `
-    <div class="social-link-row">
-      <span class="social-icon" aria-hidden="true">${icon}</span>
-      <div class="social-link-body">
-        <span class="field-label">${escapeHtml(label)}</span>
-        ${url
-          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="social-link-url">${escapeHtml(url)}</a>`
-          : `<span class="text-caption" style="font-style:italic;">${escapeHtml(placeholder)}</span>`}
-      </div>
-    </div>`;
-}
+   link and a real import, because its public API actually allows one.
+   socialRow() itself lives in ui.js — resume.js needs it too. */
 
 function renderSocialLinksView(student) {
   const hasGithub = !!student.github_url;

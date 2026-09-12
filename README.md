@@ -124,9 +124,6 @@ that.
 - **Verification queue** — work through students' unverified skills, projects and
   certificates. A verifier's name and role are attached to every stamp, and the
   backend refuses any attempt to verify your own portfolio
-- **Collaboration calls** — guest lectures, workshops, live projects, innovation
-  challenges, joint research and consultancy, with registration lists for whoever
-  published them
 
 **For institutions (placement cell)**
 - **Cohort analytics** — placement readiness bands, assessment coverage,
@@ -326,7 +323,6 @@ Every requirement in SIH26044, and where it lives in the build.
 | Recruitment management for recruiters | `PATCH /api/recruiter/applications/{id}` |
 | Institution dashboards & analytics | `institution.html` · `GET /api/institution/analytics` |
 | Skill demand trends for policymakers | Curriculum-gap ranking by impact (students lacking × roles demanding) |
-| Industry–academia collaboration (lectures, workshops, challenges, research) | `collaborations.html` · `CollaborationModel` |
 | Role-based access for all four stakeholders | `require_roles()` on every endpoint · role-filtered navigation |
 | Secure document management | `documents.html` · `DocumentModel` — owner + staff only |
 | Integration with learning platforms | Curated catalogue links to NPTEL, SWAYAM, freeCodeCamp, MS Learn, AWS |
@@ -401,7 +397,6 @@ VertexSquad/
 │   │   ├── faculty.html            #     Faculty portal
 │   │   ├── verify.html             #     Verification queue
 │   │   ├── institution.html        #     Cohort analytics
-│   │   ├── collaborations.html     #     Lectures, projects, research
 │   │   │
 │   │   ├── settings.html
 │   │   └── admin.html              #     Admin panel (role = "admin" only)
@@ -738,7 +733,6 @@ All endpoints are prefixed with `/api`. Full interactive docs at `/docs`.
 | `GET` `POST` | `/learning/programs` | Industry learning programmes |
 | `GET` | `/learning/recommendations` | Gaps ranked by roles unlocked |
 | `GET` | `/institution/analytics` | Cohort analytics for a placement cell |
-| `GET` `POST` | `/collaborations` | Industry–academia collaboration calls |
 | `GET` `POST` `DELETE` | `/documents[/{id}]` | Secure document store |
 | `GET` `POST` | `/portfolio` | Verified portfolio + verification |
 | `GET` | `/verify/pending` | Verification queue (staff) |

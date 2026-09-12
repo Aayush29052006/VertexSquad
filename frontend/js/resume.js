@@ -4,10 +4,18 @@
 let skillDecisions = {}; // name -> boolean (kept)
 let extractionData = null;
 
-function renderResumeIdle(pageBody, resume) {
+function renderResumeIdle(pageBody, resume, student) {
   pageBody.innerHTML = `
     <h1 class="text-page-heading mb-2">Resume</h1>
     <p class="text-body mb-5">Upload your resume so CareerNexus AI can extract your skills, projects, and certifications.</p>
+
+    <div class="card mb-5">
+      <h2 class="text-section-heading mb-2">Professional Links on Your Resume</h2>
+      <p class="text-caption mb-3">Pulled from your profile and included on the ATS resume you download from here.</p>
+      ${socialRow('💼', 'LinkedIn', student.linkedin_url, 'Not connected yet')}
+      ${socialRow('🐙', 'GitHub', student.github_url, 'Not connected yet')}
+      ${(!student.linkedin_url || !student.github_url) ? `<a class="btn btn-ghost btn-sm mt-2" href="profile.html">Add them in My Profile →</a>` : ''}
+    </div>
 
     ${resume ? `
       <div class="card mb-5">
@@ -219,8 +227,8 @@ function attachChipEvents() {
 async function initResumeSection(container) {
   container.innerHTML = loadingState('Loading resume status...');
   try {
-    const resume = await api.getResumeStatus();
-    renderResumeIdle(container, resume && resume.file_name ? resume : null);
+    const [resume, student] = await Promise.all([api.getResumeStatus(), api.getStudentProfile()]);
+    renderResumeIdle(container, resume && resume.file_name ? resume : null, student);
   } catch (err) {
     container.innerHTML = errorState(err.message || 'Unable to load resume information.', 'location.reload');
   }

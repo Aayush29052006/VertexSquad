@@ -56,9 +56,10 @@ const ROLE_HOMES = {
   `;
 
   try {
-    const [student, recommendations] = await Promise.all([
+    const [student, recommendations, applications] = await Promise.all([
       api.getStudentProfile(),
       api.getRecommendations(),
+      api.getApplications(),
     ]);
 
     document.getElementById('profileCompletionCard').innerHTML = `
@@ -71,7 +72,6 @@ const ROLE_HOMES = {
     `;
 
     const strongMatches = recommendations.filter((r) => r.match_score >= CONFIG.MATCH_THRESHOLDS.GOOD).length;
-    const applications = MOCK.applications.length;
 
     document.getElementById('statGrid').innerHTML = `
       <div class="stat-tile">
@@ -86,7 +86,7 @@ const ROLE_HOMES = {
       </div>
       <div class="stat-tile">
         <div class="stat-label">📋 Applications</div>
-        <div class="stat-value">${applications}</div>
+        <div class="stat-value">${applications.length}</div>
         <div class="stat-sub">Total submitted</div>
       </div>
       <div class="stat-tile">

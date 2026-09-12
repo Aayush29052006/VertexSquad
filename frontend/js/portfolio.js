@@ -137,14 +137,17 @@ function renderPortfolio(pageBody, pf, isPublic) {
       pf.projects.length
         ? pf.projects
             .map(
-              (p) => `
+              (p, idx) => `
           <div class="verified-item verified-item-block">
             <div>
               <strong>${escapeHtml(p.title || 'Untitled project')}</strong>
               ${p.description ? `<p class="text-caption">${escapeHtml(p.description)}</p>` : ''}
               ${(p.tech || []).length ? `<div class="chip-row mt-1">${p.tech.map((t) => skillChip(t)).join('')}</div>` : ''}
             </div>
-            ${verifiedBadge(p.verification)}
+            <div class="flex items-center gap-2">
+              ${verifiedBadge(p.verification)}
+              ${!isPublic ? `<button class="btn btn-ghost btn-sm" data-delete-project="${idx}" type="button">Delete</button>` : ''}
+            </div>
           </div>`
             )
             .join('')
@@ -199,6 +202,30 @@ function renderPortfolio(pageBody, pf, isPublic) {
       input.select();
       showToast('Press Ctrl+C to copy the selected link.');
     }
+  });
+
+  // Deleting here removes the project from the student's own record (the
+  // same list GitHub import and Edit Profile write to) — not just how this
+  // page happens to display it. A verified stamp is matched by project
+  // title, so removing a wrongly-added project drops its stamp with it.
+  pageBody.querySelectorAll('[data-delete-project]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.deleteProject);
+      const project = pf.projects[idx];
+      if (!window.confirm(`Delete "${project.title || 'this project'}"? This cannot be undone.`)) return;
+      btn.disabled = true;
+      try {
+        const remaining = pf.projects
+          .filter((_, i) => i !== idx)
+          .map(({ verification, ...rest }) => rest);
+        await api.updateStudentProfile({ projects: remaining });
+        renderPortfolio(pageBody, await api.getMyPortfolio(), false);
+        showToast('Project deleted.', 'success');
+      } catch (err) {
+        showToast(err.message || 'Could not delete that project.', 'error');
+        btn.disabled = false;
+      }
+    });
   });
 }
 

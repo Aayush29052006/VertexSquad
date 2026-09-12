@@ -1,8 +1,8 @@
 /**
  * CareerNexus — Faculty Portal
  * The academician's home: faculty internships, industrial training and FDPs
- * matched to their own profile, the collaboration calls open to them, and a
- * shortcut into the students waiting for verification.
+ * matched to their own profile, and a shortcut into the students waiting
+ * for verification.
  */
 
 const FAC_TYPE_LABELS = {
@@ -61,14 +61,12 @@ function facOpportunityCard(o) {
 
   // One slow endpoint should not blank the whole page, so each section
   // degrades on its own.
-  const [oppRes, colRes, verRes] = await Promise.allSettled([
+  const [oppRes, verRes] = await Promise.allSettled([
     api.listOpportunities(),
-    api.listCollaborations(),
     api.getPendingVerifications(),
   ]);
 
   const opportunities = oppRes.status === 'fulfilled' ? oppRes.value : [];
-  const collaborations = colRes.status === 'fulfilled' ? colRes.value : [];
   const pending = verRes.status === 'fulfilled' ? verRes.value : [];
   const pendingItems = pending.reduce((n, r) => n + r.pending_count, 0);
 
@@ -84,11 +82,6 @@ function facOpportunityCard(o) {
         <p class="stat-value">${opportunities.length}</p>
         <p class="text-label">Open to Faculty</p>
         <p class="text-caption">FDPs, training and projects</p>
-      </div>
-      <div class="card stat-card">
-        <p class="stat-value">${collaborations.length}</p>
-        <p class="text-label">Collaboration Calls</p>
-        <p class="text-caption">Lectures, research, consultancy</p>
       </div>
       <div class="card stat-card">
         <p class="stat-value">${pending.length}</p>
@@ -120,34 +113,6 @@ function facOpportunityCard(o) {
               'Nothing open right now',
               'Faculty internships, industrial training and FDPs published by industry partners appear here.'
             )}</div>`
-      }
-    </section>
-
-    <section>
-      <div class="flex items-center justify-between mb-3" style="flex-wrap:wrap;gap:12px;">
-        <h2 class="text-section-heading">Collaboration Calls</h2>
-        <a class="btn btn-ghost btn-sm" href="collaborations.html">See all</a>
-      </div>
-      ${
-        collaborations.length
-          ? `<div class="verified-list card">
-               ${collaborations
-                 .slice(0, 5)
-                 .map(
-                   (c) => `
-                 <div class="verified-item verified-item-block">
-                   <div>
-                     <strong>${escapeHtml(c.title)}</strong>
-                     <p class="text-caption">${escapeHtml(c.organisation)} · ${escapeHtml(
-                     (c.collab_type || '').replace(/_/g, ' ')
-                   )}${c.starts_on ? ` · ${formatDate(c.starts_on)}` : ''}</p>
-                   </div>
-                   <a class="btn btn-secondary btn-sm" href="collaborations.html">View</a>
-                 </div>`
-                 )
-                 .join('')}
-             </div>`
-          : `<div class="card">${emptyState('🤝', 'No open calls', 'Guest lectures, joint research and consultancy calls appear here.')}</div>`
       }
     </section>
   `;

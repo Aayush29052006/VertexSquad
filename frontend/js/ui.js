@@ -56,7 +56,6 @@ const NAV_ITEMS = [
   // The institute behind SIH26044. Everything on this page is AIIA's own.
   { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES, group: 'Community & Updates' },
   // --- Shared across academia and industry.
-  { href: 'collaborations.html', icon: '🤝', label: 'Collaborations', roles: ALL_ROLES, group: 'Community & Updates' },
   // --- Who built this, and how to reach them. Everyone sees it.
   { href: 'team.html', icon: '👥', label: 'Team & Contact', roles: ALL_ROLES, group: 'Community & Updates' },
 
@@ -860,6 +859,23 @@ function skillChip(name, variant = 'default') {
   const cls = variant === 'missing' ? 'skill-chip chip-missing' : 'skill-chip';
   const icon = variant === 'missing' ? '○' : '✓';
   return `<span class="${cls}">${icon} ${escapeHtml(name)}</span>`;
+}
+
+/* ---------- Connected profile links (LinkedIn / GitHub) ----------
+   Shared between profile.html (with an Edit form) and resume.html (read-only,
+   so a student can see what their downloaded resume will list) — kept here
+   rather than duplicated in both pages' scripts. */
+function socialRow(icon, label, url, placeholder) {
+  return `
+    <div class="social-link-row">
+      <span class="social-icon" aria-hidden="true">${icon}</span>
+      <div class="social-link-body">
+        <span class="field-label">${escapeHtml(label)}</span>
+        ${url
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="social-link-url">${escapeHtml(url)}</a>`
+          : `<span class="text-caption" style="font-style:italic;">${escapeHtml(placeholder)}</span>`}
+      </div>
+    </div>`;
 }
 
 /* ---------- State builders ---------- */

@@ -381,25 +381,6 @@ const api = {
     return apiRequest('/verify/pending');
   },
 
-  // ---------- Industry-academia collaboration ----------
-  listCollaborations(filters = {}) {
-    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
-    const q = new URLSearchParams(clean).toString();
-    return apiRequest(`/collaborations${q ? `?${q}` : ''}`);
-  },
-  createCollaboration(payload) {
-    return apiRequest('/collaborations', { method: 'POST', body: JSON.stringify(payload) });
-  },
-  registerForCollaboration(id, note = '') {
-    return apiRequest(`/collaborations/${encodeURIComponent(id)}/register`, {
-      method: 'POST',
-      body: JSON.stringify({ note }),
-    });
-  },
-  getCollaborationRegistrations(id) {
-    return apiRequest(`/collaborations/${encodeURIComponent(id)}/registrations`);
-  },
-
   // ---------- Secure documents ----------
   listDocuments() {
     return apiRequest('/documents');

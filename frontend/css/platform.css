@@ -1,8 +1,8 @@
 /* ==========================================================================
    CareerNexus — Platform surfaces
    Styles for the pages added for SIH26044: skill assessment, learning paths,
-   opportunities, verified portfolio, collaborations, documents and the
-   recruiter / faculty / institution portals.
+   opportunities, verified portfolio, documents and the recruiter / faculty /
+   institution portals.
 
    Everything here reuses the existing design tokens from global.css, so
    these pages follow the light/dark theme without any extra work.
@@ -504,12 +504,6 @@ a.callout strong { color: var(--primary); }
   margin-bottom: var(--space-5);
 }
 body.public-portfolio .app-shell { display: block; }
-
-/* ---------- Collaborations ---------- */
-
-.collab-card { display: flex; flex-direction: column; }
-.collab-head { display: flex; gap: var(--space-3); align-items: flex-start; margin-bottom: var(--space-3); }
-.collab-icon { font-size: 1.6rem; line-height: 1; }
 
 /* ---------- Verification queue ---------- */
 

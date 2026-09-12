@@ -340,37 +340,6 @@ class LearningProgramModel(Base):
     source_type = Column(String, default="industry")
 
 
-class CollaborationModel(Base):
-    """Industry-academia collaboration calls: guest lectures, workshops,
-    live projects, innovation challenges, consultancy and joint research."""
-    __tablename__ = "collaborations"
-
-    id = Column(String, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    organisation = Column(String, nullable=False)
-    collab_type = Column(String, nullable=False, default="workshop")
-    description = Column(Text, default="")
-    skills_involved = Column(Text, default="[]")
-    mode = Column(String, default="Hybrid")
-    location = Column(String, default="")
-    starts_on = Column(String, default="")
-    seats = Column(Integer, default=0)            # 0 = unlimited
-    audience = Column(String, default="both")     # student|faculty|both
-    posted_by = Column(String, nullable=True)
-    created_at = Column(String, nullable=False)
-
-
-class CollabInterestModel(Base):
-    """A student or faculty member registering for a collaboration."""
-    __tablename__ = "collab_interests"
-
-    id = Column(String, primary_key=True, index=True)
-    collab_id = Column(String, ForeignKey("collaborations.id"), nullable=False, index=True)
-    user_id = Column(String, ForeignKey("students.id"), nullable=False, index=True)
-    registered_at = Column(String, nullable=False)
-    note = Column(Text, default="")
-
-
 class ProgressLogModel(Base):
     """Weekly internship progress. The intern writes the entry; the mentor
     (whoever posted the role) adds feedback and a rating."""
@@ -655,7 +624,10 @@ def seed_database():
 
         # Seed default mock student if empty
         if db.query(StudentModel).filter(StudentModel.email == "aayushswapnali@gmail.com").first() is None:
-            # We seed the default student with Aayush's profile details
+            # We seed the default student with Aayush's real profile details.
+            # Projects/certifications/experience start empty rather than with
+            # placeholder examples — those get added through the app itself
+            # (GitHub import, Edit Profile), not invented at seed time.
             default_student = StudentModel(
                 id="stu_1001",
                 email="aayushswapnali@gmail.com",
@@ -664,34 +636,28 @@ def seed_database():
                 full_name="Aayush Chaudhari",
                 role="admin",
                 is_active=1,
-                phone="+91 98765 43210",
+                phone="",
                 location="Jalgaon, Maharashtra",
                 photo_url="",
+                linkedin_url="https://www.linkedin.com/in/aayush-chaudhari-44426232a/",
+                github_url="https://github.com/Aayush29052006",
                 college="Shram Sadhana Bombay Trust's College of Engineering & Technology, Jalgaon",
                 degree="B.Tech",
                 branch="Computer Engineering",
                 current_year="3rd Year",
                 graduation_year=2027,
                 cgpa=8.6,
-                skills=json.dumps(["Python", "JavaScript", "React", "SQL", "Git", "FastAPI", "HTML", "CSS"]),
-                soft_skills=json.dumps(["Communication", "Leadership", "Problem Solving", "Teamwork"]),
-                projects=json.dumps([
-                    {"id": 1, "title": "Campus Skill Tracker", "description": "A web app to track student skills and certifications for placement readiness.", "tech": ["React", "Node.js", "MongoDB"], "link": ""},
-                    {"id": 2, "title": "AI Resume Parser", "description": "Extracts skills and experience from PDF resumes using NLP.", "tech": ["Python", "spaCy"], "link": ""}
-                ]),
-                certifications=json.dumps([
-                    {"id": 1, "title": "Google Data Analytics Certificate", "issuer": "Google", "year": 2025},
-                    {"id": 2, "title": "AWS Cloud Practitioner", "issuer": "Amazon Web Services", "year": 2025}
-                ]),
-                experience=json.dumps([
-                    {"id": 1, "role": "Web Development Intern", "org": "CodeCraft Labs", "duration": "May 2025 – Jul 2025", "description": "Built and shipped internal dashboard components using React."}
-                ]),
+                skills=json.dumps(["C", "C#", "Python", "JavaScript", "HTML", "CSS", "React.js", "FastAPI", "SQL", "MySQL", "MongoDB", "Firebase", "Git", "Docker", "Unity"]),
+                soft_skills=json.dumps(["Communication", "Leadership", "Problem Solving", "Teamwork", "Adaptability", "Time Management"]),
+                projects=json.dumps([]),
+                certifications=json.dumps([]),
+                experience=json.dumps([]),
                 preferred_roles=json.dumps(["Frontend Developer", "Full Stack Developer"]),
                 preferred_locations=json.dumps(["Pune", "Bengaluru", "Remote"]),
                 work_mode="Hybrid",
                 duration="3-6 months",
-                profile_completion=82,
-                placement_readiness=78
+                profile_completion=60,
+                placement_readiness=60
             )
             db.add(default_student)
             db.commit()
@@ -811,7 +777,7 @@ ROLE_INSTITUTION = "institution"
 ROLE_ADMIN = "admin"
 VALID_ROLES = {ROLE_STUDENT, ROLE_FACULTY, ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_ADMIN}
 
-# Who may publish opportunities, learning programs and collaboration calls.
+# Who may publish opportunities and learning programs.
 POSTER_ROLES = {ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY, ROLE_ADMIN}
 # Who may stamp a portfolio item as verified. Deliberately excludes the
 # student themselves — a self-signed verification would be worthless.
@@ -3916,183 +3882,6 @@ def pending_verifications(
 
 
 # =====================================================================
-# INDUSTRY-ACADEMIA COLLABORATION
-# =====================================================================
-
-VALID_COLLAB_TYPES = {
-    "guest_lecture",
-    "workshop",
-    "live_project",
-    "innovation_challenge",
-    "mentorship",
-    "research",
-    "consultancy",
-}
-
-
-class CollaborationPayload(BaseModel):
-    title: str
-    organisation: str
-    collab_type: str = "workshop"
-    description: Optional[str] = ""
-    skills_involved: List[str] = []
-    mode: Optional[str] = "Hybrid"
-    location: Optional[str] = ""
-    starts_on: Optional[str] = ""
-    seats: Optional[int] = 0
-    audience: Optional[str] = "both"
-
-
-class CollabInterestPayload(BaseModel):
-    note: Optional[str] = ""
-
-
-def _collab_out(c: CollaborationModel, registered: int = 0, mine: bool = False) -> dict:
-    return {
-        "id": c.id,
-        "title": c.title,
-        "organisation": c.organisation,
-        "collab_type": c.collab_type,
-        "description": c.description or "",
-        "skills_involved": json.loads(c.skills_involved or "[]"),
-        "mode": c.mode or "",
-        "location": c.location or "",
-        "starts_on": c.starts_on or "",
-        "seats": c.seats or 0,
-        "audience": c.audience or "both",
-        "created_at": c.created_at,
-        "registered": registered,
-        "seats_left": max(0, (c.seats or 0) - registered) if c.seats else None,
-        "i_registered": mine,
-    }
-
-
-@app.get("/api/collaborations")
-def list_collaborations(
-    collab_type: Optional[str] = Query(None),
-    user: StudentModel = Depends(get_current_student),
-    db: Session = Depends(get_db),
-):
-    role = user_role(user)
-    audience = ROLE_FACULTY if role == ROLE_FACULTY else "student"
-
-    q = db.query(CollaborationModel)
-    if collab_type:
-        q = q.filter(CollaborationModel.collab_type == collab_type)
-    rows = q.order_by(CollaborationModel.created_at.desc()).all()
-
-    my_ids = {
-        i.collab_id
-        for i in db.query(CollabInterestModel).filter(CollabInterestModel.user_id == user.id).all()
-    }
-
-    out = []
-    for c in rows:
-        # Staff see everything; students and faculty see their own track.
-        if role in (ROLE_STUDENT, ROLE_FACULTY) and (c.audience or "both") not in (audience, "both"):
-            continue
-        count = db.query(CollabInterestModel).filter(CollabInterestModel.collab_id == c.id).count()
-        out.append(_collab_out(c, count, c.id in my_ids))
-    return out
-
-
-@app.post("/api/collaborations", status_code=201)
-def create_collaboration(
-    payload: CollaborationPayload,
-    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
-    db: Session = Depends(get_db),
-):
-    if not payload.title.strip() or not payload.organisation.strip():
-        raise HTTPException(status_code=400, detail="Title and organisation are required")
-    if payload.collab_type not in VALID_COLLAB_TYPES:
-        raise HTTPException(status_code=400, detail=f"collab_type must be one of {sorted(VALID_COLLAB_TYPES)}")
-
-    c = CollaborationModel(
-        id=new_id("col"),
-        title=payload.title.strip(),
-        organisation=payload.organisation.strip(),
-        collab_type=payload.collab_type,
-        description=(payload.description or "").strip(),
-        skills_involved=json.dumps([s.strip() for s in payload.skills_involved if s and s.strip()]),
-        mode=(payload.mode or "Hybrid").strip(),
-        location=(payload.location or "").strip(),
-        starts_on=(payload.starts_on or "").strip(),
-        seats=max(0, payload.seats or 0),
-        audience=payload.audience or "both",
-        posted_by=user.id,
-        created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-    )
-    db.add(c)
-    db.commit()
-    return _collab_out(c)
-
-
-@app.post("/api/collaborations/{collab_id}/register", status_code=201)
-def register_for_collaboration(
-    collab_id: str,
-    payload: CollabInterestPayload,
-    user: StudentModel = Depends(get_current_student),
-    db: Session = Depends(get_db),
-):
-    c = db.query(CollaborationModel).filter(CollaborationModel.id == collab_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Collaboration not found")
-
-    existing = (
-        db.query(CollabInterestModel)
-        .filter(CollabInterestModel.collab_id == collab_id, CollabInterestModel.user_id == user.id)
-        .first()
-    )
-    if existing:
-        return {"id": existing.id, "already_registered": True}
-
-    if c.seats:
-        taken = db.query(CollabInterestModel).filter(CollabInterestModel.collab_id == collab_id).count()
-        if taken >= c.seats:
-            raise HTTPException(status_code=400, detail="This session is full")
-
-    i = CollabInterestModel(
-        id=new_id("ci"),
-        collab_id=collab_id,
-        user_id=user.id,
-        registered_at=datetime.datetime.now().strftime("%Y-%m-%d"),
-        note=(payload.note or "").strip(),
-    )
-    db.add(i)
-    db.commit()
-    return {"id": i.id, "already_registered": False}
-
-
-@app.get("/api/collaborations/{collab_id}/registrations")
-def collaboration_registrations(
-    collab_id: str,
-    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY)),
-    db: Session = Depends(get_db),
-):
-    c = db.query(CollaborationModel).filter(CollaborationModel.id == collab_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Collaboration not found")
-    if c.posted_by != user.id and user_role(user) != ROLE_ADMIN:
-        raise HTTPException(status_code=403, detail="You did not publish this collaboration")
-
-    out = []
-    for i in db.query(CollabInterestModel).filter(CollabInterestModel.collab_id == collab_id).all():
-        p = db.query(StudentModel).filter(StudentModel.id == i.user_id).first()
-        if p:
-            out.append(
-                {
-                    "name": p.full_name,
-                    "email": p.email,
-                    "role": p.role or ROLE_STUDENT,
-                    "college": p.college or p.org_name or "",
-                    "registered_at": i.registered_at,
-                    "note": i.note or "",
-                }
-            )
-    return out
-
-
-# =====================================================================
 # SECURE DOCUMENT MANAGEMENT
 # ---------------------------------------------------------------------
 # Certificates, internship reports and academic records. Files are held as
@@ -4834,74 +4623,6 @@ def seed_platform_v2():
                         duration="3 days",
                         cost="Free",
                         audience="faculty",
-                        posted_by="rec_2001",
-                        created_at=now,
-                    ),
-                ]
-            )
-            db.commit()
-
-        # --- Collaboration calls.
-        if db.query(CollaborationModel).filter(CollaborationModel.id == "col_seed_1").first() is None:
-            db.add_all(
-                [
-                    CollaborationModel(
-                        id="col_seed_1",
-                        title="Guest Lecture: What a Production Codebase Actually Looks Like",
-                        organisation="CareerNexus Demo Employer",
-                        collab_type="guest_lecture",
-                        description="A working engineer walks through a real repository — reviews, tests, deploys and all — for final-year students.",
-                        skills_involved=json.dumps(["Git", "Python", "Communication"]),
-                        mode="On-site",
-                        location="Jalgaon",
-                        starts_on="2026-10-12",
-                        seats=120,
-                        audience="both",
-                        posted_by="rec_2001",
-                        created_at=now,
-                    ),
-                    CollaborationModel(
-                        id="col_seed_2",
-                        title="Innovation Challenge: Rural Healthcare Access",
-                        organisation="CareerNexus Demo Employer",
-                        collab_type="innovation_challenge",
-                        description="Six-week challenge open to student teams of three to five. Winning team gets a paid pilot and internship offers.",
-                        skills_involved=json.dumps(["Python", "SQL", "Problem Solving"]),
-                        mode="Remote",
-                        location="Remote",
-                        starts_on="2026-10-20",
-                        seats=0,
-                        audience="student",
-                        posted_by="rec_2001",
-                        created_at=now,
-                    ),
-                    CollaborationModel(
-                        id="col_seed_3",
-                        title="Joint Research: Skill-Demand Forecasting for Tier-2 Campuses",
-                        organisation="CareerNexus Demo Employer",
-                        collab_type="research",
-                        description="Co-authored research with a faculty lead on predicting regional skill demand. Data and compute provided.",
-                        skills_involved=json.dumps(["Python", "SQL"]),
-                        mode="Hybrid",
-                        location="Bengaluru",
-                        starts_on="2026-11-01",
-                        seats=4,
-                        audience="faculty",
-                        posted_by="rec_2001",
-                        created_at=now,
-                    ),
-                    CollaborationModel(
-                        id="col_seed_4",
-                        title="Live Project: Campus Energy Dashboard",
-                        organisation="CareerNexus Demo Employer",
-                        collab_type="live_project",
-                        description="Build and ship a real dashboard for campus energy use, mentored by an industry engineer. Counts as a verified portfolio project.",
-                        skills_involved=json.dumps(["React", "Power BI", "SQL"]),
-                        mode="Hybrid",
-                        location="Jalgaon",
-                        starts_on="2026-10-08",
-                        seats=15,
-                        audience="student",
                         posted_by="rec_2001",
                         created_at=now,
                     ),
@@ -5866,9 +5587,6 @@ def seed_external_catalogue():
         for row in db.query(LearningProgramModel).filter(
                 LearningProgramModel.provider.in_(RETIRED_NAMES)).all():
             row.provider = DEMO_EMPLOYER
-        for row in db.query(CollaborationModel).filter(
-                CollaborationModel.organisation.in_(RETIRED_NAMES)).all():
-            row.organisation = DEMO_EMPLOYER
         for row in db.query(StudentModel).filter(
                 StudentModel.org_name.in_(RETIRED_NAMES)).all():
             row.org_name = DEMO_EMPLOYER

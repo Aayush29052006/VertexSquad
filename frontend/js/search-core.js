@@ -150,7 +150,6 @@ const PAGE_KEYWORDS = {
   'applications.html': ['applied', 'status', 'tracker', 'my applications'],
   'what-if.html': ['simulate', 'scenario', 'what if', 'forecast'],
   'portfolio.html': ['achievements', 'verified', 'showcase', 'share profile'],
-  'collaborations.html': ['industry', 'academia', 'guest lecture', 'workshop', 'mou'],
   'recruiter.html': ['hiring', 'applicants', 'shortlist', 'postings'],
   'post-opportunity.html': ['publish', 'new posting', 'advertise', 'hire'],
   'faculty.html': ['fdp', 'faculty development', 'mentor'],

@@ -1,10 +1,22 @@
 /**
- * CareerNexus — Student Profile Page
+ * CareerNexus — Student Profile & Portfolio
+ * One page: the editable source of truth (personal/academic info, links,
+ * skills, projects) shown alongside its own verification status — who
+ * signed for what, and the credibility score recruiters see on the public
+ * link. Portfolio used to be a separate page; it wasn't a different job,
+ * just a read-only mirror of the same data with stamps attached, so it
+ * lives here now. portfolio.html still exists, but only for the public,
+ * no-login share link (?id=...) — see portfolio.js.
  */
 let currentStudent = null;
+let currentPortfolio = null;
 
-function renderProfile(pageBody, student) {
+function renderProfile(pageBody, student, portfolio) {
+  currentStudent = student;
+  currentPortfolio = portfolio;
   const initials = student.full_name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+  const shareUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', 'portfolio.html')}?id=${encodeURIComponent(student.id)}`;
+
   pageBody.innerHTML = `
     <div class="profile-header card">
       <div class="avatar avatar-lg">${initials}</div>
@@ -17,6 +29,39 @@ function renderProfile(pageBody, student) {
         <button class="btn btn-primary" id="editProfileBtn">Edit Profile</button>
       </div>
     </div>
+
+    <div class="card portfolio-header mb-5">
+      <div class="credibility">
+        ${matchRingSvg(portfolio.credibility, 80)}
+        <div>
+          <p class="text-label">Verified Credibility</p>
+          <p class="text-caption">${portfolio.verified_items} of ${portfolio.total_items} items signed off<br />by faculty, institution or employer</p>
+        </div>
+      </div>
+    </div>
+
+    ${
+      portfolio.assessment
+        ? `<div class="card mb-5">
+             <h2 class="text-section-heading mb-3">Assessed Skill Profile</h2>
+             <div class="assessment-strip">
+               ${[
+                 ['Overall', portfolio.assessment.overall_score],
+                 ['Technical', portfolio.assessment.technical_score],
+                 ['Soft Skills', portfolio.assessment.soft_score],
+                 ['Aptitude', portfolio.assessment.aptitude_score],
+               ]
+                 .map(([label, v]) => `
+                 <div class="assessment-stat">
+                   <span class="score-big">${v}%</span>
+                   <span class="text-label">${label}</span>
+                 </div>`)
+                 .join('')}
+             </div>
+             <p class="text-caption mt-3">Scored by the platform on ${escapeHtml(portfolio.assessment.submitted_at)} — not self-reported.</p>
+           </div>`
+        : ''
+    }
 
     <div class="profile-grid">
       <div>
@@ -56,26 +101,71 @@ function renderProfile(pageBody, student) {
 
         <div class="card profile-section">
           <h2 class="text-section-heading mb-3">Skills</h2>
-          <div class="chip-row">${student.skills.map((s) => `<span class="skill-chip">${escapeHtml(s)}</span>`).join('')}</div>
+          <p class="text-caption mb-3">Every skill carries its own verification status.</p>
+          <div class="verified-list">
+            ${portfolio.skills.map((sk) => `
+              <div class="verified-item">
+                <span class="vi-name">${escapeHtml(sk.name)}</span>
+                ${verifiedBadge(sk.verification)}
+              </div>`).join('') || '<p class="text-body">No skills added yet.</p>'}
+          </div>
         </div>
 
         <div class="card profile-section">
           <h2 class="text-section-heading mb-3">Projects</h2>
-          ${student.projects.map((p) => `
-            <div class="entity-card">
-              <h4>${escapeHtml(p.title)}</h4>
-              <p class="text-caption mt-1">${escapeHtml(p.description)}</p>
-              <div class="entity-tags">${p.tech.map((t) => `<span class="entity-tag">${escapeHtml(t)}</span>`).join('')}</div>
-            </div>`).join('') || emptyState('📁', 'No projects added yet.', 'Add a project to strengthen your profile.')}
+          ${portfolio.projects.length
+            ? `<div class="verified-list">
+                 ${portfolio.projects.map((p, idx) => `
+                   <div class="verified-item verified-item-block">
+                     <div>
+                       <strong>${escapeHtml(p.title || 'Untitled project')}</strong>
+                       ${p.description ? `<p class="text-caption">${escapeHtml(p.description)}</p>` : ''}
+                       ${(p.tech || []).length ? `<div class="chip-row mt-1">${p.tech.map((t) => skillChip(t)).join('')}</div>` : ''}
+                     </div>
+                     <div class="flex items-center gap-2">
+                       ${verifiedBadge(p.verification)}
+                       <button class="btn btn-ghost btn-sm" data-delete-project="${idx}" type="button">Delete</button>
+                     </div>
+                   </div>`).join('')}
+               </div>`
+            : emptyState('📁', 'No projects added yet.', 'Add a project to strengthen your profile.')}
         </div>
+
+        ${portfolio.internships.length ? `
+        <div class="card profile-section">
+          <h2 class="text-section-heading mb-3">Completed Internships</h2>
+          <p class="text-caption mb-3">Hours and mentor ratings come from the weekly logs kept during the internship.</p>
+          <div class="verified-list">
+            ${portfolio.internships.map((i) => `
+              <div class="verified-item verified-item-block">
+                <div>
+                  <strong>${escapeHtml(i.title)}</strong>
+                  <p class="text-caption">${escapeHtml(i.company)}${i.duration ? ` · ${escapeHtml(i.duration)}` : ''}</p>
+                  <p class="text-caption">
+                    ${i.weeks_logged} ${i.weeks_logged === 1 ? 'week' : 'weeks'} logged
+                    ${i.total_hours ? ` · ${i.total_hours} hours` : ''}
+                    ${i.mentor_rating ? ` · mentor rating ${i.mentor_rating}/5` : ''}
+                  </p>
+                </div>
+                ${verifiedBadge(i.verification)}
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
 
         <div class="card profile-section">
           <h2 class="text-section-heading mb-3">Certifications</h2>
-          ${student.certifications.map((c) => `
-            <div class="entity-card">
-              <h4>${escapeHtml(c.title)}</h4>
-              <p class="text-caption mt-1">${escapeHtml(c.issuer)} · ${c.year}</p>
-            </div>`).join('') || emptyState('🏅', 'No certifications added yet.', 'Add certifications to boost your placement readiness.')}
+          ${portfolio.certifications.length
+            ? `<div class="verified-list">
+                 ${portfolio.certifications.map((c) => `
+                   <div class="verified-item verified-item-block">
+                     <div>
+                       <strong>${escapeHtml(c.title || '')}</strong>
+                       <p class="text-caption">${escapeHtml([c.issuer, c.year].filter(Boolean).join(' · '))}</p>
+                     </div>
+                     ${verifiedBadge(c.verification)}
+                   </div>`).join('')}
+               </div>`
+            : emptyState('🏅', 'No certifications added yet.', 'Add certifications to boost your placement readiness.')}
         </div>
 
         <div class="card">
@@ -104,6 +194,19 @@ function renderProfile(pageBody, student) {
           <h2 class="text-section-heading mb-3">Soft Skills</h2>
           <div class="chip-row">${student.soft_skills.map((s) => `<span class="badge badge-neutral">${escapeHtml(s)}</span>`).join('')}</div>
         </div>
+
+        <div class="card">
+          <h2 class="text-section-heading mb-1">Share Your Portfolio</h2>
+          <p class="text-caption mb-3">
+            This link opens without a login, so a recruiter can read it straight away. It shows your
+            verified work only — never your email, phone or CGPA.
+          </p>
+          <div class="flex gap-2" style="flex-wrap:wrap;">
+            <input class="form-input" id="shareUrl" readonly value="${escapeHtml(shareUrl)}" style="flex:1;min-width:200px;" />
+            <button class="btn btn-primary" id="copyShare" type="button">Copy Link</button>
+            <a class="btn btn-secondary" href="${escapeHtml(shareUrl)}" target="_blank" rel="noopener">Preview</a>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -111,6 +214,49 @@ function renderProfile(pageBody, student) {
   document.getElementById('editProfileBtn').addEventListener('click', openEditModal);
   document.getElementById('downloadResumeBtn').addEventListener('click', downloadAtsResume);
   wireSocialLinks();
+
+  document.getElementById('copyShare').addEventListener('click', async () => {
+    const input = document.getElementById('shareUrl');
+    try {
+      await navigator.clipboard.writeText(input.value);
+      showToast('Portfolio link copied.', 'success');
+    } catch (_) {
+      input.select();
+      showToast('Press Ctrl+C to copy the selected link.');
+    }
+  });
+
+  // Deleting here removes the project from the student's own record (the
+  // same list GitHub import and Edit Profile write to). A verified stamp is
+  // matched by project title, so removing a wrongly-added project drops its
+  // stamp with it.
+  pageBody.querySelectorAll('[data-delete-project]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.deleteProject);
+      const project = currentPortfolio.projects[idx];
+      if (!window.confirm(`Delete "${project.title || 'this project'}"? This cannot be undone.`)) return;
+      btn.disabled = true;
+      try {
+        const remaining = currentPortfolio.projects
+          .filter((_, i) => i !== idx)
+          .map(({ verification, ...rest }) => rest);
+        await api.updateStudentProfile({ projects: remaining });
+        await refreshProfile(pageBody);
+        showToast('Project deleted.', 'success');
+      } catch (err) {
+        showToast(err.message || 'Could not delete that project.', 'error');
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+/* Re-fetches both the editable profile and its verification/credibility
+   view, then re-renders. Used after anything that could change either —
+   editing skills, importing GitHub projects, deleting a project. */
+async function refreshProfile(pageBody) {
+  const [student, portfolio] = await Promise.all([api.getStudentProfile(), api.getMyPortfolio()]);
+  renderProfile(pageBody, student, portfolio);
 }
 
 /* ---------- Connected Profiles (LinkedIn / GitHub) ----------
@@ -331,9 +477,9 @@ async function confirmGithubImport() {
       if (!mergedSkills.some((existing) => existing.toLowerCase() === s.toLowerCase())) mergedSkills.push(s);
     });
 
-    currentStudent = await api.updateStudentProfile({ projects: mergedProjects, skills: mergedSkills });
+    await api.updateStudentProfile({ projects: mergedProjects, skills: mergedSkills });
     document.getElementById('githubModal').hidden = true;
-    renderProfile(document.getElementById('pageBody'), currentStudent);
+    await refreshProfile(document.getElementById('pageBody'));
     showToast(
       `Imported ${newProjects.length} project${newProjects.length === 1 ? '' : 's'}` +
       (selectedSkills.length ? ` and ${selectedSkills.length} skill${selectedSkills.length === 1 ? '' : 's'}.` : '.'),
@@ -443,10 +589,10 @@ function openEditModal() {
   pageBody.innerHTML = loadingState('Loading your profile...');
 
   try {
-    currentStudent = await api.getStudentProfile();
-    renderProfile(pageBody, currentStudent);
+    await refreshProfile(pageBody);
   } catch (err) {
     pageBody.innerHTML = errorState(err.message || 'Unable to load your profile.', 'location.reload');
+    return;
   }
 
   const editModal = document.getElementById('editModal');
@@ -467,9 +613,9 @@ function openEditModal() {
       skills: document.getElementById('editSkills').value.split(',').map((s) => s.trim()).filter(Boolean),
     };
     try {
-      currentStudent = await api.updateStudentProfile(payload);
-      localStorage.setItem('cn_student_name', currentStudent.full_name);
-      renderProfile(document.getElementById('pageBody'), currentStudent);
+      const updated = await api.updateStudentProfile(payload);
+      localStorage.setItem('cn_student_name', updated.full_name);
+      await refreshProfile(document.getElementById('pageBody'));
       editModal.hidden = true;
       showToast('Profile updated successfully.', 'success');
     } catch (err) {

@@ -48,7 +48,7 @@ const ROLE_HOMES = {
         <h2 class="text-section-heading">Recommended For You</h2>
         <p class="text-caption">Based on your skills, education, and preferences.</p>
       </div>
-      <a class="btn btn-secondary btn-sm" href="internships.html">View All</a>
+      <a class="btn btn-secondary btn-sm" href="opportunities.html">View All</a>
     </div>
     <div class="recommend-grid" id="recommendGrid">
       ${skeletonCards(3)}

@@ -97,6 +97,7 @@ function applyFilters() {
   const mode = document.getElementById('modeFilter').value;
   const source = document.getElementById('sourceFilter').value;
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const sortBy = document.getElementById('sortSelect').value;
 
   const filtered = allOpportunities.filter((o) => {
     if (type && o.opportunity_type !== type) return false;
@@ -108,6 +109,9 @@ function applyFilters() {
     }
     return true;
   });
+
+  if (sortBy === 'match') filtered.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
+  if (sortBy === 'deadline') filtered.sort((a, b) => new Date(a.deadline || 0) - new Date(b.deadline || 0));
 
   const list = document.getElementById('oppList');
   document.getElementById('resultCount').textContent =
@@ -161,6 +165,10 @@ function applyFilters() {
           <option value="external">Official portals &amp; companies</option>
           <option value="platform">Posted on CareerNexus</option>
         </select>
+        <select class="form-input" id="sortSelect">
+          <option value="match">Sort: Best Match</option>
+          <option value="deadline">Sort: Deadline</option>
+        </select>
         <span class="text-caption" id="resultCount"></span>
       </div>
 
@@ -181,6 +189,7 @@ function applyFilters() {
     document.getElementById('typeFilter').addEventListener('change', applyFilters);
     document.getElementById('modeFilter').addEventListener('change', applyFilters);
     document.getElementById('sourceFilter').addEventListener('change', applyFilters);
+    document.getElementById('sortSelect').addEventListener('change', applyFilters);
     applyFilters();
   } catch (err) {
     pageBody.innerHTML = errorState(err.message || 'Could not load opportunities.', 'location.reload');

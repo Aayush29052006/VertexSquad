@@ -32,7 +32,7 @@ function renderBreakdown(breakdown, overall) {
 function renderDetails(pageBody, item) {
   document.title = `${item.title} — CareerNexus`;
   pageBody.innerHTML = `
-    <a href="internships.html" class="text-caption" style="color:var(--primary);">← Back to Internships</a>
+    <a href="opportunities.html" class="text-caption" style="color:var(--primary);">← Back to Opportunities</a>
 
     <div class="details-header mt-3">
       <div>
@@ -239,7 +239,7 @@ function openApplyModal() {
 (async function initDetails() {
   if (!requireAuth()) return;
   const studentName = localStorage.getItem('cn_student_name') || 'Student';
-  const pageBody = mountAppShell('internships.html', studentName);
+  const pageBody = mountAppShell('opportunities.html', studentName);
   pageBody.innerHTML = loadingState('Loading internship details...');
 
   const id = getIdFromUrl();

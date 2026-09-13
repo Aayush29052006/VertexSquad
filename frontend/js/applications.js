@@ -28,7 +28,7 @@ const STATUS_LABELS = {
     const card = document.getElementById('applicationsCard');
 
     if (!applications.length) {
-      card.innerHTML = emptyState('📋', 'No applications yet.', 'Apply to internships that match your skills to start tracking them here.', '<a href="internships.html" class="btn btn-primary">Explore Internships</a>');
+      card.innerHTML = emptyState('📋', 'No applications yet.', 'Apply to opportunities that match your skills to start tracking them here.', '<a href="opportunities.html" class="btn btn-primary">Explore Opportunities</a>');
       return;
     }
 

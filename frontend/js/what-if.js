@@ -127,7 +127,7 @@ function renderWhatIf(pageBody, item) {
       id = recs[0]?.id;
     }
     if (!id) {
-      pageBody.innerHTML = emptyState('🔮', 'No internship selected.', 'Explore internships first, then run a what-if analysis from any listing.', '<a href="internships.html" class="btn btn-primary">Explore Internships</a>');
+      pageBody.innerHTML = emptyState('🔮', 'No internship selected.', 'Explore opportunities first, then run a what-if analysis from any listing.', '<a href="opportunities.html" class="btn btn-primary">Explore Opportunities</a>');
       return;
     }
     whatIfInternship = await api.getInternshipDetails(id);

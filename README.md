@@ -311,7 +311,7 @@ Every requirement in SIH26044, and where it lives in the build.
 | Skill mapping to roles and programs | `GET /api/learning/recommendations` — gaps ranked by roles unlocked |
 | Personalised learning recommendations & certifications | `learning.html` · industry programs + curated NPTEL/SWAYAM catalogue |
 | Career guidance from skills, interests and demand | AI Career Assistant · match breakdown · What-If analysis |
-| Student digital portfolios with verified items | `portfolio.html` · `VerificationModel` · public shareable link |
+| Student digital portfolios with verified items | `profile.html` · `VerificationModel` · public shareable link at `portfolio.html?id=…` |
 | Industries post internships with required skills | `post-opportunity.html` · `POST /api/opportunities` |
 | Industries post jobs, apprenticeships, projects | Same endpoint — `opportunity_type` covers all four |
 | Matching students to opportunities by skill profile | `calculate_match_score_breakdown()` — four weighted dimensions |
@@ -375,17 +375,17 @@ VertexSquad/
 │   │   │                           #   -- Student journey --
 │   │   ├── dashboard.html          #     Student dashboard
 │   │   ├── assessment.html         #     Skill assessment questionnaire
-│   │   ├── profile.html
+│   │   ├── profile.html            #     Editable profile + verified portfolio
 │   │   ├── resume.html             #     Upload + AI extraction
 │   │   ├── skill-gap.html
 │   │   ├── learning.html           #     Personalised learning paths
-│   │   ├── internships.html        #     Discovery & filtering
-│   │   ├── opportunities.html      #     Jobs, apprenticeships, projects, FDPs
+│   │   ├── opportunities.html      #     Internships, jobs, apprenticeships, projects, FDPs
 │   │   ├── internship-details.html #     Match breakdown + apply
 │   │   ├── what-if.html
 │   │   ├── applications.html
 │   │   ├── documents.html          #     Secure certificates & reports
-│   │   ├── portfolio.html          #     Verified portfolio (+ public view)
+│   │   ├── portfolio.html          #     Public share view only (?id=…) — the
+│   │   │                           #     private view lives on profile.html
 │   │   ├── search.html             #     Opportunity Search + filters
 │   │   ├── team.html               #     Meet the Team + Contact form (public)
 │   │   ├── aiia.html               #     AIIA Opportunity Hub

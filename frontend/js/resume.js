@@ -188,7 +188,7 @@ function renderExtraction(container) {
     try {
       await api.confirmSkills(finalSkills);
       showToast('Skills confirmed. Finding your best matches...', 'success');
-      setTimeout(() => { window.location.href = 'internships.html'; }, 900);
+      setTimeout(() => { window.location.href = 'opportunities.html'; }, 900);
     } catch (err) {
       showToast(err.message || 'Failed to confirm skills.', 'error');
     }

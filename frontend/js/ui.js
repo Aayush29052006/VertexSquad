@@ -40,14 +40,19 @@ const NAV_ITEMS = [
   { href: 'what-if.html', icon: '🔮', label: 'What-If Analysis', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Development' },
   { href: 'learning.html', icon: '🎓', label: 'Learning Paths', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Development' },
 
+  // My Profile now carries what My Portfolio used to show separately —
+  // verification stamps, credibility score, the public share link — since
+  // it was the same underlying data with nothing distinct to justify two
+  // destinations. portfolio.html still exists for that public link.
   { href: 'profile.html', icon: '👤', label: 'My Profile', roles: ALL_ROLES, group: 'Career Profile' },
   // Resume upload + Documents merged onto one page (resume.html) - a
   // faculty account sees only the Documents tab there, so it keeps the
   // wider role list of the two.
   { href: 'resume.html', icon: '📄', label: 'Resume & Documents', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Career Profile' },
-  { href: 'portfolio.html', icon: '🏅', label: 'My Portfolio', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Career Profile' },
 
-  { href: 'internships.html', icon: '💼', label: 'Internships', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Opportunities & Applications' },
+  // Jobs & Opportunities already carries internships as one of its filterable
+  // types — a separate Internships page browsing the same /api/opportunities
+  // catalogue had nothing left that this one didn't already do, and less.
   { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Opportunities & Applications' },
   { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Opportunities & Applications' },
 
@@ -859,6 +864,18 @@ function skillChip(name, variant = 'default') {
   const cls = variant === 'missing' ? 'skill-chip chip-missing' : 'skill-chip';
   const icon = variant === 'missing' ? '○' : '✓';
   return `<span class="${cls}">${icon} ${escapeHtml(name)}</span>`;
+}
+
+/* ---------- Verification stamps ----------
+   The distinction that matters across Profile and Portfolio: verified vs
+   self-declared. A stamp means a named faculty member, institution or
+   employer signed for it. Shared here since both pages render it. */
+function verifiedBadge(v) {
+  if (!v) return '<span class="stamp stamp-self" title="Self-declared, not yet verified">Self-declared</span>';
+  const who = v.verified_by || 'Verified';
+  const role = v.verifier_role ? ` (${roleLabel(v.verifier_role)})` : '';
+  const title = `Verified by ${who}${role} on ${v.verified_at}${v.note ? ` — ${v.note}` : ''}`;
+  return `<span class="stamp stamp-verified" title="${escapeHtml(title)}">✓ Verified</span>`;
 }
 
 /* ---------- Connected profile links (LinkedIn / GitHub) ----------

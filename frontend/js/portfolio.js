@@ -1,19 +1,11 @@
 /**
- * CareerNexus — Verified Digital Portfolio
- * Renders both the private view (portfolio.html) and the shareable public
- * one (portfolio.html?id=stu_1001), which needs no login at all.
- *
- * The distinction that matters here is verified vs self-declared: a stamp
- * means a named faculty member, institution or employer signed for it.
+ * CareerNexus — Public Portfolio (shareable link, no login)
+ * Reached only as portfolio.html?id=<student-id> — the link a student
+ * copies from the "Share Your Portfolio" card on their own Profile page.
+ * The private, editable view used to live here too; it's part of
+ * profile.html now, alongside the same verification stamps
+ * (verifiedBadge() lives in ui.js, shared by both).
  */
-
-function verifiedBadge(v) {
-  if (!v) return '<span class="stamp stamp-self" title="Added by the student, not yet verified">Self-declared</span>';
-  const who = v.verified_by || 'Verified';
-  const role = v.verifier_role ? ` (${roleLabel(v.verifier_role)})` : '';
-  const title = `Verified by ${who}${role} on ${v.verified_at}${v.note ? ` — ${v.note}` : ''}`;
-  return `<span class="stamp stamp-verified" title="${escapeHtml(title)}">✓ Verified</span>`;
-}
 
 function sectionCard(title, subtitle, bodyHtml) {
   return `
@@ -24,7 +16,7 @@ function sectionCard(title, subtitle, bodyHtml) {
     </section>`;
 }
 
-function renderPortfolio(pageBody, pf, isPublic) {
+function renderPortfolio(pageBody, pf) {
   const s = pf.student;
   const initials = (s.full_name || 'S')
     .split(' ')
@@ -32,8 +24,6 @@ function renderPortfolio(pageBody, pf, isPublic) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
-
-  const shareUrl = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(s.id)}`;
 
   pageBody.innerHTML = `
     <div class="card portfolio-header mb-5">
@@ -137,17 +127,14 @@ function renderPortfolio(pageBody, pf, isPublic) {
       pf.projects.length
         ? pf.projects
             .map(
-              (p, idx) => `
+              (p) => `
           <div class="verified-item verified-item-block">
             <div>
               <strong>${escapeHtml(p.title || 'Untitled project')}</strong>
               ${p.description ? `<p class="text-caption">${escapeHtml(p.description)}</p>` : ''}
               ${(p.tech || []).length ? `<div class="chip-row mt-1">${p.tech.map((t) => skillChip(t)).join('')}</div>` : ''}
             </div>
-            <div class="flex items-center gap-2">
-              ${verifiedBadge(p.verification)}
-              ${!isPublic ? `<button class="btn btn-ghost btn-sm" data-delete-project="${idx}" type="button">Delete</button>` : ''}
-            </div>
+            ${verifiedBadge(p.verification)}
           </div>`
             )
             .join('')
@@ -173,96 +160,38 @@ function renderPortfolio(pageBody, pf, isPublic) {
         : '<p class="text-body">No certifications added yet.</p>'
     )}
 
-    ${
-      isPublic
-        ? `<p class="text-caption text-center mt-5">Portfolio hosted on CareerNexus. Verification stamps are issued by the named institution or employer.</p>`
-        : `<div class="card">
-             <h2 class="text-section-heading mb-1">Share Your Portfolio</h2>
-             <p class="text-caption mb-3">
-               This link opens without a login, so a recruiter can read it straight away. It shows your
-               verified work only — never your email, phone or CGPA.
-             </p>
-             <div class="flex gap-2" style="flex-wrap:wrap;">
-               <input class="form-input" id="shareUrl" readonly value="${escapeHtml(shareUrl)}" style="flex:1;min-width:260px;" />
-               <button class="btn btn-primary" id="copyShare" type="button">Copy Link</button>
-               <a class="btn btn-secondary" href="${escapeHtml(shareUrl)}" target="_blank" rel="noopener">Preview</a>
-             </div>
-           </div>`
-    }
+    <p class="text-caption text-center mt-5">Portfolio hosted on CareerNexus. Verification stamps are issued by the named institution or employer.</p>
   `;
-
-  document.getElementById('copyShare')?.addEventListener('click', async () => {
-    const input = document.getElementById('shareUrl');
-    try {
-      await navigator.clipboard.writeText(input.value);
-      showToast('Portfolio link copied.', 'success');
-    } catch (_) {
-      // clipboard blocked (insecure context or denied) — select it so the
-      // user can copy by hand rather than getting nothing at all.
-      input.select();
-      showToast('Press Ctrl+C to copy the selected link.');
-    }
-  });
-
-  // Deleting here removes the project from the student's own record (the
-  // same list GitHub import and Edit Profile write to) — not just how this
-  // page happens to display it. A verified stamp is matched by project
-  // title, so removing a wrongly-added project drops its stamp with it.
-  pageBody.querySelectorAll('[data-delete-project]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const idx = Number(btn.dataset.deleteProject);
-      const project = pf.projects[idx];
-      if (!window.confirm(`Delete "${project.title || 'this project'}"? This cannot be undone.`)) return;
-      btn.disabled = true;
-      try {
-        const remaining = pf.projects
-          .filter((_, i) => i !== idx)
-          .map(({ verification, ...rest }) => rest);
-        await api.updateStudentProfile({ projects: remaining });
-        renderPortfolio(pageBody, await api.getMyPortfolio(), false);
-        showToast('Project deleted.', 'success');
-      } catch (err) {
-        showToast(err.message || 'Could not delete that project.', 'error');
-        btn.disabled = false;
-      }
-    });
-  });
 }
 
 (async function initPortfolio() {
   const publicId = new URLSearchParams(window.location.search).get('id');
 
-  // Public view: no shell, no sidebar, no login required.
-  if (publicId) {
-    document.body.classList.add('public-portfolio');
-    const root = document.getElementById('appShell');
-    root.innerHTML = `
-      <div class="public-wrap">
-        <header class="public-topbar">
-          <a class="brand" href="../index.html">
-            <img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" />
-            <span class="brand-name">CareerNexus</span>
-          </a>
-        </header>
-        <main class="page-body" id="pageBody"></main>
-      </div>`;
-    const pageBody = document.getElementById('pageBody');
-    pageBody.innerHTML = loadingState('Loading portfolio...');
-    try {
-      renderPortfolio(pageBody, await api.getPublicPortfolio(publicId), true);
-    } catch (err) {
-      pageBody.innerHTML = errorState(err.message || 'This portfolio is not available.');
-    }
+  // No id -> this is someone looking for their OWN portfolio, which now
+  // lives on the Profile page alongside the same verification stamps.
+  if (!publicId) {
+    window.location.replace('profile.html');
     return;
   }
 
-  if (!requireAuth()) return;
-  const studentName = localStorage.getItem('cn_student_name') || 'Student';
-  const pageBody = mountAppShell('portfolio.html', studentName);
-  pageBody.innerHTML = loadingState('Building your portfolio...');
+  // Public view: no shell, no sidebar, no login required.
+  document.body.classList.add('public-portfolio');
+  const root = document.getElementById('appShell');
+  root.innerHTML = `
+    <div class="public-wrap">
+      <header class="public-topbar">
+        <a class="brand" href="../index.html">
+          <img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" />
+          <span class="brand-name">CareerNexus</span>
+        </a>
+      </header>
+      <main class="page-body" id="pageBody"></main>
+    </div>`;
+  const pageBody = document.getElementById('pageBody');
+  pageBody.innerHTML = loadingState('Loading portfolio...');
   try {
-    renderPortfolio(pageBody, await api.getMyPortfolio(), false);
+    renderPortfolio(pageBody, await api.getPublicPortfolio(publicId));
   } catch (err) {
-    pageBody.innerHTML = errorState(err.message || 'Could not load your portfolio.', 'location.reload');
+    pageBody.innerHTML = errorState(err.message || 'This portfolio is not available.');
   }
 })();

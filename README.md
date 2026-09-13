@@ -793,6 +793,63 @@ CSS or JS file changes, or browsers will serve the old one.
 
 ---
 
+## Deploying to Render
+
+The repo ships a [`render.yaml`](render.yaml) Blueprint that deploys two
+services from this one repo — the FastAPI backend as a Python web service,
+and the static frontend as a static site. The database stays on the existing
+Supabase project; Render hosts no database of its own here.
+
+1. **Push to GitHub** (already done if you're reading this from the repo).
+2. On [Render](https://dashboard.render.com), **New +** → **Blueprint** →
+   connect this repo. Render reads `render.yaml` and proposes both services —
+   `careernexus-api` and `careernexus`.
+3. Render will prompt for every value marked `sync: false` in the Blueprint
+   before the first deploy. Have these ready:
+   - `DATABASE_URL` — the Supabase **connection pooler** URI (dashboard →
+     Settings → Database → Connection Pooling → URI), same format as
+     `backend/.env`.
+   - `SMTP_USER` / `SMTP_PASSWORD` — optional; leave blank and the contact
+     form still stores messages, it just won't email them.
+   - `GEMINI_API_KEY` — optional; leave blank and resume parsing falls back
+     to keyword extraction.
+   - `JWT_SECRET_KEY` is generated automatically — you won't be asked.
+4. Deploy. Both services build and go live at `https://careernexus-api.onrender.com`
+   and `https://careernexus.onrender.com` **if those names are free** — Render
+   service names are global, so a taken name gets an auto-suffixed URL instead.
+   **If either URL differs from those two:**
+   - Edit `PROD_API_BASE_URL` in [`frontend/js/config.js`](frontend/js/config.js)
+     to the real backend URL and push — the static site redeploys automatically.
+   - Edit `ALLOWED_ORIGINS` on the `careernexus-api` service (dashboard → that
+     service → Environment) to the real frontend URL, then redeploy the
+     backend — CORS will otherwise reject every request from the frontend.
+5. **Google Sign-In** needs one manual step Render can't do for you: add the
+   deployed frontend's exact origin (`https://careernexus.onrender.com`, no
+   trailing slash) to **Authorized JavaScript origins** on the OAuth client at
+   [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials).
+   Without this, the Google button fails with a generic sign-in error — email
+   login is unaffected.
+6. Work through the **Security Notes** checklist below before calling it
+   launched — Row Level Security on Supabase in particular, since Render
+   changes nothing about that.
+7. Sign in with the demo account (below) on the live URL to confirm the
+   deploy actually works end to end, not just that the build succeeded.
+8. **Check the Team page and any AIIA/external "official link" buttons.**
+   `careernexus-api`'s `rootDir` is `backend`, but two endpoints
+   (`/api/team`, and the AIIA link register) read JSON files from
+   `frontend/data/` by walking up from `app/main.py` — correct for the local
+   monorepo checkout, and Render documents that the full repo is checked out
+   regardless of `rootDir`, but it's worth confirming on the live URL rather
+   than assuming: both endpoints degrade to an empty result rather than
+   erroring if the file isn't where they expect, so a silent gap here is easy
+   to miss.
+
+Render's free-tier web services spin down after 15 minutes of no traffic and
+take up to a minute to wake back up on the next request — expect a slow first
+load after any idle period. The static site has no such delay.
+
+---
+
 ## Security Notes
 
 This is a hackathon prototype. Before any real deployment:

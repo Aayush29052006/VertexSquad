@@ -1,0 +1,82 @@
+# CareerNexus — Render Blueprint
+#
+# Deploys two services from this one repo:
+#   1. careernexus-api      — the FastAPI backend (Python web service)
+#   2. careernexus          — the static frontend (plain HTML/CSS/JS, no build step)
+#
+# The database is NOT defined here — it's the existing Supabase Postgres
+# project (see backend/.env.example), so no separate Render database is
+# created or paid for.
+#
+# How to use this file: on Render, "New +" -> "Blueprint" -> connect this
+# repo -> Render reads this file and proposes both services. Values marked
+# `sync: false` are secrets Render will prompt you to type in during setup
+# and never stores in this repo. See README.md's "Deploying to Render"
+# section for the full walkthrough, including the manual steps this file
+# cannot do for you (Google OAuth console, Supabase connection string).
+
+services:
+  - name: careernexus-api
+    type: web
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+
+      # --- Database: Supabase Postgres, connection pooler URI ---
+      # Supabase dashboard -> Settings -> Database -> Connection Pooling -> URI
+      - key: DATABASE_URL
+        sync: false
+
+      # --- Supabase project (anon key is public by design; see config.js) ---
+      - key: SUPABASE_URL
+        value: https://cfmawwxrtstmiarbaqyh.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmbWF3d3hydHN0bWlhcmJhcXloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDAzMDUsImV4cCI6MjEwMzM3NjMwNX0.lZRKzjvynEDD1bCRLfRy_Fbfs-8QSVysH9uc3HmpUzY
+
+      # --- Auth ---
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        value: 892645924851-th5b6j33ck4gs0qf6q7262qhbbihdgci.apps.googleusercontent.com
+
+      # --- CORS: the deployed frontend's exact origin, no trailing slash ---
+      - key: ALLOWED_ORIGINS
+        value: https://careernexus.onrender.com
+
+      # --- Admin panel ---
+      - key: ADMIN_EMAILS
+        value: aayushswapnali@gmail.com
+
+      # --- Contact form ---
+      - key: CONTACT_TO
+        value: aayushswapnali@gmail.com
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+
+      # Render's own proxy sets X-Forwarded-For truthfully, unlike an
+      # untrusted network — safe to trust here, unlike in local dev.
+      - key: TRUST_PROXY_HEADERS
+        value: "true"
+
+      # --- Optional: resume parsing falls back to keyword extraction
+      # without this; only add it if you want Gemini-powered parsing ---
+      - key: GEMINI_API_KEY
+        sync: false
+
+  - name: careernexus
+    type: web
+    runtime: static
+    rootDir: frontend
+    buildCommand: "echo 'static site, no build step'"
+    staticPublishPath: .

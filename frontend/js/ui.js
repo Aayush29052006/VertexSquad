@@ -912,29 +912,29 @@ function socialRow(icon, label, url, placeholder) {
 function matchFormulaExplainer() {
   return `
     <details class="callout" style="cursor:default;">
-      <summary style="cursor:pointer;font-weight:600;color:var(--text-primary);">How Match Percentage Works</summary>
+      <summary style="cursor:pointer;font-weight:600;color:var(--text-primary);">How is my match % calculated?</summary>
       <div class="mt-3">
         <p class="text-body mb-2">
-          Every match score is four factors, weighted and added together — never guessed, and never the
-          same two ways on two pages.
+          We check 4 things about you against what the posting asks for. Each one is worth a certain
+          number of points out of 100 — add up what you scored on all 4, and that's your match %.
         </p>
         <table class="table-wrap" style="width:100%;border-collapse:collapse;font-size:0.875rem;">
           <tbody>
-            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Required skills you have</td><td style="text-align:right;font-weight:600;">50%</td></tr>
-            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Preferences (location, work mode)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
-            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Education eligibility (CGPA)</td><td style="text-align:right;font-weight:600;">15%</td></tr>
-            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Relevant projects</td><td style="text-align:right;font-weight:600;">15%</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Skills you have, out of what they want</td><td style="text-align:right;font-weight:600;">up to 50 points</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Your preferences (location, work mode)</td><td style="text-align:right;font-weight:600;">up to 20 points</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Your CGPA vs. what's expected</td><td style="text-align:right;font-weight:600;">up to 15 points</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;color:var(--text-secondary);">Projects relevant to the role</td><td style="text-align:right;font-weight:600;">up to 15 points</td></tr>
           </tbody>
         </table>
-        <p class="text-caption mt-3 mb-1"><strong>Worked example</strong> — a role needing 4 skills, of which you have 3:</p>
-        <p class="text-caption mb-1">Skills 3/4 = 75% → 75 × 0.50 = <strong>37.5</strong></p>
-        <p class="text-caption mb-1">Preferences match half → 50% → 50 × 0.20 = <strong>10</strong></p>
-        <p class="text-caption mb-1">CGPA in the 7.0–8.4 band → 90% → 90 × 0.15 = <strong>13.5</strong></p>
-        <p class="text-caption mb-3">One relevant project → 80% → 80 × 0.15 = <strong>12</strong></p>
-        <p class="text-body mb-2">37.5 + 10 + 13.5 + 12 = <strong>73%</strong> overall — capped between 10% and 100%.</p>
+        <p class="text-caption mt-3 mb-1"><strong>Example</strong> — a role asking for 4 skills, and you have 3 of them:</p>
+        <p class="text-caption mb-1">🛠️ Skills: you have 3 of the 4 skills they want → most of your 50 points → <strong>37.5</strong></p>
+        <p class="text-caption mb-1">📍 Preferences: about half match (like location, but not work mode) → half your 20 points → <strong>10</strong></p>
+        <p class="text-caption mb-1">🎓 CGPA: comfortably in their expected range → most of your 15 points → <strong>13.5</strong></p>
+        <p class="text-caption mb-3">📁 Projects: you have one project that fits → most of your 15 points → <strong>12</strong></p>
+        <p class="text-body mb-2">Add it up: 37.5 + 10 + 13.5 + 12 = <strong>73% match</strong>.</p>
         <p class="text-caption" style="font-style:italic;">
-          A match percentage estimates fit against this one posting's stated requirements. It is not a
-          guarantee of selection — the employer decides that.
+          This % just shows how closely you fit what the posting asked for — it's not a promise you'll
+          get selected. That decision is still the employer's.
         </p>
       </div>
     </details>`;

@@ -79,4 +79,7 @@ services:
     runtime: static
     rootDir: frontend
     buildCommand: "echo 'static site, no build step'"
-    staticPublishPath: .
+    # staticPublishPath is always relative to the REPO ROOT, never to
+    # rootDir, no matter what rootDir is set to above - "." here published
+    # the repo root (no index.html there -> 404) instead of frontend/.
+    staticPublishPath: frontend

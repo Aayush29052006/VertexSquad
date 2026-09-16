@@ -817,14 +817,18 @@ Supabase project; Render hosts no database of its own here.
 4. Deploy. Both services build and go live at `https://careernexus-api.onrender.com`
    and `https://careernexus.onrender.com` **if those names are free** — Render
    service names are global, so a taken name gets an auto-suffixed URL instead.
-   **If either URL differs from those two:**
+   On this project's own deploy, `careernexus` was already taken and Render
+   assigned `https://careernexus-w8rh.onrender.com` — `render.yaml`'s
+   `ALLOWED_ORIGINS` already points at that real URL, so a fresh Blueprint
+   deploy from this repo works as-is. **If your own deploy gets different
+   URLs than what's in render.yaml:**
    - Edit `PROD_API_BASE_URL` in [`frontend/js/config.js`](frontend/js/config.js)
      to the real backend URL and push — the static site redeploys automatically.
    - Edit `ALLOWED_ORIGINS` on the `careernexus-api` service (dashboard → that
      service → Environment) to the real frontend URL, then redeploy the
      backend — CORS will otherwise reject every request from the frontend.
 5. **Google Sign-In** needs one manual step Render can't do for you: add the
-   deployed frontend's exact origin (`https://careernexus.onrender.com`, no
+   deployed frontend's exact origin (`https://careernexus-w8rh.onrender.com`, no
    trailing slash) to **Authorized JavaScript origins** on the OAuth client at
    [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials).
    Without this, the Google button fails with a generic sign-in error — email

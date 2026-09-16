@@ -45,8 +45,11 @@ services:
         value: 892645924851-th5b6j33ck4gs0qf6q7262qhbbihdgci.apps.googleusercontent.com
 
       # --- CORS: the deployed frontend's exact origin, no trailing slash ---
+      # "careernexus" was already taken on Render, so the actual static site
+      # got auto-suffixed to careernexus-w8rh. If you rename that service,
+      # update this to match its real URL.
       - key: ALLOWED_ORIGINS
-        value: https://careernexus.onrender.com
+        value: https://careernexus-w8rh.onrender.com
 
       # --- Admin panel ---
       - key: ADMIN_EMAILS
@@ -79,7 +82,7 @@ services:
     runtime: static
     rootDir: frontend
     buildCommand: "echo 'static site, no build step'"
-    # staticPublishPath is always relative to the REPO ROOT, never to
-    # rootDir, no matter what rootDir is set to above - "." here published
-    # the repo root (no index.html there -> 404) instead of frontend/.
-    staticPublishPath: frontend
+    # Confirmed empirically: with rootDir set, staticPublishPath resolves
+    # relative to rootDir, not the repo root - "frontend" here made Render
+    # look for frontend/frontend and fail outright. "." is frontend/ itself.
+    staticPublishPath: .

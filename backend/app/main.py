@@ -6134,12 +6134,25 @@ class FeedSyncModel(Base):
 create_missing_tables()
 
 
+import ssl
+
+# aiia.gov.in chains to Let's Encrypt's new "Root YR", missing from many CA bundles (Render's included); this is its official cross-signature by ISRG Root X1.
+_FEED_EXTRA_CA = pathlib.Path(__file__).resolve().parent / "certs" / "isrg-root-yr-by-x1.pem"
+
+
+def _feed_ssl_context() -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    if _FEED_EXTRA_CA.exists():
+        ctx.load_verify_locations(cafile=str(_FEED_EXTRA_CA))
+    return ctx
+
+
 def _fetch_json(url: str):
     req = urllib.request.Request(url, headers={
         "User-Agent": FEED_USER_AGENT,
         "Accept": "application/json",
     })
-    with urllib.request.urlopen(req, timeout=FEED_TIMEOUT) as resp:
+    with urllib.request.urlopen(req, timeout=FEED_TIMEOUT, context=_feed_ssl_context()) as resp:
         return json.loads(resp.read().decode("utf-8", errors="replace"))
 
 

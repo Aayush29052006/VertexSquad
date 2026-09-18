@@ -6204,7 +6204,7 @@ def sync_one_source(source: dict, db: Session) -> dict:
         record.status = "failed"
         record.message = f"{type(e).__name__}: {e}"[:300]
         db.commit()
-        return {"source_id": source["id"], "status": "failed", "new": 0, "seen": 0}
+        return {"source_id": source["id"], "status": "failed", "new": 0, "seen": 0, "message": record.message}
 
     # Load this source's rows in one query and match in memory. Querying
     # per item meant ~160 round trips to a database in another region,

@@ -202,6 +202,17 @@ function clampSidebarWidth(px) {
    closes one, so most people never touch this key at all. */
 const SIDEBAR_COLLAPSED_KEY = 'cn_sidebar_collapsed_groups';
 
+/* Whether the whole sidebar is tucked away (desktop). Off by default. */
+const SIDEBAR_HIDDEN_KEY = 'cn_sidebar_hidden';
+
+function storedSidebarHidden() {
+  try {
+    return localStorage.getItem(SIDEBAR_HIDDEN_KEY) === '1';
+  } catch (_) {
+    return false; // private mode / storage disabled
+  }
+}
+
 function storedCollapsedGroups() {
   try {
     const raw = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
@@ -415,7 +426,16 @@ function renderAppShell(activeHref, studentName) {
     </aside>
     <div class="main-content">
       <header class="topbar">
-        <button class="mobile-menu-btn btn btn-ghost btn-icon" id="menuToggle" aria-label="Open menu">☰</button>
+        <button class="sidebar-toggle btn btn-ghost btn-icon" id="menuToggle" type="button"
+                aria-controls="sidebar" aria-expanded="true" aria-label="Hide sidebar" title="Hide sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <a class="brand topbar-brand" href="dashboard.html" aria-label="CareerNexus home">
+          <img class="brand-mark" src="../assets/logos/careernexus-logo.png" alt="" />
+          <span class="brand-name">CareerNexus</span>
+        </a>
         <!-- Global search. Understands intent rather than exact text:
              "make my cv" reaches the Resume page. Pages are ranked here,
              catalogue rows by POST /api/search. -->
@@ -443,6 +463,8 @@ function mountAppShell(activeHref, studentName) {
   // Apply the remembered width before the shell paints, so the sidebar
   // never flashes at the default width before jumping to the saved one.
   applySidebarWidth(storedSidebarWidth(), false);
+  // Set before the sidebar exists so a remembered "hidden" never animates in.
+  shellRoot.classList.toggle('sidebar-hidden', storedSidebarHidden());
   shellRoot.innerHTML = renderAppShell(activeHref, studentName);
   initSidebarResize();
   initGlobalSearch();
@@ -450,8 +472,33 @@ function mountAppShell(activeHref, studentName) {
   const backdrop = document.getElementById('sidebarBackdrop');
   const toggle = document.getElementById('menuToggle');
   const closeMenu = () => { sidebar.classList.remove('open'); backdrop.classList.remove('open'); };
-  toggle?.addEventListener('click', () => { sidebar.classList.add('open'); backdrop.classList.add('open'); });
-  backdrop?.addEventListener('click', closeMenu);
+  const isDrawer = () => window.innerWidth <= SIDEBAR_DRAWER_BREAKPOINT;
+
+  // The same button does both jobs: on a phone it opens the drawer, on a
+  // desktop it hides or shows the sidebar (YouTube-style) and remembers it.
+  const syncToggle = () => {
+    const hidden = shellRoot.classList.contains('sidebar-hidden');
+    const label = isDrawer() ? 'Open menu' : (hidden ? 'Show sidebar' : 'Hide sidebar');
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+    toggle.setAttribute('aria-expanded', String(isDrawer() ? sidebar.classList.contains('open') : !hidden));
+    // A hidden sidebar must not stay reachable by Tab or a screen reader.
+    sidebar.inert = !isDrawer() && hidden;
+  };
+  toggle?.addEventListener('click', () => {
+    if (isDrawer()) {
+      sidebar.classList.add('open');
+      backdrop.classList.add('open');
+    } else {
+      const nowHidden = !shellRoot.classList.contains('sidebar-hidden');
+      shellRoot.classList.toggle('sidebar-hidden', nowHidden);
+      try { localStorage.setItem(SIDEBAR_HIDDEN_KEY, nowHidden ? '1' : '0'); } catch (_) { /* not worth an error */ }
+    }
+    syncToggle();
+  });
+  window.addEventListener('resize', syncToggle);
+  syncToggle();
+  backdrop?.addEventListener('click', () => { closeMenu(); syncToggle(); });
   document.querySelectorAll('.sidebar-group').forEach((details) => {
     details.addEventListener('toggle', () => {
       setSidebarGroupOpen(details.dataset.group, details.open);

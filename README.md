@@ -136,6 +136,8 @@ that.
 **For admins / placement cell** — separate team sign-in at `/pages/admin-login.html`,
 panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - **Overview** — students, internships, applications, at-risk count, top colleges
+- **Live Data** — one button that pulls AIIA's latest notices, vacancies, tenders and
+  news from aiia.gov.in on demand, with the per-source result and any failure reason
 - **Student management** — search, promote/demote admin, deactivate, delete
 - **Internship management** — create / edit / delete postings, applicant counts
 - **Application management** — filter by status, change any application's status

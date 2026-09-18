@@ -476,7 +476,30 @@ html[data-theme='dark'] .status-interview { background: rgba(244, 114, 182, 0.18
 }
 .page-body { padding: var(--space-5) var(--space-5) var(--space-7); max-width: 1400px; }
 
-.mobile-menu-btn { display: none; }
+/* ☰ in the top bar: opens the drawer on a phone, hides/shows the sidebar on
+   a desktop. Always visible, as on YouTube. */
+.sidebar-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; flex-shrink: 0;
+  color: var(--text-primary);
+}
+.sidebar-toggle svg { width: 22px; height: 22px; }
+
+/* The logo lives in the sidebar, so it moves up next to the button while
+   the sidebar is away - otherwise there is no way home and no branding. */
+.topbar-brand { display: none; margin-left: var(--space-2); flex-shrink: 0; }
+
+/* Keep the search hugging the button, as it did before the button showed on
+   desktop, instead of floating to the middle of the bar. */
+.topbar .global-search { margin-right: auto; }
+
+@media (min-width: 769px) {
+  .sidebar { transition: margin-left var(--transition-base); }
+  .sidebar-hidden > .sidebar { margin-left: calc(-1 * var(--sidebar-width)); }
+  .sidebar-hidden .topbar-brand { display: inline-flex; }
+  /* Don't slide the drawer while the user is dragging the resize handle. */
+  .app-shell.is-resizing > .sidebar { transition: none; }
+}
 
 /* ---------- Avatar ---------- */
 .avatar {

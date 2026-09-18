@@ -40,7 +40,6 @@
   .sidebar.open { transform: translateX(0); }
   /* Nothing to resize while the sidebar is a drawer. */
   .sidebar-resizer { display: none; }
-  .mobile-menu-btn { display: inline-flex; }
   .sidebar-backdrop {
     display: none;
     position: fixed; inset: 0; background: rgba(16,19,26,0.4); z-index: 199;

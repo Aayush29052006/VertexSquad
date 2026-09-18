@@ -9,6 +9,7 @@ const APP_STATUSES = ['applied', 'under_review', 'shortlisted', 'rejected'];
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'livedata', label: 'Live Data' },
   { id: 'students', label: 'Students' },
   { id: 'internships', label: 'Internships' },
   { id: 'applications', label: 'Applications' },
@@ -49,6 +50,7 @@ function renderTab() {
   el.innerHTML = loadingState('Loading...');
   const render = {
     overview: renderOverview,
+    livedata: renderLiveData,
     students: renderStudents,
     internships: renderInternships,
     applications: renderApplications,
@@ -88,6 +90,98 @@ async function renderOverview(el) {
       }
     </div>
   `;
+}
+
+/* ---------------- Live Data ----------------
+   The one place an admin can pull real-world data on demand. It calls the
+   backend's sync, which reads AIIA's own public feeds (notices, vacancies,
+   tenders, news) and upserts what it finds; nothing here is generated. The
+   table below always shows what the *server* recorded for each source, so a
+   failure is visible with its real reason instead of a vanishing toast. */
+const FEED_STATUS_BADGE = { ok: 'badge-success', failed: 'badge-danger', never: 'badge-neutral' };
+const FEED_STATUS_LABEL = { ok: 'Refreshed', failed: 'Failed', never: 'Never run' };
+
+async function renderLiveData(el, outcome = null) {
+  const feed = await api.getFeedItems();
+
+  const banner = outcome
+    ? `<div class="callout ${outcome.failed ? 'callout-warning' : 'callout-success'} mb-5">
+         <strong>${escapeHtml(outcome.headline)}</strong>
+         ${outcome.detail ? `<div class="text-caption mt-1">${escapeHtml(outcome.detail)}</div>` : ''}
+       </div>`
+    : '';
+
+  el.innerHTML = `
+    ${banner}
+    <div class="card mb-5">
+      <h2 class="text-card-heading mb-1">Fetch real-world data</h2>
+      <p class="text-body mb-3">
+        Reads the latest notices, vacancies, tenders and news straight from the official
+        AIIA website (aiia.gov.in), right now. Nothing is generated: every item is copied from
+        AIIA's own public feed, and items already stored are updated in place, never duplicated.
+      </p>
+      <div class="flex items-center gap-3" style="flex-wrap:wrap;">
+        <button class="btn btn-primary" id="syncRealData" type="button">Sync real-world data now</button>
+        <span class="text-caption" id="syncProgress" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="stat-grid mb-5">
+      ${statTile('📢 Open items', feed.total, 'Notices, vacancies, tenders, news')}
+      ${statTile('⏳ Closing soon', feed.closing_soon, 'Deadline within 7 days')}
+      ${statTile('🕒 Last checked', feed.last_synced || 'Never', 'Server time')}
+    </div>
+
+    <div class="card table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Source</th><th>Status</th><th>Items on source</th><th>Last checked</th><th>Details</th></tr></thead>
+        <tbody>
+          ${feed.sources.map((s) => `
+            <tr>
+              <td><a href="${escapeHtml(s.homepage)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.name)}</a></td>
+              <td><span class="badge ${FEED_STATUS_BADGE[s.status] || 'badge-neutral'}">${escapeHtml(FEED_STATUS_LABEL[s.status] || s.status)}</span></td>
+              <td>${s.items_seen}</td>
+              <td>${escapeHtml(s.last_run || '—')}</td>
+              <td class="text-caption">${escapeHtml(s.message || '')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-caption mt-3">
+      See the result to students on <a href="updates.html">Live Updates</a>. The server also re-checks
+      these sources by itself on every start and every six hours while it is running.
+    </p>
+  `;
+
+  document.getElementById('syncRealData').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Fetching from aiia.gov.in...';
+    document.getElementById('syncProgress').textContent =
+      'Checking 4 official sources. This can take up to a minute.';
+
+    let result;
+    try {
+      const res = await api.syncFeeds();
+      const failed = res.results.filter((r) => r.status !== 'ok');
+      result = {
+        failed: failed.length > 0,
+        headline: `${res.sources_ok} of ${res.sources_total} sources refreshed · ${res.new_items} new item${res.new_items === 1 ? '' : 's'} found`,
+        detail: failed.length
+          ? `Could not refresh: ${failed.map((f) => f.source_id.replace('aiia_', '')).join(', ')}. Previously stored items were left untouched.`
+          : 'Everything below is what AIIA is publishing right now.',
+      };
+    } catch (err) {
+      result = { failed: true, headline: 'The sync could not be completed.', detail: err.message || '' };
+    }
+    showToast(result.headline, result.failed ? 'error' : 'success');
+    // Re-read what the server recorded, whatever the outcome.
+    try {
+      await renderLiveData(el, result);
+    } catch (err) {
+      el.innerHTML = errorState(err.message || 'Could not reload the sync status.', 'renderTab');
+    }
+  });
 }
 
 function statTile(label, value, sub) {

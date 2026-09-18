@@ -75,7 +75,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/Flyer_20082026_merged.pdf',
     sectionUrl: 'https://aiia.gov.in/#/coursesAvailable',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Course', 'Certificate'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
     featured: true,
   },
   {
@@ -100,7 +100,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/Academic_Brochure_08082026.pdf',
     sectionUrl: 'https://aiia.gov.in/#/coursesAvailable',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Course', 'Certificate'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
   {
     id: 'aiia_panchakarma_technician',
@@ -124,7 +124,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/#/coursesAvailable',
     sectionUrl: 'https://aiia.gov.in/#/coursesAvailable',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Course', 'Certificate', 'Panchakarma'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
   {
     id: 'aiia_yoga_wellness_trainer',
@@ -147,7 +147,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/#/coursesAvailable',
     sectionUrl: 'https://aiia.gov.in/#/coursesAvailable',
     tags: ['AIIA', 'Yoga', 'Government', 'Course', 'Certificate'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
   {
     id: 'aiia_hospital_management',
@@ -169,7 +169,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/CCHM_2026_Admission_Notification_AIIA.pdf',
     sectionUrl: 'https://aiia.gov.in/#/coursesAvailable',
     tags: ['AIIA', 'Government', 'Course', 'Certificate', 'Management'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
     note: 'The notification is a scanned document, so eligibility, duration and fees are not machine-readable. Open the official notification for those details.',
   },
   {
@@ -191,7 +191,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/#/noticesArchive',
     sectionUrl: 'https://aiia.gov.in/#/coursesAvailable',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Course', 'Nutrition'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
 
   /* ---------------- Courses (AIIA Goa) ----------------
@@ -215,7 +215,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/Advt-of-Ayurveda-Dietician-Course-AIIA-Goa.pdf',
     sectionUrl: 'https://aiiagoa.org',
     tags: ['AIIA', 'AIIA Goa', 'Ayurveda', 'Government', 'Course', 'Nutrition'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
     note: 'The advertisement is a scanned document, so eligibility, duration and fees are not machine-readable.',
   },
 
@@ -244,7 +244,7 @@ const AIIA_OPPORTUNITIES = [
       { label: 'Internship Letter Format', url: 'https://aiia.gov.in/pdf/Final-Revised-Letter-Format-of-Internship-Form-2.pdf' },
     ],
     tags: ['AIIA', 'Ayurveda', 'Government', 'Internship', 'BAMS'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
     featured: true,
     note: 'The notice is a scanned document, so duration and full eligibility are not machine-readable. Open it for the details.',
   },
@@ -292,7 +292,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/Hands_on_Training.pdf',
     sectionUrl: 'https://aiia.gov.in/#/trainingWorkshop',
     tags: ['AIIA', 'Government', 'Training', 'Research', 'Pharmacology'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
     note: 'The advertisement carries almost no text layer, so the details are not machine-readable.',
   },
 
@@ -316,7 +316,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/AYURPRABHA.pdf',
     sectionUrl: 'https://aiia.gov.in/#/trainingWorkshop',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Workshop', 'Dermatology'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
 
   /* ---------------- CME ---------------- */
@@ -339,7 +339,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/#/noticesArchive',
     sectionUrl: 'https://aiia.gov.in/#/trainingWorkshop',
     tags: ['AIIA', 'Government', 'CME', 'Online'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
   {
     id: 'aiia_goa_cme_rachana',
@@ -348,7 +348,7 @@ const AIIA_OPPORTUNITIES = [
     category: 'CME',
     domain: 'Ayurveda Anatomy',
     description:
-      'Continuing medical education programme on Rachana Sharir (Ayurvedic anatomy), held at the AIIA Goa campus.',
+      'Six-day continuing medical education programme for teachers of Rachana Sharir (Ayurvedic anatomy), scheduled 8–13 September 2025 at AIIA Goa. That edition has already taken place; watch AIIA Goa notices for the next.',
     eligibility: AIIA_UNSPECIFIED,
     duration: AIIA_UNSPECIFIED,
     fee: AIIA_UNSPECIFIED,
@@ -360,7 +360,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/CME-Rachana-Sharir-AIIA-Goa-2025.pdf',
     sectionUrl: 'https://aiiagoa.org',
     tags: ['AIIA', 'AIIA Goa', 'Government', 'CME', 'Anatomy'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
   {
     id: 'aiia_goa_cme_program',
@@ -380,7 +380,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/CME-Program-AIIA-GOA.pdf',
     sectionUrl: 'https://aiiagoa.org',
     tags: ['AIIA', 'AIIA Goa', 'Government', 'CME'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
 
   /* ---------------- Conferences & seminars ---------------- */
@@ -403,7 +403,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/KAUMARACON-2026.jpeg',
     sectionUrl: 'https://aiia.gov.in/#/eventsList',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Conference', 'Paediatrics'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
   {
     id: 'aiia_saushrutam',
@@ -423,7 +423,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/pdf/Saushrutam_2026.pdf',
     sectionUrl: 'https://aiia.gov.in/#/eventsList',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Seminar', 'Surgery'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
 
   /* ---------------- Admissions & research ---------------- */
@@ -434,7 +434,7 @@ const AIIA_OPPORTUNITIES = [
     category: 'Admissions',
     domain: 'Ayurveda Research',
     description:
-      'Doctoral admission in Ayurveda through the AIIA PhD entrance examination. Entrance notices, answer keys, results and interview schedules are all published on the institute notice board.',
+      'Doctoral admission in Ayurveda through the AIIA PhD entrance examination. AIIA notified the 2026-27 programme on 16 March 2026 and declared the entrance examination result on 30 May 2026, so that cycle is past its entrance stage. Notices, answer keys, results and interview schedules are published on the institute notice board — watch it for the next cycle.',
     eligibility: 'See the official PhD admission notification',
     duration: AIIA_UNSPECIFIED,
     fee: AIIA_UNSPECIFIED,
@@ -446,7 +446,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/#/academicadmission',
     sectionUrl: 'https://aiia.gov.in/#/phdprogram',
     tags: ['AIIA', 'Ayurveda', 'Government', 'Admission', 'Research', 'PhD'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
     featured: true,
   },
   {
@@ -515,7 +515,7 @@ const AIIA_OPPORTUNITIES = [
     officialUrl: 'https://aiia.gov.in/#/archivesVacancies',
     sectionUrl: 'https://aiia.gov.in/#/archivesVacancies',
     tags: ['AIIA', 'AIIA Goa', 'Government', 'Career', 'Job', 'Faculty', 'Research'],
-    lastVerified: '2026-09-10',
+    lastVerified: '2026-09-18',
   },
 
   /* ---------------- Jobs & careers ---------------- */

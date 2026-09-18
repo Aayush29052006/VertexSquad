@@ -410,7 +410,7 @@ class AppMetaModel(Base):
 # accounts, the learning programmes, anything the seed_* functions write.
 # Startup compares it against what is recorded in app_meta and re-runs the
 # seeders only when the two differ.
-SEED_VERSION = "2026-09-10b"
+SEED_VERSION = "2026-09-18a"
 
 
 # Create tables
@@ -4990,17 +4990,17 @@ EXTERNAL_OPPORTUNITIES = [
     },
     {
         "id": "ext_co_microsoft",
-        "title": "Microsoft Students & Graduates",
+        "title": "Microsoft Careers — Internships & Graduate Roles",
         "company": "Microsoft",
         "source_name": "Microsoft Careers",
-        "official_url": "https://careers.microsoft.com/v2/global/en/students.html",
+        "official_url": "https://careers.microsoft.com/v2/global/en/home.html",
         "opportunity_type": "internship",
         "location": "Bengaluru, Hyderabad, Noida & global",
         "work_mode": "Hybrid",
         "stipend": "As per Microsoft's offer",
         "duration": "8-12 weeks",
         "eligibility": "Students in an undergraduate or postgraduate programme",
-        "description": "Internships and graduate roles across engineering, data and product, applied for on Microsoft's own careers portal.",
+        "description": "Internships and graduate roles across engineering, data and product, applied for on Microsoft's own careers portal — search it for internship and early-career roles.",
         "required_skills": ["C#", "Python", "SQL"],
     },
     {
@@ -5023,7 +5023,7 @@ EXTERNAL_OPPORTUNITIES = [
         "title": "Apple Students",
         "company": "Apple",
         "source_name": "Apple Careers",
-        "official_url": "https://www.apple.com/careers/us/students.html",
+        "official_url": "https://www.apple.com/careers/us/work-at-apple/students.html",
         "opportunity_type": "internship",
         "location": "Global",
         "work_mode": "On-site",
@@ -5144,21 +5144,6 @@ EXTERNAL_LEARNING = [
         "audience": "both",
     },
     {
-        "id": "ext_lp_aws_mlu",
-        "title": "AWS Machine Learning University",
-        "provider": "Amazon Web Services",
-        "program_type": "course",
-        "url": "https://aws.amazon.com/machine-learning/mlu/",
-        "description": "The machine learning curriculum Amazon uses to train its own scientists and engineers, released publicly: tabular data, computer vision, natural language processing and decision trees.",
-        "skills_covered": ["Python", "AWS", "SQL"],
-        "duration": "Self-paced",
-        "cost": "Free",
-        "eligibility": "Python fundamentals recommended",
-        "certificate": 0,
-        "source_type": "official",
-        "audience": "both",
-    },
-    {
         "id": "ext_lp_ibm_ai",
         "title": "IBM Artificial Intelligence Training",
         "provider": "IBM Training",
@@ -5178,7 +5163,7 @@ EXTERNAL_LEARNING = [
         "title": "MDN Web Docs — Learn Web Development",
         "provider": "Mozilla",
         "program_type": "course",
-        "url": "https://developer.mozilla.org/en-US/docs/Learn",
+        "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
         "description": "Mozilla's structured curriculum for web development, from HTML and CSS through JavaScript, accessibility and tooling. The reference the web platform is documented against.",
         "skills_covered": ["HTML", "CSS", "JavaScript", "Git"],
         "duration": "Self-paced",
@@ -5270,11 +5255,11 @@ EXTERNAL_LEARNING = [
     },
     {
         "id": "ext_lp_google_cloud",
-        "title": "Google Cloud Skills Boost",
-        "provider": "Google Cloud",
+        "title": "Google Skills (formerly Google Cloud Skills Boost)",
+        "provider": "Google",
         "program_type": "certification",
-        "url": "https://www.cloudskillsboost.google",
-        "description": "Hands-on labs and learning paths for Google Cloud, leading to official Google Cloud certifications.",
+        "url": "https://www.skills.google/",
+        "description": "Google's learning platform: hands-on labs, skill badges and learning paths, including Google Cloud training and official Google certifications.",
         "skills_covered": ["Docker", "SQL", "Python"],
         "duration": "Self-paced",
         "cost": "Free tier available",
@@ -5403,7 +5388,7 @@ EXTERNAL_LEARNING = [
         "title": "GitHub Education & Student Developer Pack",
         "provider": "GitHub",
         "program_type": "course",
-        "url": "https://education.github.com",
+        "url": "https://github.com/education",
         "description": "Free developer tools, cloud credits and learning resources for verified students.",
         "skills_covered": ["Git"],
         "duration": "Ongoing",
@@ -5494,7 +5479,7 @@ def seed_external_catalogue():
         # entry was merged into another). Their rows are deleted so a stale
         # listing does not linger in the shared database after the code that
         # created it is gone.
-        RETIRED_CATALOGUE_IDS = ["ext_aiia_goa_srf"]
+        RETIRED_CATALOGUE_IDS = ["ext_aiia_goa_srf", "ext_lp_aws_mlu"]
         for _rid in RETIRED_CATALOGUE_IDS:
             db.query(InternshipModel).filter(InternshipModel.id == _rid).delete()
             db.query(LearningProgramModel).filter(LearningProgramModel.id == _rid).delete()

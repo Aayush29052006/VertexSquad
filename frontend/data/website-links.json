@@ -32,8 +32,8 @@
 
   "meta": {
     "version": 1,
-    "last_verified": "2026-09-09",
-    "verified_how": "Each url fetched with a browser user-agent and confirmed to resolve (HTTP 200) before being added.",
+    "last_verified": "2026-09-18",
+    "verified_how": "Each url fetched with a browser user-agent and confirmed to resolve (HTTP 200) and not to land on an error page.",
     "categories": [
       "Government",
       "Courses",
@@ -284,11 +284,11 @@
     },
     {
       "id": "google_cloud_skills",
-      "name": "Google Cloud Skills Boost",
-      "organization": "Google Cloud",
+      "name": "Google Skills (formerly Google Cloud Skills Boost)",
+      "organization": "Google",
       "category": "Learning Platforms",
-      "description": "Google Cloud's own training platform, with hands-on labs and skill badges.",
-      "url": "https://www.cloudskillsboost.google",
+      "description": "Google's learning platform, with hands-on labs, skill badges and Google Cloud training.",
+      "url": "https://www.skills.google/",
       "source": "Official",
       "purpose": "Cloud courses, labs and skill badges"
     },
@@ -331,16 +331,6 @@
       "url": "https://skillbuilder.aws",
       "source": "Official",
       "purpose": "Cloud courses and AWS certification preparation"
-    },
-    {
-      "id": "aws_mlu",
-      "name": "AWS Machine Learning University",
-      "organization": "Amazon Web Services",
-      "category": "Courses",
-      "description": "The machine-learning curriculum Amazon uses to train its own scientists and engineers, released publicly.",
-      "url": "https://aws.amazon.com/machine-learning/mlu/",
-      "source": "Official",
-      "purpose": "Free machine-learning curriculum"
     },
     {
       "id": "ibm_skillsbuild",
@@ -388,7 +378,7 @@
       "organization": "GitHub",
       "category": "Student Opportunities",
       "description": "GitHub's student programme, including the Student Developer Pack and Campus Experts.",
-      "url": "https://education.github.com",
+      "url": "https://github.com/education",
       "source": "Official",
       "purpose": "Student developer tools and programmes"
     },
@@ -418,7 +408,7 @@
       "organization": "Mozilla",
       "category": "Courses",
       "description": "Mozilla's structured web-development curriculum and the reference the web platform is documented against.",
-      "url": "https://developer.mozilla.org/en-US/docs/Learn",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
       "source": "Official",
       "purpose": "Free web-development curriculum"
     },
@@ -495,11 +485,11 @@
     },
     {
       "id": "microsoft_students",
-      "name": "Microsoft Students & Graduates",
+      "name": "Microsoft Careers — Internships & Graduate Roles",
       "organization": "Microsoft",
       "category": "Companies",
-      "description": "Microsoft's careers page for students and recent graduates, including its India internships.",
-      "url": "https://careers.microsoft.com/v2/global/en/students.html",
+      "description": "Microsoft's official careers portal; search it for internship and early-career roles.",
+      "url": "https://careers.microsoft.com/v2/global/en/home.html",
       "source": "Official",
       "purpose": "Company internships and graduate roles"
     },
@@ -519,7 +509,7 @@
       "organization": "Apple",
       "category": "Companies",
       "description": "Apple's careers page for students, covering internships and the Apple Scholars programme.",
-      "url": "https://www.apple.com/careers/us/students.html",
+      "url": "https://www.apple.com/careers/us/work-at-apple/students.html",
       "source": "Official",
       "purpose": "Company internships and student programmes"
     },

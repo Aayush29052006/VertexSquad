@@ -14,7 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, Text, text, or_ as sa_or
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import io
@@ -3366,12 +3366,28 @@ def recruiter_postings(
         q = q.filter(InternshipModel.posted_by == user.id)
     rows = q.all()
 
+    # One grouped query, not one per posting: each round trip to the remote
+    # database costs ~150ms, so 55 postings took ~9s.
+    counts = {}
+    if rows:
+        grouped = (
+            db.query(
+                ApplicationModel.internship_id,
+                func.count(ApplicationModel.id),
+                func.sum(case((ApplicationModel.status == "shortlisted", 1), else_=0)),
+            )
+            .filter(ApplicationModel.internship_id.in_([o.id for o in rows]))
+            .group_by(ApplicationModel.internship_id)
+            .all()
+        )
+        counts = {iid: (total, int(short or 0)) for iid, total, short in grouped}
+
     out = []
     for opp in rows:
-        apps = db.query(ApplicationModel).filter(ApplicationModel.internship_id == opp.id).all()
+        total, shortlisted = counts.get(opp.id, (0, 0))
         record = _opportunity_out(opp)
-        record["applicants"] = len(apps)
-        record["shortlisted"] = sum(1 for a in apps if a.status == "shortlisted")
+        record["applicants"] = total
+        record["shortlisted"] = shortlisted
         out.append(record)
     out.sort(key=lambda x: x["applicants"], reverse=True)
     return out

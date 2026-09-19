@@ -1,13 +1,8 @@
 /**
  * CareerNexus — Central API layer
  * All backend communication funnels through this file. Page-level JS
- * never calls fetch() directly. Swap CONFIG.USE_MOCK_DATA to false once
- * the FastAPI backend endpoints below are live.
+ * never calls fetch() directly.
  */
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function apiRequest(path, options = {}) {
   const token = localStorage.getItem('cn_token');
@@ -50,21 +45,12 @@ async function apiRequest(path, options = {}) {
 const api = {
   // ---------- Auth ----------
   async login(email, password) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(500);
-      if (!email || !password) throw new Error('Email and password are required.');
-      return { token: 'mock_token_123', student: MOCK.student };
-    }
     return apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
   },
 
   // Exchange a Google ID token for a CareerNexus session.
   // The token is verified server-side against Google's public keys.
   async loginWithGoogle(credential) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(500);
-      return { token: 'mock_token_123', student: MOCK.student };
-    }
     return apiRequest('/auth/google', {
       method: 'POST',
       body: JSON.stringify({ credential }),
@@ -72,58 +58,25 @@ const api = {
   },
 
   async register(payload) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(600);
-      return { token: 'mock_token_123', student: { ...MOCK.student, ...payload } };
-    }
     return apiRequest('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
   },
 
   // ---------- Student profile ----------
   async getStudentProfile() {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(400);
-      return MOCK.student;
-    }
     return apiRequest('/student/profile');
   },
 
   async updateStudentProfile(payload) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(500);
-      Object.assign(MOCK.student, payload);
-      return MOCK.student;
-    }
     return apiRequest('/student/profile', { method: 'PUT', body: JSON.stringify(payload) });
   },
 
   // ---------- Connected Profiles ----------
   async githubImport(username) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(600);
-      return {
-        profile: { login: username, name: username, bio: 'Sample bio (mock data mode).', avatar_url: '', html_url: `https://github.com/${username}`, public_repos: 2, followers: 0 },
-        repos: [
-          { name: 'sample-project', description: 'A sample repository shown in mock data mode.', html_url: `https://github.com/${username}/sample-project`, language: 'JavaScript', topics: ['demo'], stars: 3, forks: 1, updated_at: '2026-01-01', is_fork: false },
-        ],
-        languages_detected: ['JavaScript'],
-      };
-    }
     return apiRequest(`/social/github-import?username=${encodeURIComponent(username)}`);
   },
 
   // ---------- Resume ----------
   async uploadResume(file) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(1200);
-      MOCK.resume = {
-        file_name: file.name,
-        file_size_kb: Math.round(file.size / 1024),
-        uploaded_at: new Date().toISOString(),
-        status: 'processed',
-      };
-      return MOCK.resume;
-    }
     const formData = new FormData();
     formData.append('resume', file);
     const token = localStorage.getItem('cn_token');
@@ -137,109 +90,46 @@ const api = {
   },
 
   async getResumeStatus() {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(300);
-      return MOCK.resume;
-    }
     return apiRequest('/resume/status');
   },
 
   async getExtractedSkills() {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(900);
-      return MOCK.extraction;
-    }
     return apiRequest('/resume/extracted-skills');
   },
 
   async confirmSkills(skills) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(500);
-      MOCK.student.skills = skills;
-      return { success: true, skills };
-    }
     return apiRequest('/resume/confirm-skills', { method: 'POST', body: JSON.stringify({ skills }) });
   },
 
   // ---------- Internships ----------
   async getRecommendations(filters = {}) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(500);
-      return MOCK.recommendations;
-    }
     const query = new URLSearchParams(filters).toString();
     return apiRequest(`/internships/recommendations${query ? `?${query}` : ''}`);
   },
 
   async getInternshipDetails(id) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(400);
-      const item = findInternship(id);
-      if (!item) throw new Error('Internship not found.');
-      return item;
-    }
     return apiRequest(`/internships/${id}`);
   },
 
   async getMatchScore(id) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(300);
-      const item = findInternship(id);
-      return { match_score: item.match_score, breakdown: item.breakdown };
-    }
     return apiRequest(`/internships/${id}/match-score`);
   },
 
   async getSkillGap(id) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(400);
-      const item = findInternship(id);
-      return {
-        current_skills: MOCK.student.skills,
-        required_skills: item.required_skills,
-        missing_skills: item.missing_skills,
-        priority: item.missing_skills.map((s, idx) => ({ skill: s, priority: idx === 0 ? 'HIGH' : 'MEDIUM' })),
-      };
-    }
     return apiRequest(`/internships/${id}/skill-gap`);
   },
 
   // ---------- Applications ----------
   async applyToInternship(id) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(700);
-      const item = findInternship(id);
-      const application = {
-        id: `app_${Date.now()}`,
-        internship_id: id,
-        title: item.title,
-        company: item.company,
-        applied_on: new Date().toISOString().slice(0, 10),
-        status: 'applied',
-        match_score: item.match_score,
-      };
-      MOCK.applications.unshift(application);
-      return application;
-    }
     return apiRequest(`/internships/${id}/apply`, { method: 'POST' });
   },
 
   async getApplications() {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(400);
-      return MOCK.applications;
-    }
     return apiRequest('/applications');
   },
 
   // ---------- What-if analysis (Phase 2, backend computes the score) ----------
   async getWhatIfScore(internshipId, addedSkills) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(500);
-      const item = findInternship(internshipId);
-      const bonus = Math.min(addedSkills.length * 7, 100 - item.match_score);
-      return { current_match: item.match_score, potential_match: item.match_score + bonus };
-    }
     return apiRequest(`/internships/${internshipId}/what-if`, {
       method: 'POST',
       body: JSON.stringify({ skills: addedSkills }),
@@ -248,29 +138,11 @@ const api = {
 
   // ---------- AI interview prep (backend calls Gemini) ----------
   async getInterviewPrep(internshipId) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(900);
-      const item = findInternship(internshipId);
-      return {
-        role: item.title,
-        company: item.company,
-        source: 'fallback',
-        questions: [
-          { type: 'Technical', question: `Walk me through a project where you used ${item.required_skills[0]}.`, sample_answer: 'Describe the problem, your approach, one challenge, and the result.' },
-          { type: 'Technical', question: `How would you close the gap on ${item.missing_skills[0] || 'a skill new to you'}?`, sample_answer: 'Name the gap, the resource, and a small project to prove it.' },
-          { type: 'Behavioural', question: `Why do you want to intern at ${item.company}?`, sample_answer: 'Connect their work to a skill you are building and what you want to learn.' },
-        ],
-      };
-    }
     return apiRequest(`/internships/${internshipId}/interview-prep`);
   },
 
   // ---------- AI career assistant ----------
   async askAssistant(message) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(700);
-      return { reply: 'This is a demo reply. Connect the backend to get real AI career guidance.', source: 'fallback' };
-    }
     return apiRequest('/assistant/chat', {
       method: 'POST',
       body: JSON.stringify({ message }),
@@ -279,10 +151,6 @@ const api = {
 
   // ---------- Recruiter: post a new internship ----------
   async createInternship(payload) {
-    if (CONFIG.USE_MOCK_DATA) {
-      await delay(600);
-      return { id: `int_${Date.now()}`, ...payload };
-    }
     return apiRequest('/internships', {
       method: 'POST',
       body: JSON.stringify(payload),

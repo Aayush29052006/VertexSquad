@@ -413,7 +413,6 @@ VertexSquad/
 │   │   ├── website-links.js        #     Reads data/website-links.json
 │   │   ├── search-core.js          #     Search vocabulary + page ranking
 │   │   ├── aiia-data.js            #     Verified AIIA catalogue
-│   │   ├── mock-data.js            #     Offline demo data
 │   │   └── ...                     #     One controller per page
 │   └── assets/logos/
 │
@@ -658,11 +657,6 @@ venv\Scripts\python test_contact.py       # 50 checks: contact form
 
 `test_contact.py` brings its own app up in-process, so it only needs
 `DATABASE_URL` set. The other two talk to a running server on port 8100.
-
-### Running the frontend without a backend
-
-Set `USE_MOCK_DATA: true` in [`frontend/js/config.js`](frontend/js/config.js) to
-browse the full UI against local demo data with no server running.
 
 ---
 

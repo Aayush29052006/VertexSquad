@@ -983,7 +983,7 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
         algorithm=ALGORITHM
     )
 
-    # Convert JSON text to python objects for output response matching MOCK.student
+    # Convert JSON text to python objects for the output response
     student_dict = {
         "id": student.id,
         "full_name": student.full_name,

@@ -227,6 +227,108 @@ after = db.query(m.ContactMessageModel).count()
 check("looks like success to the bot", rh.status_code == 200 and rh.json().get("delivered") is True)
 check("nothing was stored", after == before, f"{before} -> {after}")
 
+
+print("\n=== 7. Resend over HTTPS (Render's free plan blocks SMTP ports) ===")
+import io  # noqa: E402
+import json  # noqa: E402
+import urllib.error  # noqa: E402
+import urllib.request  # noqa: E402
+
+sent = []
+KEY = "re_test_key_do_not_leak_123"
+
+
+class FakeResp:
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def read(self):
+        return b'{"id":"abc"}'
+
+
+def urlopen_ok(req, timeout=None):
+    sent.append({
+        "url": req.full_url,
+        "method": req.get_method(),
+        "headers": {k.lower(): v for k, v in req.header_items()},
+        "json": json.loads(req.data.decode()),
+    })
+    return FakeResp()
+
+
+def urlopen_denied(req, timeout=None):
+    raise urllib.error.HTTPError(
+        req.full_url, 403, "Forbidden", {}, io.BytesIO(b'{"message":"You can only send to your own address"}'))
+
+
+class NoSMTP:
+    def __init__(self, *a, **k):
+        raise AssertionError("SMTP must not be touched when Resend is configured")
+
+
+saved = (m.RESEND_API_KEY, m.SMTP_HOST, m.SMTP_USER, m.SMTP_PASSWORD, urllib.request.urlopen, smtplib.SMTP)
+m.RESEND_API_KEY, m.SMTP_HOST, m.SMTP_USER, m.SMTP_PASSWORD = KEY, "", "", ""
+smtplib.SMTP = NoSMTP
+urllib.request.urlopen = urlopen_ok
+
+ok, err = m._send_contact_email(row)
+check("delivered via Resend with no SMTP settings at all", ok, err)
+req = sent[-1]
+check("posts to Resend's HTTPS API", req["url"] == "https://api.resend.com/emails" and req["method"] == "POST", req["url"])
+check("authenticates with the key", req["headers"].get("authorization") == f"Bearer {KEY}")
+check("identifies itself (Cloudflare rejects the default urllib agent)", req["headers"].get("user-agent", "").startswith("CareerNexus"))
+p = req["json"]
+check("goes to the configured destination", p["to"] == ["aayushswapnali@gmail.com"], str(p["to"]))
+check("Reply-To is the sender", p["reply_to"] == "priya.sharma@example.com", p["reply_to"])
+check("subject format", p["subject"] == "[CareerNexus Contact] Question about internships", p["subject"])
+check("body carries the message", "Priya Sharma" in p["text"] and "PM Internship Scheme" in p["text"])
+check("from address is Resend's shared sender", p["from"].endswith("<onboarding@resend.dev>"), p["from"])
+
+m._send_contact_email(evil)
+pe = sent[-1]["json"]
+check("injected subject/reply-to flattened to one line", "\n" not in pe["subject"] and "\n" not in pe["reply_to"], repr(pe))
+check("payload has exactly the expected fields", set(pe) == {"from", "to", "reply_to", "subject", "text"}, str(sorted(pe)))
+
+m._contact_hits.clear()
+check("meta reports email as configured", client.get("/api/contact/meta").json().get("email_configured") is True)
+r7 = client.post("/api/contact", json={
+    "name": "Resend Person", "email": "resend.person@example.com",
+    "subject": "Resend endpoint", "message": "Checking the endpoint end to end over the HTTPS path.",
+})
+check("endpoint answers 200 and delivered", r7.status_code == 200 and r7.json().get("delivered") is True, r7.text)
+
+print("\n--- 7b. Resend refuses: stored, honest 502, key never leaks ---")
+urllib.request.urlopen = urlopen_denied
+m._contact_hits.clear()
+r8 = client.post("/api/contact", json={
+    "name": "Denied Person", "email": "denied.person@example.com",
+    "subject": "Denied path", "message": "Resend rejects this one, it must still be stored.",
+})
+check("answers 502, not 200", r8.status_code == 502, r8.text)
+stored8 = db.query(m.ContactMessageModel).filter(
+    m.ContactMessageModel.email == "denied.person@example.com").first()
+check("message still stored, marked undelivered", stored8 is not None and stored8.delivered == 0)
+check("failure reason recorded with the API's own text",
+      bool(stored8 and stored8.delivery_error.startswith("Resend HTTP 403")), stored8.delivery_error if stored8 else "")
+check("API key never appears in the stored error or the response",
+      KEY not in (stored8.delivery_error if stored8 else "") and KEY not in r8.text)
+
+print("\n--- 7c. Nothing configured at all ---")
+m.RESEND_API_KEY = ""
+m._contact_hits.clear()
+check("meta reports email as NOT configured", client.get("/api/contact/meta").json().get("email_configured") is False)
+r9 = client.post("/api/contact", json={
+    "name": "Unconfigured Person", "email": "unconfigured@example.com",
+    "subject": "No mail settings", "message": "There is nothing to send this with, so it must say so."})
+check("still answers 502, never a fake success", r9.status_code == 502, r9.text)
+
+(m.RESEND_API_KEY, m.SMTP_HOST, m.SMTP_USER, m.SMTP_PASSWORD, urllib.request.urlopen, smtplib.SMTP) = saved
+
 db.close()
 print("\n" + "=" * 58)
 print(f"  {len(failures)} failure(s)" if failures else "  ALL CHECKS PASSED")

@@ -532,6 +532,7 @@ Then open `backend/.env` and set:
 | `CONTACT_TO` | Where contact-form messages are delivered (default: `aayushswapnali@gmail.com`) |
 | `SMTP_HOST` `SMTP_PORT` | Mail server. Gmail: `smtp.gmail.com` / `587` |
 | `SMTP_USER` `SMTP_PASSWORD` | **Gmail needs an [App Password](https://myaccount.google.com/apppasswords), not your account password** — turn on 2-Step Verification first. Leave blank and the form still stores every message; it just does not email, and the page says so instead of pretending. |
+| `RESEND_API_KEY` | Sends contact email over HTTPS through [Resend](https://resend.com) instead of SMTP, and is used first when set. **Needed on Render's free plan, which blocks the SMTP ports (25/465/587).** Sign up at Resend with the same address as `CONTACT_TO` (its shared sender can only mail your own address until you verify a domain). `RESEND_FROM` overrides the sender; default `CareerNexus <onboarding@resend.dev>`. |
 | `TRUST_PROXY_HEADERS` | Only `true` behind a proxy you control that sets `X-Forwarded-For`. Otherwise the contact rate limit can be bypassed by spoofing the header. |
 
 > **Already have a `.env` from before the admin panel?** Add the three new keys —
@@ -811,8 +812,11 @@ Supabase project; Render hosts no database of its own here.
    - `DATABASE_URL` — the Supabase **connection pooler** URI (dashboard →
      Settings → Database → Connection Pooling → URI), same format as
      `backend/.env`.
-   - `SMTP_USER` / `SMTP_PASSWORD` — optional; leave blank and the contact
-     form still stores messages, it just won't email them.
+   - `RESEND_API_KEY` — optional but needed for the contact form to email
+     you: Render's free plan blocks the SMTP ports, so `SMTP_USER` /
+     `SMTP_PASSWORD` cannot work there. Leave blank and the form still
+     stores every message, it just answers "Unable to send" instead of
+     emailing it.
    - `GEMINI_API_KEY` — optional; leave blank and resume parsing falls back
      to keyword extraction.
    - `JWT_SECRET_KEY` is generated automatically — you won't be asked.

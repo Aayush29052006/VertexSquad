@@ -62,6 +62,10 @@ services:
         value: smtp.gmail.com
       - key: SMTP_PORT
         value: "587"
+      # Free web services cannot reach SMTP ports (25/465/587), so on the free
+      # plan email goes over HTTPS via Resend. Sign up with the CONTACT_TO address.
+      - key: RESEND_API_KEY
+        sync: false
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASSWORD

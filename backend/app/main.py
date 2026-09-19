@@ -5687,12 +5687,15 @@ def _report_contact_email_config() -> None:
     Silence here previously meant the first anyone knew about missing
     credentials was a message that never arrived.
     """
+    if RESEND_API_KEY:
+        print(f"Contact email: enabled - Resend over HTTPS -> {CONTACT_TO}")
+        return
     missing = [k for k, v in (
         ("SMTP_HOST", SMTP_HOST), ("SMTP_USER", SMTP_USER), ("SMTP_PASSWORD", SMTP_PASSWORD),
     ) if not v]
     if missing:
         print(
-            "Contact email: DISABLED - " + ", ".join(missing) + " not set in backend/.env. "
+            "Contact email: DISABLED - " + ", ".join(missing) + " not set (or set RESEND_API_KEY). "
             "The contact form will store messages and return an error to the sender "
             "instead of pretending they were delivered."
         )
@@ -6966,6 +6969,13 @@ SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or 587)
 SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+# Render's free plan blocks SMTP ports, so mail can go over HTTPS via Resend instead (used first when set).
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_FROM = os.environ.get("RESEND_FROM", "CareerNexus <onboarding@resend.dev>").strip()
+
+
+def _email_configured() -> bool:
+    return bool(RESEND_API_KEY or (SMTP_HOST and SMTP_USER and SMTP_PASSWORD))
 
 # Length caps. Anything longer is rejected rather than truncated, so a
 # sender is told their message did not go through instead of silently
@@ -7120,24 +7130,44 @@ def _header_safe(value: str) -> str:
     return re.sub(r"[\r\n]+", " ", value or "").strip()
 
 
+def _send_via_resend(subject: str, reply_to: str, text: str) -> tuple:
+    """POST one message to Resend's HTTPS API. Returns (delivered, error)."""
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps({
+            "from": RESEND_FROM, "to": [CONTACT_TO], "reply_to": reply_to,
+            "subject": subject, "text": text,
+        }).encode("utf-8"),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+            "User-Agent": "CareerNexus/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return (True, "") if 200 <= resp.status < 300 else (False, f"Resend HTTP {resp.status}")
+    except urllib.error.HTTPError as exc:
+        # The API's own error text; the key is never part of it.
+        return False, f"Resend HTTP {exc.code}: {exc.read().decode('utf-8', 'replace')[:200]}"
+
+
 def _send_contact_email(row: "ContactMessageModel") -> tuple:
     """Send one contact message. Returns (delivered, error_message).
 
     Never raises: the caller has already stored the message and needs to
     answer the request either way.
     """
-    if not (SMTP_HOST and SMTP_USER and SMTP_PASSWORD):
-        return False, "SMTP is not configured (set SMTP_HOST, SMTP_USER and SMTP_PASSWORD)"
+    if not _email_configured():
+        return False, "Email is not configured (set RESEND_API_KEY, or SMTP_HOST, SMTP_USER and SMTP_PASSWORD)"
 
     try:
-        msg = EmailMessage()
-        msg["Subject"] = _header_safe(f"[CareerNexus Contact] {row.subject}")
-        msg["From"] = SMTP_USER
-        msg["To"] = CONTACT_TO
+        subject = _header_safe(f"[CareerNexus Contact] {row.subject}")
         # Pressing Reply in the inbox answers the person who wrote in.
-        # EmailStr has already validated the address and _header_safe
-        # removes any CR/LF, so this cannot inject extra headers.
-        msg["Reply-To"] = _header_safe(row.email)
+        # The address is already validated and _header_safe removes any
+        # CR/LF, so this cannot inject extra headers.
+        reply_to = _header_safe(row.email)
 
         body = (
             f"Name:\n{row.name}\n\n"
@@ -7153,6 +7183,15 @@ def _send_contact_email(row: "ContactMessageModel") -> tuple:
             f"Submitted from:\nCareerNexus Website\n\n"
             f"Submitted at:\n{row.created_at}\n"
         )
+
+        if RESEND_API_KEY:
+            return _send_via_resend(subject, reply_to, body)
+
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = SMTP_USER
+        msg["To"] = CONTACT_TO
+        msg["Reply-To"] = reply_to
         msg.set_content(body)
 
         if SMTP_PORT == 465:
@@ -7182,7 +7221,7 @@ def contact_meta():
         "contact_email": CONTACT_TO,
         "categories": CONTACT_CATEGORIES,
         "limits": CONTACT_MAX,
-        "email_configured": bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD),
+        "email_configured": _email_configured(),
     }
 
 

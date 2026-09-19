@@ -25,6 +25,9 @@ os.environ["SMTP_PORT"] = "587"
 os.environ["SMTP_USER"] = "careernexus-test@example.test"
 os.environ["SMTP_PASSWORD"] = "not-a-real-password"
 os.environ["CONTACT_TO"] = "aayushswapnali@gmail.com"
+# Empty (not absent) so backend/.env cannot fill it in: with a real Resend key
+# there, these tests would send real emails instead of the fake transport.
+os.environ["RESEND_API_KEY"] = ""
 
 import app.main as m  # noqa: E402
 
@@ -292,7 +295,29 @@ check("from address is Resend's shared sender", p["from"].endswith("<onboarding@
 m._send_contact_email(evil)
 pe = sent[-1]["json"]
 check("injected subject/reply-to flattened to one line", "\n" not in pe["subject"] and "\n" not in pe["reply_to"], repr(pe))
-check("payload has exactly the expected fields", set(pe) == {"from", "to", "reply_to", "subject", "text"}, str(sorted(pe)))
+check("payload has exactly the expected fields", set(pe) == {"from", "to", "reply_to", "subject", "text", "html"}, str(sorted(pe)))
+
+print("\n--- 7a. The branded HTML email ---")
+xss = m.ContactMessageModel(
+    id=m.new_id("msg"), name="<script>alert(1)</script>", email="x@example.com",
+    subject="<b>hi</b>", message="line1\n<img src=x onerror=alert(1)>\nline3",
+    phone="+91 90000 00000", category="Bug report", created_at="2026-09-19T10:00:00",
+)
+m._send_contact_email(xss)
+hx = sent[-1]["json"]["html"]
+check("plain-text part is still sent alongside the HTML", bool(sent[-1]["json"]["text"]))
+check("markup typed into the form is escaped, never rendered",
+      "<script>" not in hx and "<img src=x" not in hx and "&lt;script&gt;" in hx and "&lt;img src=x" in hx)
+check("line breaks are kept", "line1<br>" in hx and "<br>line3" in hx)
+check("all the details are present", all(v in hx for v in ("x@example.com", "+91 90000 00000", "Bug report", "2026-09-19T10:00:00")))
+check("no logo when only a local origin is known", "<img" not in hx)
+_origins = m.ALLOWED_ORIGINS
+m.ALLOWED_ORIGINS = ["http://localhost:5500", "https://careernexus-w8rh.onrender.com/"]
+m._send_contact_email(row)
+h2 = sent[-1]["json"]["html"]
+check("logo header uses the deployed site's logo",
+      'src="https://careernexus-w8rh.onrender.com/assets/logos/careernexus-logo.png"' in h2)
+m.ALLOWED_ORIGINS = _origins
 
 m._contact_hits.clear()
 check("meta reports email as configured", client.get("/api/contact/meta").json().get("email_configured") is True)

@@ -7130,14 +7130,68 @@ def _header_safe(value: str) -> str:
     return re.sub(r"[\r\n]+", " ", value or "").strip()
 
 
-def _send_via_resend(subject: str, reply_to: str, text: str) -> tuple:
+from html import escape as _html_escape  # noqa: E402
+
+
+def _public_site_url() -> str:
+    """The deployed frontend's origin (first https entry in ALLOWED_ORIGINS), or "" locally."""
+    return next((o.rstrip("/") for o in ALLOWED_ORIGINS if o.startswith("https://")), "")
+
+
+def _contact_email_html(row: "ContactMessageModel") -> str:
+    """The branded HTML twin of the plain-text contact email.
+
+    Every user-supplied value goes through _html_escape: this is markup
+    built from a public form, so nothing typed there may become a tag.
+    """
+    def esc(value) -> str:
+        return _html_escape(str(value or ""), quote=True)
+
+    site = _public_site_url()
+    logo = (
+        f'<td style="padding-right:12px;"><img src="{esc(site)}/assets/logos/careernexus-logo.png" '
+        'width="44" height="48" alt="CareerNexus" style="display:block;border-radius:10px;"></td>'
+        if site else ""
+    )
+    fields = [("Name", row.name), ("Email", row.email), ("Subject", row.subject)]
+    if row.phone:
+        fields.append(("Phone", row.phone))
+    if row.category:
+        fields.append(("Category", row.category))
+    rows_html = "".join(
+        f'<tr><td style="padding:6px 0;color:#6b7280;font-size:12px;width:90px;vertical-align:top;">{label}</td>'
+        f'<td style="padding:6px 0;color:#111827;font-size:14px;">{esc(value)}</td></tr>'
+        for label, value in fields
+    )
+    message = esc(row.message).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
+    return (
+        '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;'
+        'border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">'
+        '<div style="background:#0d1117;padding:16px 20px;">'
+        f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>{logo}'
+        '<td style="color:#ffffff;font-size:18px;font-weight:700;">CareerNexus'
+        '<div style="color:#9ca3af;font-size:12px;font-weight:400;">New message from the contact form</div></td>'
+        '</tr></table></div>'
+        f'<div style="padding:20px;"><table role="presentation" cellpadding="0" cellspacing="0" width="100%">{rows_html}</table>'
+        '<div style="margin-top:14px;padding:14px;background:#f3f4f6;border-radius:8px;color:#111827;'
+        f'font-size:14px;line-height:1.55;">{message}</div></div>'
+        '<div style="padding:12px 20px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;">'
+        f'Submitted {esc(row.created_at)} from the CareerNexus website. Reply to this email to answer {esc(row.name)}.'
+        '</div></div>'
+    )
+
+
+def _send_via_resend(subject: str, reply_to: str, text: str, html: Optional[str] = None) -> tuple:
     """POST one message to Resend's HTTPS API. Returns (delivered, error)."""
+    payload = {
+        "from": RESEND_FROM, "to": [CONTACT_TO], "reply_to": reply_to,
+        "subject": subject, "text": text,
+    }
+    if html:
+        payload["html"] = html
     req = urllib.request.Request(
         "https://api.resend.com/emails",
-        data=json.dumps({
-            "from": RESEND_FROM, "to": [CONTACT_TO], "reply_to": reply_to,
-            "subject": subject, "text": text,
-        }).encode("utf-8"),
+        data=json.dumps(payload).encode("utf-8"),
         method="POST",
         headers={
             "Authorization": f"Bearer {RESEND_API_KEY}",
@@ -7185,7 +7239,7 @@ def _send_contact_email(row: "ContactMessageModel") -> tuple:
         )
 
         if RESEND_API_KEY:
-            return _send_via_resend(subject, reply_to, body)
+            return _send_via_resend(subject, reply_to, body, _contact_email_html(row))
 
         msg = EmailMessage()
         msg["Subject"] = subject

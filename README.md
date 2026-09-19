@@ -326,7 +326,7 @@ Every requirement in SIH26044, and where it lives in the build.
 | Institution dashboards & analytics | `institution.html` · `GET /api/institution/analytics` |
 | Skill demand trends for policymakers | Curriculum-gap ranking by impact (students lacking × roles demanding) |
 | Role-based access for all four stakeholders | `require_roles()` on every endpoint · role-filtered navigation |
-| Secure document management | `documents.html` · `DocumentModel` — owner + staff only |
+| Secure document management | `resume.html` (Documents tab) · `DocumentModel` — owner + staff only |
 | Integration with learning platforms | Curated catalogue links to NPTEL, SWAYAM, freeCodeCamp, MS Learn, AWS |
 
 ---
@@ -378,14 +378,13 @@ VertexSquad/
 │   │   ├── dashboard.html          #     Student dashboard
 │   │   ├── assessment.html         #     Skill assessment questionnaire
 │   │   ├── profile.html            #     Editable profile + verified portfolio
-│   │   ├── resume.html             #     Upload + AI extraction
+│   │   ├── resume.html             #     Resume upload + AI extraction, and secure documents
 │   │   ├── skill-gap.html
 │   │   ├── learning.html           #     Personalised learning paths
 │   │   ├── opportunities.html      #     Internships, jobs, apprenticeships, projects, FDPs
 │   │   ├── internship-details.html #     Match breakdown + apply
 │   │   ├── what-if.html
 │   │   ├── applications.html
-│   │   ├── documents.html          #     Secure certificates & reports
 │   │   ├── portfolio.html          #     Public share view only (?id=…) — the
 │   │   │                           #     private view lives on profile.html
 │   │   ├── search.html             #     Opportunity Search + filters

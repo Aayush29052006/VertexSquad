@@ -172,6 +172,20 @@ def needs_rehash(stored: str) -> bool:
     return not (stored or "").startswith("pbkdf2_sha256$")
 
 
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+
+def now_ist() -> datetime.datetime:
+    """Current time in India. Render runs in UTC, so a bare datetime.now()
+    stamps every row 5h30m behind what the people using the site see, and
+    flips "today" a few hours early or late around midnight."""
+    return datetime.datetime.now(IST)
+
+
+def today_ist() -> datetime.date:
+    return now_ist().date()
+
+
 def new_id(prefix: str) -> str:
     """A collision-proof primary key.
 
@@ -1598,14 +1612,14 @@ async def upload_resume(resume: UploadFile = File(...), student: StudentModel = 
     if existing_resume:
         existing_resume.file_name = resume.filename
         existing_resume.file_size_kb = file_size_kb
-        existing_resume.uploaded_at = datetime.datetime.now().isoformat()
+        existing_resume.uploaded_at = now_ist().isoformat()
         existing_resume.extracted_skills = json.dumps(extracted_data)
     else:
         new_resume = ResumeModel(
             student_id=student.id,
             file_name=resume.filename,
             file_size_kb=file_size_kb,
-            uploaded_at=datetime.datetime.now().isoformat(),
+            uploaded_at=now_ist().isoformat(),
             extracted_skills=json.dumps(extracted_data)
         )
         db.add(new_resume)
@@ -1615,7 +1629,7 @@ async def upload_resume(resume: UploadFile = File(...), student: StudentModel = 
     return {
         "file_name": resume.filename,
         "file_size_kb": file_size_kb,
-        "uploaded_at": datetime.datetime.now().isoformat(),
+        "uploaded_at": now_ist().isoformat(),
         "status": "processed"
     }
 
@@ -1809,7 +1823,7 @@ def apply_to_internship(internship_id: str, student: StudentModel = Depends(get_
     score_details = calculate_match_score_breakdown(student, internship)
     
     app_id = new_id("app")
-    applied_on = datetime.datetime.now().strftime("%Y-%m-%d")
+    applied_on = now_ist().strftime("%Y-%m-%d")
     
     new_app = ApplicationModel(
         id=app_id,
@@ -2832,7 +2846,7 @@ def submit_assessment(
     record = AssessmentModel(
         id=new_id("asm"),
         student_id=student.id,
-        submitted_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        submitted_at=now_ist().strftime("%Y-%m-%d %H:%M"),
         technical_score=result["technical_score"],
         soft_score=result["soft_score"],
         aptitude_score=result["aptitude_score"],
@@ -3088,7 +3102,7 @@ def create_learning_program(
         cost=(payload.cost or "Free").strip(),
         audience=payload.audience or "student",
         posted_by=user.id,
-        created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        created_at=now_ist().strftime("%Y-%m-%d %H:%M"),
     )
     db.add(program)
     db.commit()
@@ -3578,7 +3592,7 @@ def add_progress(
         week=max(1, payload.week),
         summary=payload.summary.strip(),
         hours=max(0, payload.hours or 0),
-        created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        created_at=now_ist().strftime("%Y-%m-%d %H:%M"),
     )
     db.add(log)
     db.commit()
@@ -3606,7 +3620,7 @@ def add_mentor_feedback(
 
     log.mentor_feedback = payload.mentor_feedback.strip()
     log.mentor_rating = payload.mentor_rating
-    log.reviewed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    log.reviewed_at = now_ist().strftime("%Y-%m-%d %H:%M")
     db.commit()
     return _progress_out(log)
 
@@ -3649,7 +3663,7 @@ def complete_internship(
                 verified_by=user.id,
                 verifier_name=user.full_name,
                 verifier_role=user_role(user),
-                verified_at=datetime.datetime.now().strftime("%Y-%m-%d"),
+                verified_at=now_ist().strftime("%Y-%m-%d"),
                 note=f"Completed {opp.title} at {opp.company}" if opp else "Internship completed",
             )
         )
@@ -3831,7 +3845,7 @@ def verify_portfolio_item(
         verified_by=user.id,
         verifier_name=user.full_name,
         verifier_role=user_role(user),
-        verified_at=datetime.datetime.now().strftime("%Y-%m-%d"),
+        verified_at=now_ist().strftime("%Y-%m-%d"),
         note=(payload.note or "").strip(),
     )
     db.add(v)
@@ -3980,7 +3994,7 @@ async def upload_document(
         file_name=file.filename,
         content_type=declared,
         size_kb=max(1, len(content) // 1024),
-        uploaded_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        uploaded_at=now_ist().strftime("%Y-%m-%d %H:%M"),
         data_b64=base64.b64encode(content).decode("ascii"),
     )
     db.add(doc)
@@ -4234,7 +4248,7 @@ DEMO_STUDENT_EMAIL = "demo.student@careernexus.example.com"
 
 def seed_platform_v2():
     db = SessionLocal()
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = now_ist().strftime("%Y-%m-%d %H:%M")
     try:
         # --- One account per stakeholder role, so every portal is reachable.
         demo_accounts = [
@@ -5489,7 +5503,7 @@ def seed_external_catalogue():
     this function owns (source_type == "external") get refreshed.
     """
     db = SessionLocal()
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = now_ist().strftime("%Y-%m-%d %H:%M")
     try:
         # Catalogue entries that have been retired (source went dead, or the
         # entry was merged into another). Their rows are deleted so a stale
@@ -5597,9 +5611,48 @@ def seed_external_catalogue():
         db.close()
 
 
+def roll_demo_deadlines(db: Session) -> int:
+    """Keep the platform's own demo postings open.
+
+    The seeded demo employer's postings carry fixed deadlines that were true
+    the day they were written and then quietly expire, leaving a job board
+    full of "Closed" cards. Any that have lapsed are moved 2-6 weeks ahead of
+    today (IST). Real postings - recruiters', or AIIA's official ones - are
+    never touched: only rows owned by the demo employer are eligible.
+    """
+    today = today_ist()
+    moved = 0
+    rows = db.query(InternshipModel).filter(InternshipModel.company == "CareerNexus Demo Employer").all()
+    for row in rows:
+        try:
+            due = datetime.datetime.strptime(row.deadline or "", "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if due >= today + datetime.timedelta(days=7):
+            continue
+        # Deterministic per row so the postings don't all close on one day.
+        offset = 14 + sum(ord(c) for c in row.id) % 29
+        row.deadline = (today + datetime.timedelta(days=offset)).isoformat()
+        moved += 1
+    if moved:
+        db.commit()
+    return moved
+
+
+def refresh_demo_deadlines():
+    db = SessionLocal()
+    try:
+        n = roll_demo_deadlines(db)
+        if n:
+            print(f"Demo postings: moved {n} lapsed deadlines forward")
+    finally:
+        db.close()
+
+
 if not SEEDS_CURRENT:
     seed_external_catalogue()
     mark_seeds_current()
+refresh_demo_deadlines()
 
 # =====================================================================
 # AIIA OPPORTUNITY HUB
@@ -5839,7 +5892,7 @@ AIIA_PROGRAMMES = [
         "title": "Garbhini Mitra Course",
         "category": "Certificate Course",
         "department": "Department of Prasuti Tantra & Stri Roga",
-        "description": "Course on Ayurvedic maternal care. AIIA publishes the brochure together with the application form. Applications for this intake are open; AIIA extended the last date to 15 September 2026 by a separate notice.",
+        "description": "Course on Ayurvedic maternal care. AIIA publishes the brochure together with the application form. Applications for this intake closed on 15 September 2026, the last date AIIA set by a separate notice; watch the notices for the next intake.",
         "announced": "2026-08-10",
         "deadline": "2026-09-15",
         "mode": "Offline",
@@ -6207,7 +6260,7 @@ FEED_PARSERS = {"aiia": _parse_aiia}
 
 def sync_one_source(source: dict, db: Session) -> dict:
     """Pull one source and upsert its rows. Never raises."""
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = now_ist().strftime("%Y-%m-%d %H:%M")
     record = db.query(FeedSyncModel).filter(FeedSyncModel.source_id == source["id"]).first()
     if record is None:
         record = FeedSyncModel(source_id=source["id"])
@@ -6291,6 +6344,7 @@ def _feed_sync_loop():
     """Background refresh. Daemon thread, so it never blocks shutdown."""
     while True:
         try:
+            refresh_demo_deadlines()
             results = sync_all_sources()
             ok = sum(1 for r in results if r["status"] == "ok")
             new = sum(r["new"] for r in results)
@@ -6320,7 +6374,7 @@ def days_until(date_text: str):
         target = datetime.datetime.strptime(date_text, "%Y-%m-%d").date()
     except ValueError:
         return None
-    return (target - datetime.date.today()).days
+    return (target - today_ist()).days
 
 
 def _feed_item_out(row: FeedItemModel) -> dict:
@@ -7331,7 +7385,7 @@ def submit_contact(payload: ContactPayload, request: Request, db: Session = Depe
         message=message,
         phone=phone,
         category=category,
-        created_at=datetime.datetime.now().isoformat(timespec="seconds"),
+        created_at=now_ist().isoformat(timespec="seconds"),
         client_ip=ip,
     )
     # Stored first, on purpose: from here on the message cannot be lost,

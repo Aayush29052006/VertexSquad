@@ -6368,7 +6368,11 @@ def _probe_url(url: str) -> tuple:
         with urllib.request.urlopen(req, timeout=8, context=_feed_ssl_context()) as resp:
             return "live", resp.status, ""
     except urllib.error.HTTPError as e:
-        if e.code in (404, 410):
+        # A 404 on a site's front door is not "gone": government sites in
+        # particular answer datacenter addresses with a 404 while serving the
+        # same page normally to everyone else. Only a deep link that 404s is
+        # trustworthy evidence the page was removed.
+        if e.code in (404, 410) and urllib.parse.urlparse(target).path not in ("", "/"):
             return "broken", e.code, f"HTTP {e.code}"
         return "unverified", e.code, f"HTTP {e.code} (site may block automated checks)"
     except urllib.error.URLError as e:

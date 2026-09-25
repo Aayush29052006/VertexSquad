@@ -101,6 +101,31 @@ async function renderOverview(el) {
 const FEED_STATUS_BADGE = { ok: 'badge-success', failed: 'badge-danger', never: 'badge-neutral' };
 const FEED_STATUS_LABEL = { ok: 'Refreshed', failed: 'Failed', never: 'Never run' };
 
+function catalogueBlock(c) {
+  if (!c || !c.checked) {
+    return `<div class="callout mb-5"><strong>Catalogue links not verified yet.</strong>
+      <div class="text-caption mt-1">Press the sync button: every official page in the catalogue is opened and its state recorded.</div></div>`;
+  }
+  const problems = (c.problems || []).map((p) => `
+    <tr>
+      <td>${escapeHtml(p.title)}</td>
+      <td><span class="badge ${p.state === 'broken' ? 'badge-danger' : 'badge-neutral'}">${p.state === 'broken' ? 'Page gone' : 'Could not verify'}</span></td>
+      <td class="text-caption">${escapeHtml(p.note || '')}</td>
+      <td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer">Open</a></td>
+    </tr>`).join('');
+  return `
+    <div class="stat-grid mb-5">
+      ${statTile('🔗 Catalogue pages live', `${c.live} / ${c.checked}`, `Checked ${c.last_checked || ''}`)}
+      ${statTile('⚠️ Could not verify', c.unverified, 'Site blocks bots or timed out')}
+      ${statTile('❌ Page gone', c.broken, '404 or host not found')}
+    </div>
+    ${problems ? `<div class="card table-wrap mb-5">
+      <table class="admin-table">
+        <thead><tr><th>Catalogue entry</th><th>State</th><th>Details</th><th></th></tr></thead>
+        <tbody>${problems}</tbody>
+      </table></div>` : ''}`;
+}
+
 async function renderLiveData(el, outcome = null) {
   const feed = await api.getFeedItems();
 
@@ -117,7 +142,7 @@ async function renderLiveData(el, outcome = null) {
       <h2 class="text-card-heading mb-1">Fetch real-world data</h2>
       <p class="text-body mb-3">
         Reads the latest notices, vacancies, tenders and news straight from the official
-        AIIA website (aiia.gov.in), right now. Nothing is generated: every item is copied from
+        AIIA website (aiia.gov.in), then re-opens every official page the catalogue links to. Nothing is generated: every item is copied from
         AIIA's own public feed, and items already stored are updated in place, never duplicated.
       </p>
       <div class="flex items-center gap-3" style="flex-wrap:wrap;">
@@ -129,8 +154,10 @@ async function renderLiveData(el, outcome = null) {
     <div class="stat-grid mb-5">
       ${statTile('📢 Open items', feed.total, 'Notices, vacancies, tenders, news')}
       ${statTile('⏳ Closing soon', feed.closing_soon, 'Deadline within 7 days')}
-      ${statTile('🕒 Last checked', feed.last_synced || 'Never', 'Server time')}
+      ${statTile('🕒 Last checked', feed.last_synced || 'Never', 'India time (IST)')}
     </div>
+
+    ${catalogueBlock(feed.catalogue)}
 
     <div class="card table-wrap">
       <table class="admin-table">
@@ -158,7 +185,7 @@ async function renderLiveData(el, outcome = null) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Fetching from aiia.gov.in...';
     document.getElementById('syncProgress').textContent =
-      'Checking 4 official sources. This can take up to a minute.';
+      'Checking 4 official feeds, then every catalogue page. This can take up to a minute.';
 
     let result;
     try {
@@ -169,7 +196,9 @@ async function renderLiveData(el, outcome = null) {
         headline: `${res.sources_ok} of ${res.sources_total} sources refreshed · ${res.new_items} new item${res.new_items === 1 ? '' : 's'} found`,
         detail: failed.length
           ? `Could not refresh: ${failed.map((f) => f.source_id.replace('aiia_', '')).join(', ')}. Previously stored items were left untouched.`
-          : 'Everything below is what AIIA is publishing right now.',
+          : res.catalogue && res.catalogue.checked
+            ? `Catalogue re-verified: ${res.catalogue.live} of ${res.catalogue.checked} official pages live${res.catalogue.broken ? `, ${res.catalogue.broken} gone` : ''}. AIIA has ${res.catalogue.aiia_open_vacancies} advertised vacanc${res.catalogue.aiia_open_vacancies === 1 ? 'y' : 'ies'} open.`
+            : 'Everything below is what AIIA is publishing right now.',
       };
     } catch (err) {
       result = { failed: true, headline: 'The sync could not be completed.', detail: err.message || '' };

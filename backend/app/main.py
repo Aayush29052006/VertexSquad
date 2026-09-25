@@ -7,6 +7,7 @@ from email.message import EmailMessage
 from email_validator import validate_email as _validate_email
 import jwt
 import datetime
+import socket
 from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -6188,6 +6189,22 @@ class FeedSyncModel(Base):
     items_new = Column(Integer, default=0)
 
 
+class CatalogueCheckModel(Base):
+    """Result of the last real-world check of one catalogue entry's official
+    page, so the admin can see which curated links are alive, which could not
+    be verified from here, and which are gone."""
+    __tablename__ = "catalogue_checks"
+
+    item_id = Column(String, primary_key=True, index=True)
+    kind = Column(String, nullable=False, default="opportunity")
+    title = Column(String, nullable=False, default="")
+    url = Column(String, nullable=False, default="")
+    state = Column(String, nullable=False, default="unverified")  # live | unverified | broken
+    http_status = Column(Integer, nullable=True)
+    note = Column(String, nullable=False, default="")
+    checked_at = Column(String, nullable=False, default="")
+
+
 create_missing_tables()
 
 
@@ -6332,6 +6349,108 @@ def sync_one_source(source: dict, db: Session) -> dict:
     return {"source_id": source["id"], "status": "ok", "new": new_count, "seen": len(items)}
 
 
+def _probe_url(url: str) -> tuple:
+    """(state, http_status, note) for one official page.
+
+    Only a definite "this page is gone" (404/410, or a host that does not
+    resolve) counts as broken. Timeouts, bot-blocking (403/429/5xx) and TLS
+    quirks are "unverified": many large sites refuse automated requests, and
+    calling a working page broken would be its own kind of false data.
+    """
+    target = (url or "").split("#", 1)[0]
+    if not target:
+        return "unverified", None, "no URL"
+    req = urllib.request.Request(target, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; CareerNexusBot/1.0; +https://careernexus-w8rh.onrender.com)",
+        "Accept": "text/html,application/pdf,*/*",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=8, context=_feed_ssl_context()) as resp:
+            return "live", resp.status, ""
+    except urllib.error.HTTPError as e:
+        if e.code in (404, 410):
+            return "broken", e.code, f"HTTP {e.code}"
+        return "unverified", e.code, f"HTTP {e.code} (site may block automated checks)"
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, "reason", None), socket.gaierror):
+            return "broken", None, "host not found"
+        return "unverified", None, f"{type(e.reason).__name__}"[:120]
+    except (TimeoutError, OSError) as e:
+        return "unverified", None, type(e).__name__
+
+
+def _is_vacancy_advertisement(title: str) -> bool:
+    """Feed rows titled 'Provisional Result...' or 'List of shortlisted...'
+    sit in the vacancy feed too, but they are not open posts."""
+    t = (title or "").strip().lower()
+    return t.startswith("advertisement") or "walk-in" in t or "walk in" in t
+
+
+def refresh_catalogue() -> dict:
+    """Re-verify the curated catalogue against the real world. Never raises.
+
+    1. Every official page the catalogue points at is requested and its state
+       recorded.
+    2. The "AIIA Recruitment & Vacancies" entry takes its deadline and opening
+       count from the live AIIA vacancy feed instead of a hand-typed value.
+    """
+    summary = {"checked": 0, "live": 0, "unverified": 0, "broken": 0,
+               "aiia_open_vacancies": 0, "nearest_vacancy_deadline": ""}
+    db = SessionLocal()
+    try:
+        now = now_ist().strftime("%Y-%m-%d %H:%M")
+        entries = []
+        for item in EXTERNAL_OPPORTUNITIES:
+            entries.append((item["id"], "opportunity", item["title"], item["official_url"]))
+        for item in EXTERNAL_LEARNING:
+            entries.append((item["id"], "learning", item["title"], item["url"]))
+        for item in AIIA_PROGRAMMES:
+            entries.append((item["id"], "aiia", item["title"], item.get("url", "")))
+
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            results = list(pool.map(lambda e: _probe_url(e[3]), entries))
+
+        existing = {r.item_id: r for r in db.query(CatalogueCheckModel).all()}
+        for (item_id, kind, title, url), (state, code, note) in zip(entries, results):
+            row = existing.get(item_id)
+            if row is None:
+                row = CatalogueCheckModel(item_id=item_id)
+                db.add(row)
+            row.kind, row.title, row.url = kind, title[:200], url or ""
+            row.state, row.http_status, row.note, row.checked_at = state, code, note, now
+            summary["checked"] += 1
+            summary[state] += 1
+
+        # Live AIIA vacancies -> the catalogue entry that represents them.
+        today = today_ist().isoformat()
+        open_ads = [
+            r for r in db.query(FeedItemModel).filter(FeedItemModel.source_id == "aiia_vacancies").all()
+            if _is_vacancy_advertisement(r.title) and r.deadline and r.deadline >= today
+        ]
+        summary["aiia_open_vacancies"] = len(open_ads)
+        nearest = min((r.deadline for r in open_ads), default="")
+        summary["nearest_vacancy_deadline"] = nearest
+        entry = next((x for x in EXTERNAL_OPPORTUNITIES if x["id"] == "ext_aiia_vacancies"), None)
+        row = db.query(InternshipModel).filter(InternshipModel.id == "ext_aiia_vacancies").first()
+        if entry and row:
+            row.deadline = nearest
+            row.openings = len(open_ads)
+            suffix = (
+                f" Right now {len(open_ads)} advertised post{'s are' if len(open_ads) != 1 else ' is'} open; "
+                f"the nearest closes on {nearest}."
+                if open_ads else " No advertised posts are open at the moment."
+            )
+            row.description = entry["description"] + suffix
+        db.commit()
+    except Exception as e:  # a bug here must not break the feed sync
+        db.rollback()
+        summary["error"] = f"{type(e).__name__}: {e}"[:200]
+    finally:
+        db.close()
+    return summary
+
+
 def sync_all_sources() -> list:
     db = SessionLocal()
     try:
@@ -6346,6 +6465,8 @@ def _feed_sync_loop():
         try:
             refresh_demo_deadlines()
             results = sync_all_sources()
+            cat = refresh_catalogue()
+            print(f"Catalogue: {cat['live']} live, {cat['unverified']} unverified, {cat['broken']} broken")
             ok = sum(1 for r in results if r["status"] == "ok")
             new = sum(r["new"] for r in results)
             print(f"Official feeds: synced {ok}/{len(results)} sources, {new} new items")
@@ -6395,6 +6516,21 @@ def _feed_item_out(row: FeedItemModel) -> dict:
     }
 
 
+def _catalogue_health(db: Session) -> dict:
+    rows = db.query(CatalogueCheckModel).all()
+    return {
+        "checked": len(rows),
+        "live": sum(1 for r in rows if r.state == "live"),
+        "unverified": sum(1 for r in rows if r.state == "unverified"),
+        "broken": sum(1 for r in rows if r.state == "broken"),
+        "last_checked": max((r.checked_at for r in rows), default=""),
+        "problems": [
+            {"title": r.title, "url": r.url, "state": r.state, "note": r.note}
+            for r in rows if r.state != "live"
+        ],
+    }
+
+
 @app.get("/api/feeds/items")
 def list_feed_items(
     category: Optional[str] = Query(None),
@@ -6435,6 +6571,7 @@ def list_feed_items(
         "categories": [{"name": k, "count": v} for k, v in sorted(counts.items())],
         "closing_soon": sum(1 for i in items if i["days_left"] is not None and 0 <= i["days_left"] <= 7),
         "last_synced": last_run,
+        "catalogue": _catalogue_health(db),
         "sources": [
             {
                 "id": s["id"],
@@ -6456,8 +6593,10 @@ def trigger_feed_sync(admin: StudentModel = Depends(get_current_admin)):
     """Run every source now. Admin-only: it makes outbound requests to
     other people's servers, so it is not something any visitor can trigger."""
     results = sync_all_sources()
+    catalogue = refresh_catalogue()
     return {
         "results": results,
+        "catalogue": catalogue,
         "new_items": sum(r["new"] for r in results),
         "sources_ok": sum(1 for r in results if r["status"] == "ok"),
         "sources_total": len(results),

@@ -443,7 +443,7 @@ class AppMetaModel(Base):
 # accounts, the learning programmes, anything the seed_* functions write.
 # Startup compares it against what is recorded in app_meta and re-runs the
 # seeders only when the two differ.
-SEED_VERSION = "2026-09-29a"  # AIIA removed (PS changed: SIH26044 -> PS 26134)
+SEED_VERSION = "2026-09-29b"  # + purge legacy int_aiia_/opp_ayur_/lp_ayur_ rows and their demo student
 
 
 # Create tables

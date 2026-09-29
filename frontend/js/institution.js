@@ -183,6 +183,48 @@ function gapRow(g, maxImpact) {
       </div>
 
       <section class="card mb-5">
+        <h2 class="text-section-heading mb-1">District Training Plan</h2>
+        <p class="text-caption mb-3">
+          PS 26134 asks for "district-level training plans" — for each district, the skills its
+          students are shortest on, weighted by how many open roles want them. Same impact ranking
+          as Curriculum Gaps above, split by district instead of the whole cohort.
+        </p>
+        ${
+          (a.training_plan || []).length
+            ? a.training_plan
+                .map(
+                  (p) => `
+              <div class="mb-4">
+                <h3 class="text-card-heading mb-2">${escapeHtml(p.district)} <span class="text-caption">(${p.students} student${p.students === 1 ? '' : 's'})</span></h3>
+                ${
+                  p.top_gaps.length
+                    ? `<div class="table-wrap">
+                         <table class="admin-table">
+                           <thead><tr><th>Skill</th><th class="col-num">% lacking it</th><th class="col-num">Openings wanting it</th></tr></thead>
+                           <tbody>
+                             ${p.top_gaps
+                               .map(
+                                 (g) => `
+                             <tr>
+                               <td><strong>${escapeHtml(g.skill)}</strong></td>
+                               <td class="col-num">${g.pct_missing}%</td>
+                               <td class="col-num">${g.openings_requiring}</td>
+                             </tr>`
+                               )
+                               .join('')}
+                           </tbody>
+                         </table>
+                       </div>`
+                    : `<p class="text-caption">No gap detected for this district.</p>`
+                }
+              </div>`
+                )
+                .join('')
+            : `<p class="text-body">Not enough data yet.</p>`
+        }
+      </section>
+
+      <section class="card mb-5">
         <h2 class="text-section-heading mb-1">Course Health</h2>
         <p class="text-caption mb-3">
           Every published course's skills, checked against current open-role demand. A course whose

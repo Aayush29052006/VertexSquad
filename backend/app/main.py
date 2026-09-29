@@ -4353,6 +4353,41 @@ def institution_analytics(
     ]
     district_rows.sort(key=lambda r: r["students"], reverse=True)
 
+    # District-level training plan: PS 26134's own words are "generate
+    # district-level training plans". Same impact math as curriculum_gaps
+    # above (students lacking a skill x roles demanding it), just partitioned
+    # by district instead of run over the whole cohort - no new data
+    # collection needed, everything here already exists in the system.
+    students_by_district = {}
+    for stu in students:
+        label = (stu.location or "").strip() or "Unspecified"
+        students_by_district.setdefault(label, []).append(stu)
+
+    training_plan = []
+    for district, d_students in students_by_district.items():
+        d_total = len(d_students)
+        gaps = []
+        for skill, wanted_by in demand.items():
+            lacking = sum(
+                1 for s in d_students if skill.lower() not in {x.lower() for x in json.loads(s.skills or "[]")}
+            )
+            if lacking == 0:
+                continue
+            gaps.append({
+                "skill": skill,
+                "students_missing": lacking,
+                "pct_missing": round(lacking * 100 / d_total),
+                "openings_requiring": wanted_by,
+                "impact": round(lacking * wanted_by / d_total, 1),
+            })
+        gaps.sort(key=lambda g: g["impact"], reverse=True)
+        training_plan.append({
+            "district": district,
+            "students": d_total,
+            "top_gaps": gaps[:5],
+        })
+    training_plan.sort(key=lambda p: p["students"], reverse=True)
+
     # Course health: PS 26134 asks to "flag obsolete or oversupplied
     # courses". We do not track enrollment or completion counts, so
     # "oversupplied" cannot be measured honestly -- what we CAN measure from
@@ -4404,6 +4439,7 @@ def institution_analytics(
         "curriculum_gaps": curriculum_gaps[:12],
         "by_branch": branch_rows,
         "by_district": district_rows,
+        "training_plan": training_plan,
         "course_health": course_health[:20],
         "employer_signals": employer_signals,
     }

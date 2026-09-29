@@ -5590,6 +5590,46 @@ def seed_external_catalogue():
         for _rid in RETIRED_CATALOGUE_IDS:
             db.query(InternshipModel).filter(InternshipModel.id == _rid).delete()
             db.query(LearningProgramModel).filter(LearningProgramModel.id == _rid).delete()
+
+        # A much larger batch of AIIA/Ayurveda rows (int_aiia_1..20, opp_ayur_1..4,
+        # lp_ayur_1..3, plus a whole demo student and their application) turned
+        # out to already be sitting in the shared database from before this
+        # file's history, under ids this module has never referenced - so the
+        # id-list retirement above could never have caught them. Found by
+        # querying the live catalogue directly rather than assumed; purged by
+        # id/email prefix, since more may exist than were sampled. Children are
+        # deleted before parents to satisfy the real foreign keys in Postgres.
+        legacy_student_ids = [
+            r.id for r in db.query(StudentModel).filter(
+                (StudentModel.id.like("stu_aiia_%")) | (StudentModel.id.like("stu_ayur_%"))
+                | (StudentModel.email.ilike("%aiia%")) | (StudentModel.email.ilike("%ayurved%"))
+            ).all()
+        ]
+        legacy_app_ids = [
+            r.id for r in db.query(ApplicationModel).filter(
+                (ApplicationModel.student_id.in_(legacy_student_ids)) if legacy_student_ids else False
+            ).all()
+        ] if legacy_student_ids else []
+        legacy_opp_prefixes = ("int_aiia_%", "opp_ayur_%")
+        for _prefix in legacy_opp_prefixes:
+            legacy_app_ids += [
+                r.id for r in db.query(ApplicationModel).filter(ApplicationModel.internship_id.like(_prefix)).all()
+            ]
+        legacy_app_ids = list(set(legacy_app_ids))
+        if legacy_app_ids:
+            db.query(ProgressLogModel).filter(ProgressLogModel.application_id.in_(legacy_app_ids)).delete(synchronize_session=False)
+            db.query(ApplicationModel).filter(ApplicationModel.id.in_(legacy_app_ids)).delete(synchronize_session=False)
+        if legacy_student_ids:
+            db.query(VerificationModel).filter(VerificationModel.student_id.in_(legacy_student_ids)).delete(synchronize_session=False)
+            db.query(DocumentModel).filter(DocumentModel.student_id.in_(legacy_student_ids)).delete(synchronize_session=False)
+            db.query(ResumeModel).filter(ResumeModel.student_id.in_(legacy_student_ids)).delete(synchronize_session=False)
+            db.query(AssessmentModel).filter(AssessmentModel.student_id.in_(legacy_student_ids)).delete(synchronize_session=False)
+            db.query(StudentModel).filter(StudentModel.id.in_(legacy_student_ids)).delete(synchronize_session=False)
+        for _prefix in ("int_aiia_%", "opp_ayur_%", "lp_ayur_%", "lp_aiia_%"):
+            db.query(InternshipModel).filter(InternshipModel.id.like(_prefix)).delete(synchronize_session=False)
+            db.query(LearningProgramModel).filter(LearningProgramModel.id.like(_prefix)).delete(synchronize_session=False)
+        if legacy_student_ids or legacy_app_ids:
+            print(f"Legacy catalogue: purged {len(legacy_student_ids)} student(s), {len(legacy_app_ids)} application(s) predating PS 26134's AIIA removal")
         db.commit()
 
         # Fetch every row this function owns up front, in one query per table,
@@ -5908,7 +5948,9 @@ def _purge_retired_feed_data() -> None:
         for sid in stale_sources:
             db.query(FeedItemModel).filter(FeedItemModel.source_id == sid).delete()
             db.query(FeedSyncModel).filter(FeedSyncModel.source_id == sid).delete()
-        stale_checks = db.query(CatalogueCheckModel).filter(CatalogueCheckModel.item_id.like("aiia_%")).delete(synchronize_session=False)
+        stale_checks = 0
+        for _prefix in ("aiia_%", "ext_aiia_%", "ext_lp_aiia_%"):
+            stale_checks += db.query(CatalogueCheckModel).filter(CatalogueCheckModel.item_id.like(_prefix)).delete(synchronize_session=False)
         if stale_sources or stale_checks:
             db.commit()
             print(f"Official feeds: purged {len(stale_sources)} retired source(s) and {stale_checks} retired catalogue check(s)")

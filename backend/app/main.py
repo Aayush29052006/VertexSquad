@@ -1689,6 +1689,32 @@ def confirm_skills(payload: ConfirmSkillsPayload, student: StudentModel = Depend
     return {"success": True, "skills": payload.skills}
 
 
+def _caller_audience(user: StudentModel) -> str:
+    """Which InternshipModel.audience value this account's role should see.
+    Mirrors GET /api/opportunities' own filter, which is where this rule was
+    first written correctly - every other internship-scoped endpoint needs
+    the same rule, or a faculty-only posting (FDPs, industrial training)
+    leaks into a student's recommendations, match score, skill gap, what-if,
+    interview prep, and even applications, and vice versa."""
+    return ROLE_FACULTY if user_role(user) == ROLE_FACULTY else "student"
+
+
+def _load_internship_for_role(internship_id: str, user: StudentModel, db: Session) -> InternshipModel:
+    """The internship, only if this account's role is allowed to see it.
+
+    A wrong-audience id is treated exactly like a missing one (404), not a
+    403 - a student was never meant to know a specific faculty posting id
+    exists, any more than a nonexistent one. Admin bypasses, same as every
+    other role check in this file.
+    """
+    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
+    if not internship:
+        raise HTTPException(status_code=404, detail="Internship not found")
+    if user_role(user) != ROLE_ADMIN and (internship.audience or "student") != _caller_audience(user):
+        raise HTTPException(status_code=404, detail="Internship not found")
+    return internship
+
+
 @app.get("/api/internships/recommendations")
 def get_recommendations(
     work_mode: Optional[str] = Query(None),
@@ -1697,6 +1723,7 @@ def get_recommendations(
     student: StudentModel = Depends(get_current_student),
     db: Session = Depends(get_db)
 ):
+    audience = _caller_audience(student)
     query = db.query(InternshipModel)
 
     if work_mode:
@@ -1714,6 +1741,10 @@ def get_recommendations(
     results = []
 
     for internship in internships:
+        # Rows created before the audience column existed default to student -
+        # same rule GET /api/opportunities applies to its own list.
+        if (internship.audience or "student") != audience:
+            continue
         score_details = calculate_match_score_breakdown(student, internship)
         results.append({
             "id": internship.id,
@@ -1744,10 +1775,7 @@ def get_recommendations(
 
 @app.get("/api/internships/{internship_id}")
 def get_internship_details(internship_id: str, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
-    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
-    if not internship:
-        raise HTTPException(status_code=404, detail="Internship not found")
-        
+    internship = _load_internship_for_role(internship_id, student, db)
     score_details = calculate_match_score_breakdown(student, internship)
     return {
         "id": internship.id,
@@ -1773,10 +1801,7 @@ def get_internship_details(internship_id: str, student: StudentModel = Depends(g
 
 @app.get("/api/internships/{internship_id}/match-score")
 def get_match_score(internship_id: str, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
-    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
-    if not internship:
-        raise HTTPException(status_code=404, detail="Internship not found")
-        
+    internship = _load_internship_for_role(internship_id, student, db)
     score_details = calculate_match_score_breakdown(student, internship)
     return {
         "match_score": score_details["match_score"],
@@ -1786,10 +1811,7 @@ def get_match_score(internship_id: str, student: StudentModel = Depends(get_curr
 
 @app.get("/api/internships/{internship_id}/skill-gap")
 def get_skill_gap(internship_id: str, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
-    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
-    if not internship:
-        raise HTTPException(status_code=404, detail="Internship not found")
-        
+    internship = _load_internship_for_role(internship_id, student, db)
     score_details = calculate_match_score_breakdown(student, internship)
     
     priorities = []
@@ -1810,9 +1832,7 @@ def get_skill_gap(internship_id: str, student: StudentModel = Depends(get_curren
 
 @app.post("/api/internships/{internship_id}/apply")
 def apply_to_internship(internship_id: str, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
-    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
-    if not internship:
-        raise HTTPException(status_code=404, detail="Internship not found")
+    internship = _load_internship_for_role(internship_id, student, db)
 
     # An externally-sourced listing belongs to someone else's portal. Writing
     # an application row here would tell the student they had applied when no
@@ -1898,9 +1918,7 @@ def get_applications(student: StudentModel = Depends(get_current_student), db: S
 
 @app.post("/api/internships/{internship_id}/what-if")
 def get_what_if_score(internship_id: str, payload: WhatIfPayload, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
-    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
-    if not internship:
-        raise HTTPException(status_code=404, detail="Internship not found")
+    internship = _load_internship_for_role(internship_id, student, db)
 
     # Current score
     current_details = calculate_match_score_breakdown(student, internship)
@@ -1935,9 +1953,7 @@ def get_what_if_score(internship_id: str, payload: WhatIfPayload, student: Stude
 @app.get("/api/internships/{internship_id}/interview-prep")
 def get_interview_prep(internship_id: str, student: StudentModel = Depends(get_current_student), db: Session = Depends(get_db)):
     """Generate role-specific interview questions with model answers."""
-    internship = db.query(InternshipModel).filter(InternshipModel.id == internship_id).first()
-    if not internship:
-        raise HTTPException(status_code=404, detail="Internship not found")
+    internship = _load_internship_for_role(internship_id, student, db)
 
     req_skills = json.loads(internship.required_skills)
     stu_skills = json.loads(student.skills)

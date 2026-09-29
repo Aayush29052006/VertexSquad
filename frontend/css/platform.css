@@ -1,6 +1,6 @@
 /* ==========================================================================
    CareerNexus — Platform surfaces
-   Styles for the pages added for SIH26044: skill assessment, learning paths,
+   Styles for the pages added for the platform: skill assessment, learning paths,
    opportunities, verified portfolio, documents and the recruiter / faculty /
    institution portals.
 
@@ -597,34 +597,9 @@ body.public-portfolio .app-shell { display: block; }
   padding-top: var(--space-4);
 }
 
-/* ---------- AIIA opportunity hub ---------- */
+/* ---------- Live Updates: category chips and source list ---------- */
 
-.aiia-card { display: flex; flex-direction: column; }
-.aiia-card-head {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  margin-bottom: var(--space-3);
-}
-.aiia-icon { font-size: 1.6rem; line-height: 1; }
-
-/* Facts grid: the details a student needs before opening the brochure. */
-.aiia-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-  gap: 10px var(--space-4);
-  margin: 0 0 var(--space-3);
-}
-.aiia-facts dt {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-.aiia-facts dd { margin: 0; font-size: 0.84rem; line-height: 1.4; }
-
-.aiia-chip {
+.feed-chip {
   padding: 6px 13px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -635,15 +610,15 @@ body.public-portfolio .app-shell { display: block; }
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
-.aiia-chip:hover { border-color: var(--primary); color: var(--text-primary); }
-.aiia-chip.active {
+.feed-chip:hover { border-color: var(--primary); color: var(--text-primary); }
+.feed-chip.active {
   border-color: var(--primary);
   background: var(--primary);
   color: #06231c;
 }
 
-.aiia-links { display: flex; flex-direction: column; }
-.aiia-link-row {
+.feed-links { display: flex; flex-direction: column; }
+.feed-link-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -652,7 +627,7 @@ body.public-portfolio .app-shell { display: block; }
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
-.aiia-link-row:last-child { border-bottom: none; }
+.feed-link-row:last-child { border-bottom: none; }
 
 /* ---------- Deadlines ----------
    Colour carries the urgency so a student can scan a list and see what is
@@ -733,75 +708,3 @@ body.public-portfolio .app-shell { display: block; }
 .sync-never { background: var(--text-muted); opacity: 0.5; }
 
 .ml-2 { margin-left: 8px; }
-
-/* ---------- AIIA hub: hero, badges, save, notes ---------- */
-
-.aiia-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-5);
-  align-items: center;
-  padding: var(--space-5);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--primary);
-  border-radius: var(--radius-lg, 14px);
-  background: var(--surface);
-}
-.aiia-hero-stats {
-  display: flex;
-  gap: var(--space-5);
-  text-align: center;
-}
-.aiia-hero-stats > div { display: flex; flex-direction: column; }
-
-.aiia-badges {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: var(--space-3);
-}
-
-/* AIIA Goa is a different campus, so it gets its own colour — a student
-   must never read a Goa listing as a Delhi one. */
-.source-goa {
-  color: #8a5a2f;
-  background: rgba(214, 154, 82, 0.12);
-  border: 1px solid transparent;
-}
-:root[data-theme='dark'] .source-goa { color: #e8bd85; }
-
-/* A left edge tinted by status, matching the Live Updates feed. */
-.aiia-card.status-urgent { border-left: 3px solid #d9707a; }
-.aiia-card.status-soon   { border-left: 3px solid #d69a52; }
-.aiia-card.status-open   { border-left: 3px solid #4faf82; }
-.aiia-card.status-closed { border-left: 3px solid var(--border); opacity: 0.72; }
-
-.aiia-save {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-  line-height: 1;
-  color: var(--text-muted);
-  padding: 2px 4px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-.aiia-save[aria-pressed='true'] { color: #d69a52; }
-.aiia-save:hover { color: #d69a52; }
-
-/* Says out loud when the official document does not publish a detail. */
-.aiia-note {
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--text-muted);
-  background: rgba(127, 127, 127, 0.07);
-  border-radius: var(--radius-sm, 8px);
-  padding: 8px 10px;
-  margin: 0 0 var(--space-3);
-}
-
-@media (max-width: 820px) {
-  .aiia-hero { grid-template-columns: 1fr; }
-  .aiia-hero-stats { justify-content: space-between; gap: var(--space-3); }
-}

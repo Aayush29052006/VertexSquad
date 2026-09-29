@@ -1,12 +1,12 @@
 /**
  * CareerNexus — Live Updates
  *
- * Notices, vacancies and tenders pulled automatically from official
- * institution APIs, kept with the publisher's own closing dates and sorted
+ * A real-time labour-market signal pulled automatically from official
+ * sources — currently the National Career Service's hiring feed — sorted
  * so whatever shuts first is at the top.
  *
- * Nothing here is written by us. Every card links to the institution's own
- * document, and there is no apply button, because the application happens
+ * Nothing here is written by us. Every card links to the source's own
+ * page, and there is no apply button, because the application happens
  * on their site.
  */
 
@@ -15,6 +15,7 @@ const FEED_ICONS = {
   Vacancy: '💼',
   Tender: '📋',
   News: '📰',
+  'Hiring Signal': '📈',
 };
 
 let feed = null;
@@ -29,13 +30,13 @@ function feedRow(item) {
           <h3 class="feed-title">${escapeHtml(item.title)}</h3>
           <p class="text-caption">
             ${escapeHtml(item.organisation)} · ${escapeHtml(item.category)}
-            ${item.published_on ? ` · published ${formatDate(item.published_on)}` : ''}
+            ${item.published_on ? ` · ${item.category === 'Hiring Signal' ? 'as of' : 'published'} ${formatDate(item.published_on)}` : ''}
           </p>
         </div>
       </div>
       <div class="feed-foot">
         ${deadlineBadge(item.deadline)}
-        ${officialLinkButton(item.official_url, 'Official Document', 'btn btn-primary btn-sm')}
+        ${officialLinkButton(item.official_url, item.category === 'Hiring Signal' ? 'Source' : 'Official Document', 'btn btn-primary btn-sm')}
       </div>
     </article>`;
 }
@@ -46,7 +47,7 @@ function sourceRow(s) {
       : s.status === 'failed' ? '<span class="sync-dot sync-fail" title="Last sync failed"></span>'
         : '<span class="sync-dot sync-never" title="Not synced yet"></span>';
   return `
-    <div class="aiia-link-row">
+    <div class="feed-link-row">
       <div>
         <strong>${state}${escapeHtml(s.name)}</strong>
         <p class="text-caption">
@@ -62,7 +63,7 @@ function sourceRow(s) {
 }
 
 function render() {
-  const active = document.querySelector('.aiia-chip.active');
+  const active = document.querySelector('.feed-chip.active');
   const category = active ? active.dataset.category : '';
   const rows = category ? feed.items.filter((i) => i.category === category) : feed.items;
 
@@ -89,11 +90,11 @@ function draw(pageBody) {
   pageBody.innerHTML = `
     <h1 class="text-page-heading mb-1">Live Updates</h1>
     <p class="text-body mb-2">
-      Notices, vacancies and tenders collected automatically from official institution
-      APIs, with the closing date each publisher stated.
+      A real-time labour-market signal collected automatically from official sources,
+      currently the National Career Service's hiring feed.
     </p>
     <p class="text-caption mb-4">
-      🌐 Every item links to the institution's own document. Applications are made there,
+      🌐 Every item links to the source's own page. Applications are made there,
       never through CareerNexus.
       <span id="lastSynced" class="ml-2"></span>
       ${isAdmin() ? '<button class="btn btn-secondary btn-sm" id="syncNow" type="button" style="margin-left:10px;">Sync now</button>' : ''}
@@ -115,10 +116,10 @@ function draw(pageBody) {
     </div>
 
     <div class="admin-toolbar" id="feedChips">
-      <button type="button" class="aiia-chip active" data-category="">All</button>
+      <button type="button" class="feed-chip active" data-category="">All</button>
       ${feed.categories
         .map(
-          (c) => `<button type="button" class="aiia-chip" data-category="${escapeHtml(c.name)}">
+          (c) => `<button type="button" class="feed-chip" data-category="${escapeHtml(c.name)}">
                     ${FEED_ICONS[c.name] || '📄'} ${escapeHtml(c.name)} (${c.count})
                   </button>`
         )
@@ -136,16 +137,16 @@ function draw(pageBody) {
       These are the official endpoints we poll. A source that is unreachable is shown as
       such rather than silently dropping its items.
     </p>
-    <div class="card"><div class="aiia-links">${feed.sources.map(sourceRow).join('')}</div></div>
+    <div class="card"><div class="feed-links">${feed.sources.map(sourceRow).join('')}</div></div>
   `;
 
   document.getElementById('lastSynced').textContent = feed.last_synced
     ? `Last checked ${feed.last_synced}` : 'Not checked yet';
 
   document.getElementById('feedChips').addEventListener('click', (e) => {
-    const chip = e.target.closest('.aiia-chip');
+    const chip = e.target.closest('.feed-chip');
     if (!chip) return;
-    document.querySelectorAll('.aiia-chip').forEach((c) => c.classList.remove('active'));
+    document.querySelectorAll('.feed-chip').forEach((c) => c.classList.remove('active'));
     chip.classList.add('active');
     render();
   });

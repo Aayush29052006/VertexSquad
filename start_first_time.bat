@@ -10,7 +10,7 @@ set "VPY=%VENV%\Scripts\python.exe"
 
 echo ============================================================
 echo    CareerNexus  -  FIRST TIME SETUP
-echo    Team VertexSquad   ^(SIH26044^)
+echo    Team VertexSquad   ^(PS 26134^)
 echo ============================================================
 echo.
 echo  Run this ONCE after cloning or copying the project.

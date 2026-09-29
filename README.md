@@ -1,8 +1,8 @@
 <div align="center">
   <img src="frontend/assets/logos/careernexus-logo.png" alt="CareerNexus" width="96" />
   <h1>CareerNexus</h1>
-  <p><strong>AI-powered Academia–Industry Collaboration Portal</strong></p>
-  <p>Smart India Hackathon 2026 · Problem Statement <strong>SIH26044</strong> · Team VertexSquad</p>
+  <p><strong>Labour-market intelligence & skill-alignment platform</strong></p>
+  <p>Smart India Hackathon 2026 · Problem Statement <strong>26134</strong> · Team VertexSquad</p>
 </div>
 
 ---
@@ -90,15 +90,9 @@ that.
 - **What-if analysis** — "if I learn TypeScript, what happens to my match?" —
   scored by the backend, never guessed in the browser
 - **Application tracking** — statuses from Applied through Selected/Rejected
-- **AIIA Hub** — every course, internship, training, research call, CME,
-  workshop, conference, admission, job and notice the All India Institute of
-  Ayurveda publishes, in one filterable place. Rendered from a local verified
-  catalogue first, so the page works even when the API does not, with live
-  notices layered on top. Applications always happen on AIIA's own site
-- **Live Updates** — official notices, vacancies and tenders pulled
-  automatically from AIIA's public JSON feeds every six hours, with real
-  deadlines and a countdown. Idempotent upsert, so a corrected deadline
-  upstream is followed rather than duplicated
+- **Live Updates** — a real-time hiring signal pulled automatically from the
+  National Career Service's public feed every six hours. Idempotent upsert,
+  so a corrected number upstream is followed rather than duplicated
 - **Light & dark themes** — persisted per device
 - **Resizable sidebar** — drag its right edge between 200 and 420px. The width
   is remembered per device and re-clamped to at most 34% of the viewport, so a
@@ -136,8 +130,9 @@ that.
 **For admins / placement cell** — separate team sign-in at `/pages/admin-login.html`,
 panel at `/pages/admin.html`, gated on `role = "admin"` server-side
 - **Overview** — students, internships, applications, at-risk count, top colleges
-- **Live Data** — one button that pulls AIIA's latest notices, vacancies, tenders and
-  news from aiia.gov.in on demand, with the per-source result and any failure reason
+- **Live Data** — one button that pulls the National Career Service's latest hiring
+  signal on demand, re-verifies every catalogue link, and shows the per-source
+  result and any failure reason
 - **Student management** — search, promote/demote admin, deactivate, delete
 - **Internship management** — create / edit / delete postings, applicant counts
 - **Application management** — filter by status, change any application's status
@@ -261,7 +256,7 @@ path, every validation rule, rate limiting and the honeypot.
 **One file for every external link**
 
 `frontend/data/website-links.json` is the register of every external website
-the platform points at — 51 entries covering government portals, AIIA, company
+the platform points at — 39 entries covering government portals, company
 career pages, universities and learning platforms.
 
 - **This is the file to edit.** Change a URL there and both the frontend and
@@ -269,24 +264,24 @@ career pages, universities and learning platforms.
   site means copying an entry, giving it a new `id`, and restarting the backend.
 - Each entry carries name, organization, category, description, url, source
   type and purpose. The file opens with a `_readme` explaining the format.
-- Read by the backend at startup (`site_url()`), by the browser via
-  `js/website-links.js` (`siteUrl()`, `siteEntry()`, `sitesByCategory()`), and
-  exposed at `GET /api/website-links`.
+- Read by the backend at startup, by the browser via `js/website-links.js`
+  (`siteUrl()`, `siteEntry()`, `sitesByCategory()`), and exposed at
+  `GET /api/website-links`.
 - It lives under `frontend/` rather than the repo root for one practical
   reason: `serve.py` serves that directory, so the browser can fetch the same
   file the backend reads. A repo-root copy would be unreachable from the page.
 - Every URL in it returned HTTP 200 when it was added.
 
-The searchable collection currently holds **74 verified entries**: government
-schemes (PM Internship Scheme, AICTE, NAPS, NCS, Smart India Hackathon, ISRO,
-Startup India, Digital India), company student programmes (Google, Microsoft,
-Amazon, Apple, IBM, NVIDIA, Adobe, Wipro, Google Summer of Code), official
-learning platforms (NPTEL, SWAYAM, Skill India, Microsoft Learn, Google Cloud
-Skills Boost, AWS Skill Builder and Machine Learning University, IBM
-SkillsBuild, Google ML Crash Course, Elements of AI, MDN, web.dev, Cisco
-NetAcad, freeCodeCamp, Kaggle, Infosys Springboard, TCS iON, GitHub Education,
-MongoDB University, HackerRank, edX), and AIIA's own courses, internships,
-research calls and vacancies.
+The searchable collection currently holds **41 verified catalogue entries**:
+government schemes (PM Internship Scheme, AICTE, NAPS, NCS, Smart India
+Hackathon, ISRO, Startup India, Digital India), company student programmes
+(Google, Microsoft, Amazon, Apple, IBM, NVIDIA, Adobe, Wipro, Google Summer of
+Code), and official learning platforms (NPTEL, SWAYAM, Skill India, Microsoft
+Learn, Google Cloud Skills Boost, AWS Skill Builder, IBM SkillsBuild, Google ML
+Crash Course, Elements of AI, MDN, web.dev, Cisco NetAcad, freeCodeCamp,
+Kaggle, Infosys Springboard, TCS iON, GitHub Education, MongoDB University,
+HackerRank, edX) — plus a real-time hiring signal synced from the National
+Career Service.
 
 **Engineering**
 - Central API layer (`frontend/js/api.js`) — no scattered `fetch()` calls
@@ -304,9 +299,13 @@ research calls and vacancies.
 
 ## Problem statement coverage
 
-Every requirement in SIH26044, and where it lives in the build.
+Built originally for SIH26044 (academia–industry collaboration); the team's
+assignment changed to **PS 26134** (skill-alignment / labour-market
+intelligence for the Government of Maharashtra) on 2026-09-29. Everything
+below still holds — a policy layer (district view, course-health flag,
+employer signals) was added on top rather than thrown away and rebuilt.
 
-| SIH26044 requirement | Where it is implemented |
+| Feature | Where it is implemented |
 |---|---|
 | Skill assessment through questionnaires and aptitude tests | `assessment.html` · `POST /api/assessment/submit` |
 | Skill profiling, technical and soft skill gaps | `_score_assessment()` — per-category breakdown, proven vs weak skills |
@@ -325,6 +324,10 @@ Every requirement in SIH26044, and where it lives in the build.
 | Recruitment management for recruiters | `PATCH /api/recruiter/applications/{id}` |
 | Institution dashboards & analytics | `institution.html` · `GET /api/institution/analytics` |
 | Skill demand trends for policymakers | Curriculum-gap ranking by impact (students lacking × roles demanding) |
+| District-level breakdown (PS 26134) | `institution.html` — `by_district`, grouped on students' own location |
+| Curriculum / course-obsolescence flag (PS 26134) | `institution.html` — `course_health`: a course's skills checked against real open-role demand |
+| Employer survey input (PS 26134) | `recruiter.html` form → `POST /api/employer/skill-signals`, rolled up on `institution.html` |
+| Labour-market signal at national scale (PS 26134) | `updates.html` — live hiring feed synced from the National Career Service |
 | Role-based access for all four stakeholders | `require_roles()` on every endpoint · role-filtered navigation |
 | Secure document management | `resume.html` (Documents tab) · `DocumentModel` — owner + staff only |
 | Integration with learning platforms | Curated catalogue links to NPTEL, SWAYAM, freeCodeCamp, MS Learn, AWS |
@@ -389,7 +392,6 @@ VertexSquad/
 │   │   │                           #     private view lives on profile.html
 │   │   ├── search.html             #     Opportunity Search + filters
 │   │   ├── team.html               #     Meet the Team + Contact form (public)
-│   │   ├── aiia.html               #     AIIA Opportunity Hub
 │   │   ├── updates.html            #     Live official feeds & deadlines
 │   │   │
 │   │   │                           #   -- Industry & academia --
@@ -412,7 +414,6 @@ VertexSquad/
 │   │   ├── theme.js                #     Light / dark theme
 │   │   ├── website-links.js        #     Reads data/website-links.json
 │   │   ├── search-core.js          #     Search vocabulary + page ranking
-│   │   ├── aiia-data.js            #     Verified AIIA catalogue
 │   │   └── ...                     #     One controller per page
 │   └── assets/logos/
 │
@@ -721,8 +722,7 @@ All endpoints are prefixed with `/api`. Full interactive docs at `/docs`.
 | `POST` | `/contact` | Submit a contact message (public) |
 | `GET` | `/admin/contact-messages` | **admin** — every message received |
 | `GET` | `/website-links` | The central external-website register (public) |
-| `GET` | `/aiia` | AIIA opportunity hub |
-| `GET` | `/feeds/items` | Official notices, vacancies and tenders |
+| `GET` | `/feeds/items` | Official hiring signal, live-synced |
 | `POST` | `/feeds/sync` | **admin** — pull the official feeds now |
 | `GET` | `/deadlines` | Combined deadline board with days remaining |
 | `GET` | `/opportunities` | Jobs, apprenticeships, projects, FDPs |
@@ -772,8 +772,8 @@ both themes; components read them via `var()`, so nothing is styled per page.
 Deliberate choices worth keeping:
 
 - **The emoji navigation is part of the product identity.** 📊 Dashboard,
-  🎓 Learning Paths, 💼 Internships, 🌿 AIIA Hub and the rest stay as emoji —
-  they are not to be swapped for an icon font or SVG set.
+  🎓 Learning Paths, 💼 Internships, 🔔 Live Updates and the rest stay as
+  emoji — they are not to be swapped for an icon font or SVG set.
 - **The accent is used sparingly** — active navigation, primary buttons,
   important links and focus states. Not every element is teal.
 - **Cards are bordered containers, not floating panels**: no drop shadow, no
@@ -837,9 +837,9 @@ Supabase project; Render hosts no database of its own here.
    changes nothing about that.
 7. Sign in with the demo account (below) on the live URL to confirm the
    deploy actually works end to end, not just that the build succeeded.
-8. **Check the Team page and any AIIA/external "official link" buttons.**
+8. **Check the Team page and any external "official link" buttons.**
    `careernexus-api`'s `rootDir` is `backend`, but two endpoints
-   (`/api/team`, and the AIIA link register) read JSON files from
+   (`/api/team`, and the website-links register) read JSON files from
    `frontend/data/` by walking up from `app/main.py` — correct for the local
    monorepo checkout, and Render documents that the full repo is checked out
    regardless of `rootDir`, but it's worth confirming on the live URL rather
@@ -885,4 +885,4 @@ This is a hackathon prototype. Before any real deployment:
 
 ## Team
 
-Built by **Team VertexSquad** for Smart India Hackathon 2026 (SIH26044).
+Built by **Team VertexSquad** for Smart India Hackathon 2026 (PS 26134).

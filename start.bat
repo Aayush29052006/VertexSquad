@@ -9,7 +9,7 @@ set "FRONTEND=%ROOT%frontend"
 set "VPY=%BACKEND%\venv\Scripts\python.exe"
 
 echo ============================================================
-echo    CareerNexus  -  Team VertexSquad   ^(SIH26044^)
+echo    CareerNexus  -  Team VertexSquad   ^(PS 26134^)
 echo ============================================================
 echo.
 

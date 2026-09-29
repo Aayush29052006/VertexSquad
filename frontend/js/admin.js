@@ -94,10 +94,11 @@ async function renderOverview(el) {
 
 /* ---------------- Live Data ----------------
    The one place an admin can pull real-world data on demand. It calls the
-   backend's sync, which reads AIIA's own public feeds (notices, vacancies,
-   tenders, news) and upserts what it finds; nothing here is generated. The
-   table below always shows what the *server* recorded for each source, so a
-   failure is visible with its real reason instead of a vanishing toast. */
+   backend's sync, which reads official public feeds (currently National
+   Career Service's hiring signal) and upserts what it finds; nothing here
+   is generated. The table below always shows what the *server* recorded for
+   each source, so a failure is visible with its real reason instead of a
+   vanishing toast. */
 const FEED_STATUS_BADGE = { ok: 'badge-success', failed: 'badge-danger', never: 'badge-neutral' };
 const FEED_STATUS_LABEL = { ok: 'Refreshed', failed: 'Failed', never: 'Never run' };
 
@@ -141,9 +142,10 @@ async function renderLiveData(el, outcome = null) {
     <div class="card mb-5">
       <h2 class="text-card-heading mb-1">Fetch real-world data</h2>
       <p class="text-body mb-3">
-        Reads the latest notices, vacancies, tenders and news straight from the official
-        AIIA website (aiia.gov.in), then re-opens every official page the catalogue links to. Nothing is generated: every item is copied from
-        AIIA's own public feed, and items already stored are updated in place, never duplicated.
+        Reads the latest hiring signal straight from the National Career Service's official feed,
+        then re-opens every official page the catalogue links to. Nothing is generated: every item
+        is copied from the source's own public feed, and items already stored are updated in place,
+        never duplicated.
       </p>
       <div class="flex items-center gap-3" style="flex-wrap:wrap;">
         <button class="btn btn-primary" id="syncRealData" type="button">Sync real-world data now</button>
@@ -152,7 +154,7 @@ async function renderLiveData(el, outcome = null) {
     </div>
 
     <div class="stat-grid mb-5">
-      ${statTile('📢 Open items', feed.total, 'Notices, vacancies, tenders, news')}
+      ${statTile('📢 Open items', feed.total, 'Companies currently hiring, per NCS')}
       ${statTile('⏳ Closing soon', feed.closing_soon, 'Deadline within 7 days')}
       ${statTile('🕒 Last checked', feed.last_synced || 'Never', 'India time (IST)')}
     </div>
@@ -183,9 +185,9 @@ async function renderLiveData(el, outcome = null) {
   document.getElementById('syncRealData').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Fetching from aiia.gov.in...';
+    btn.innerHTML = '<span class="spinner"></span> Fetching from ncs.gov.in...';
     document.getElementById('syncProgress').textContent =
-      'Checking 4 official feeds, then every catalogue page. This can take up to a minute.';
+      'Checking the official hiring feed, then every catalogue page. This can take up to a minute.';
 
     let result;
     try {
@@ -195,10 +197,10 @@ async function renderLiveData(el, outcome = null) {
         failed: failed.length > 0,
         headline: `${res.sources_ok} of ${res.sources_total} sources refreshed · ${res.new_items} new item${res.new_items === 1 ? '' : 's'} found`,
         detail: failed.length
-          ? `Could not refresh: ${failed.map((f) => f.source_id.replace('aiia_', '')).join(', ')}. Previously stored items were left untouched.`
+          ? `Could not refresh: ${failed.map((f) => f.source_id.replace('ncs_', '')).join(', ')}. Previously stored items were left untouched.`
           : res.catalogue && res.catalogue.checked
-            ? `Catalogue re-verified: ${res.catalogue.live} of ${res.catalogue.checked} official pages live${res.catalogue.broken ? `, ${res.catalogue.broken} gone` : ''}. AIIA has ${res.catalogue.aiia_open_vacancies} advertised vacanc${res.catalogue.aiia_open_vacancies === 1 ? 'y' : 'ies'} open.`
-            : 'Everything below is what AIIA is publishing right now.',
+            ? `Catalogue re-verified: ${res.catalogue.live} of ${res.catalogue.checked} official pages live${res.catalogue.broken ? `, ${res.catalogue.broken} gone` : ''}.`
+            : 'Everything below is what the National Career Service is publishing right now.',
       };
     } catch (err) {
       result = { failed: true, headline: 'The sync could not be completed.', detail: err.message || '' };

@@ -443,7 +443,7 @@ class AppMetaModel(Base):
 # accounts, the learning programmes, anything the seed_* functions write.
 # Startup compares it against what is recorded in app_meta and re-runs the
 # seeders only when the two differ.
-SEED_VERSION = "2026-09-18a"
+SEED_VERSION = "2026-09-29a"  # AIIA removed (PS changed: SIH26044 -> PS 26134)
 
 
 # Create tables
@@ -5096,57 +5096,6 @@ EXTERNAL_OPPORTUNITIES = [
         "required_skills": ["Python", "SQL"],
     },
 
-    # ---------- AIIA (the institute behind SIH26044) ----------
-    # These live in the shared opportunity table on purpose: a student
-    # searching "internship" in Jobs & Opportunities should find AIIA's
-    # alongside everything else, tagged so its source stays obvious. The
-    # AIIA Hub is a focused view of the same records, not a separate silo.
-    {
-        "id": "ext_aiia_bams_internship",
-        "title": "Internship for BAMS Students",
-        "company": "All India Institute of Ayurveda",
-        "source_name": "AIIA Delhi — Official",
-        "official_url": "https://aiia.gov.in/pdf/Notice_235.pdf",
-        "opportunity_type": "internship",
-        "location": "AIIA, New Delhi",
-        "work_mode": "On-site",
-        "stipend": "As per institute norms",
-        "duration": "See the official notice",
-        "eligibility": "BAMS students — see the official notice for exact criteria",
-        "description": "AIIA publishes a notice governing internship for BAMS students, together with the prescribed internship letter format.",
-        "required_skills": ["Communication", "Teamwork"],
-    },
-    {
-        "id": "ext_aiia_vacancies",
-        "title": "AIIA Recruitment & Vacancies",
-        "company": "All India Institute of Ayurveda",
-        "source_name": "AIIA Delhi — Official",
-        "official_url": "https://aiia.gov.in/#/archivesVacancies",
-        "opportunity_type": "job",
-        "location": "AIIA, New Delhi",
-        "work_mode": "On-site",
-        "stipend": "As per Government of India norms",
-        "duration": "Full-time & contractual",
-        "eligibility": "Varies by post — see each advertisement",
-        "description": "Teaching, non-teaching and project posts at AIIA, published continuously on the institute vacancy board.",
-        "required_skills": ["Communication"],
-    },
-    {
-        "id": "ext_aiia_goa_faculty",
-        "title": "Recruitment at AIIA Goa (Faculty, Research & Contractual)",
-        "company": "All India Institute of Ayurveda, Goa",
-        "source_name": "AIIA — Official Vacancy Board",
-        "official_url": "https://aiia.gov.in/#/archivesVacancies",
-        "opportunity_type": "job",
-        "location": "AIIA Goa",
-        "work_mode": "On-site",
-        "stipend": "As per Government of India / institute norms",
-        "duration": "Direct, deputation & contractual",
-        "eligibility": "Varies by post — see the current advertisement on the vacancy board",
-        "description": "Faculty, non-teaching, research-fellow and contractual posts at the AIIA Goa satellite campus. AIIA publishes and updates these on its live vacancy board — check there for the advertisement that is currently open, as individual advertisements open and close through the year.",
-        "required_skills": ["Communication"],
-    },
-
     # ---------- Company student programmes ----------
     {
         "id": "ext_co_google_students",
@@ -5405,45 +5354,6 @@ EXTERNAL_LEARNING = [
         "certificate": 1,
     },
     {
-        "id": "ext_lp_aiia_panchakarma",
-        "title": "Panchakarma Technician Course (AIIA)",
-        "provider": "All India Institute of Ayurveda",
-        "program_type": "certification",
-        "url": "https://aiia.gov.in/#/coursesAvailable",
-        "description": "One-year technician training in Panchakarma therapy, accredited by HSSC and the Ayurveda Training Accreditation Board. Applications for the 2026 batch have closed (provisional selection list published 21 August 2026). Check the courses page for the next intake.",
-        "skills_covered": ["Communication", "Teamwork"],
-        "duration": "One year",
-        "cost": "See the official brochure",
-        "eligibility": "10+2 passed; age 16-35",
-        "certificate": 1,
-    },
-    {
-        "id": "ext_lp_aiia_yoga",
-        "title": "Yoga Wellness Trainer Course (AIIA)",
-        "provider": "All India Institute of Ayurveda",
-        "program_type": "certification",
-        "url": "https://aiia.gov.in/#/coursesAvailable",
-        "description": "Six-month Yoga Wellness Trainer course affiliated with HSSC and NSDC, 3 hours per day, run as an AYUSH Skill Development course under COEDAKSHYA. Applications for the 2026-27 intake closed on 5 July 2026. Check the courses page for the next intake.",
-        "skills_covered": ["Communication", "Leadership"],
-        "duration": "Six months",
-        "cost": "See the official brochure",
-        "eligibility": "12th pass",
-        "certificate": 1,
-    },
-    {
-        "id": "ext_lp_aiia_molbio",
-        "title": "Molecular Biology Techniques Training (AIIA)",
-        "provider": "All India Institute of Ayurveda",
-        "program_type": "workshop",
-        "url": "https://aiia.gov.in/#/trainingWorkshop",
-        "description": "Thirty-day hands-on training integrating Ayurveda classics with molecular biology techniques at ITMBU, AIIA New Delhi. The most recent intake ran 25 June to 24 July 2026 and applications for it have closed. New intakes are announced on the training and workshops page.",
-        "skills_covered": ["Python", "Problem Solving"],
-        "duration": "30 days",
-        "cost": "See the official notice",
-        "eligibility": "MD Ayurveda or M.Sc Life Sciences",
-        "certificate": 1,
-    },
-    {
         "id": "ext_lp_google_cloud",
         "title": "Google Skills (formerly Google Cloud Skills Boost)",
         "provider": "Google",
@@ -5669,7 +5579,14 @@ def seed_external_catalogue():
         # entry was merged into another). Their rows are deleted so a stale
         # listing does not linger in the shared database after the code that
         # created it is gone.
-        RETIRED_CATALOGUE_IDS = ["ext_aiia_goa_srf", "ext_lp_aws_mlu"]
+        RETIRED_CATALOGUE_IDS = [
+            "ext_aiia_goa_srf", "ext_lp_aws_mlu",
+            # AIIA dropped entirely when the team's problem statement changed
+            # (SIH26044 -> PS 26134). These ids no longer appear in
+            # EXTERNAL_OPPORTUNITIES / EXTERNAL_LEARNING above.
+            "ext_aiia_bams_internship", "ext_aiia_vacancies", "ext_aiia_goa_faculty",
+            "ext_lp_aiia_panchakarma", "ext_lp_aiia_yoga", "ext_lp_aiia_molbio",
+        ]
         for _rid in RETIRED_CATALOGUE_IDS:
             db.query(InternshipModel).filter(InternshipModel.id == _rid).delete()
             db.query(LearningProgramModel).filter(LearningProgramModel.id == _rid).delete()
@@ -5777,8 +5694,8 @@ def roll_demo_deadlines(db: Session) -> int:
     The seeded demo employer's postings carry fixed deadlines that were true
     the day they were written and then quietly expire, leaving a job board
     full of "Closed" cards. Any that have lapsed are moved 2-6 weeks ahead of
-    today (IST). Real postings - recruiters', or AIIA's official ones - are
-    never touched: only rows owned by the demo employer are eligible.
+    today (IST). Real postings - recruiters', or the official catalogue's -
+    are never touched: only rows owned by the demo employer are eligible.
     """
     today = today_ist()
     moved = 0
@@ -5814,45 +5731,6 @@ if not SEEDS_CURRENT:
     mark_seeds_current()
 refresh_demo_deadlines()
 
-# =====================================================================
-# AIIA OPPORTUNITY HUB
-# ---------------------------------------------------------------------
-# SIH26044 is set by the All India Institute of Ayurveda, an autonomous
-# institute under the Ministry of Ayush, so the platform carries a hub for
-# what AIIA itself offers students.
-#
-# Everything here was read off aiia.gov.in — the programme names, the
-# announcement dates and the document links are the institute's own. The
-# site is a single-page app, so its routes are hash routes (/#/courses...)
-# and they are reproduced exactly as the site's navigation emits them.
-#
-# Where a detail is not stated on the public listing — fees, precise
-# eligibility — the field says to consult the official brochure rather than
-# guessing. An invented eligibility rule would be worse than a missing one:
-# a student could be turned away at the counter because of it.
-#
-# Two kinds of link, deliberately:
-#   * section pages are stable and survive the academic year
-#   * programme documents are the authoritative source for that intake but
-#     are rotated as sessions close, so each card also belongs to a section
-#     the student can fall back to.
-# =====================================================================
-
-# =====================================================================
-# CENTRAL WEBSITE REGISTER
-# ---------------------------------------------------------------------
-# Every external destination CareerNexus points at lives in one file:
-#
-#     frontend/data/website-links.json
-#
-# It sits under frontend/ rather than at the repo root for one practical
-# reason: frontend/serve.py serves that directory, so the browser can
-# fetch the same file the backend reads. A repo-root data/ folder would
-# be unreachable from the page and we would be back to two copies.
-#
-# Editing that file is all it takes to change a URL — this module reads
-# it at import instead of hard-coding aiia.gov.in in a second place.
-# =====================================================================
 
 TEAM_PATH = (
     pathlib.Path(__file__).resolve().parent.parent.parent / "frontend" / "data" / "team.json"
@@ -5915,336 +5793,24 @@ def _report_contact_email_config() -> None:
     else:
         print(f"Contact email: enabled - {SMTP_HOST}:{SMTP_PORT} as {SMTP_USER} -> {CONTACT_TO}")
 
-# Read from the register, with the previously hard-coded value as the
-# fallback so a missing file degrades quietly rather than breaking links.
-AIIA_SITE = site_url("aiia_delhi", "https://aiia.gov.in")
-AIIA_GOA_SITE = site_url("aiia_goa", "https://aiiagoa.org")
-AYUSH_SITE = site_url("ministry_ayush", "https://ayush.gov.in")
-AIIA_ORG = "All India Institute of Ayurveda"
-AIIA_MINISTRY = "Ministry of Ayush, Government of India"
-AIIA_LOCATION = "AIIA, New Delhi"
-
-# Stable sections of the official site, grouped for the hub's quick links.
-AIIA_SECTIONS = [
-    {
-        "group": "Admissions & Academics",
-        "links": [
-            {"label": "Courses Available", "url": f"{AIIA_SITE}/#/coursesAvailable",
-             "note": "Every course AIIA currently runs"},
-            {"label": "PhD Programme", "url": f"{AIIA_SITE}/#/phdprogram",
-             "note": "Doctoral research in Ayurveda"},
-            {"label": "PhD Admission", "url": f"{AIIA_SITE}/#/academicadmission",
-             "note": "Entrance notifications and admission rounds"},
-            {"label": "Postgraduate Courses", "url": f"{AIIA_SITE}/#/postgraduatecourse",
-             "note": "MD/MS Ayurveda specialisations"},
-            {"label": "Syllabus", "url": f"{AIIA_SITE}/#/syllabus",
-             "note": "Official syllabi by course"},
-            {"label": "Exams & Results", "url": f"{AIIA_SITE}/#/examsResults",
-             "note": "Examination notices and results"},
-        ],
-    },
-    {
-        "group": "Students",
-        "links": [
-            {"label": "Student Corner", "url": f"{AIIA_SITE}/#/studentCorner",
-             "note": "Notices and resources for enrolled students"},
-            {"label": "Student Council Committee", "url": f"{AIIA_SITE}/#/studentcouncilcommittee",
-             "note": "Student representation at the institute"},
-            {"label": "Placement Cell", "url": f"{AIIA_SITE}/#/placementcell",
-             "note": "The institute's placement committee"},
-            {"label": "Student Enrolment List", "url": f"{AIIA_SITE}/#/studentEnrollmentList",
-             "note": "Published enrolment lists"},
-        ],
-    },
-    {
-        "group": "Research",
-        "links": [
-            {"label": "Ongoing Research Projects", "url": f"{AIIA_SITE}/#/ongoingresearchprojects",
-             "note": "Projects currently running at AIIA"},
-            {"label": "Completed Research Projects", "url": f"{AIIA_SITE}/#/completedresearchprojects",
-             "note": "Published project outcomes"},
-            {"label": "Guidelines for Research", "url": f"{AIIA_SITE}/#/guidelinesforresearch",
-             "note": "Institutional research guidelines"},
-            {"label": "Research Application Form", "url": f"{AIIA_SITE}/#/researchform",
-             "note": "Form for research proposals"},
-            {"label": "International Journal of Ayurveda Research", "url": f"{AIIA_SITE}/#/internationalJournalofAyurvedaResearch",
-             "note": "AIIA's peer-reviewed journal (IJAR)"},
-        ],
-    },
-    {
-        "group": "Notices & Careers",
-        "links": [
-            {"label": "Notices", "url": f"{AIIA_SITE}/#/noticesArchive",
-             "note": "Official notices and circulars"},
-            {"label": "Vacancies", "url": f"{AIIA_SITE}/#/archivesVacancies",
-             "note": "Teaching, non-teaching and project posts"},
-            {"label": "News", "url": f"{AIIA_SITE}/#/newsArchive",
-             "note": "Institute news archive"},
-            {"label": "Tenders", "url": f"{AIIA_SITE}/#/archiveTender",
-             "note": "Procurement and tender notices"},
-        ],
-    },
-    {
-        "group": "Events & Training",
-        "links": [
-            {"label": "Training & Workshops", "url": f"{AIIA_SITE}/#/trainingWorkshop",
-             "note": "Training programmes and workshops"},
-            {"label": "Events", "url": f"{AIIA_SITE}/#/eventsList",
-             "note": "Conferences, seminars and institute events"},
-        ],
-    },
-    {
-        "group": "About AIIA",
-        "links": [
-            {"label": "About the Institute", "url": f"{AIIA_SITE}/#/aboutus",
-             "note": "India's first NABH-accredited AYUSH institute"},
-            {"label": "Mandate", "url": f"{AIIA_SITE}/#/mandate",
-             "note": "What the institute is charged with"},
-            {"label": "Institute Hospital", "url": f"{AIIA_SITE}/#/institutehospital",
-             "note": "Clinical services and departments"},
-            {"label": "Ministry of Ayush", "url": AYUSH_SITE,
-             "note": "The parent ministry"},
-        ],
-    },
-]
-
-# Specific programmes AIIA has announced, taken from its own listings.
-# `announced` is the date the institute published the notice.
-AIIA_PROGRAMMES = [
-    {
-        "id": "aiia_panchakarma_tech",
-        "title": "Panchakarma Technician Course, Batch 2026-27",
-        "category": "Certificate Course",
-        "department": "Department of Panchakarma",
-        "description": "Technician training in Panchakarma therapy procedures, run as a full batch intake by the institute. Applications for the 2026 batch have closed — AIIA published the provisional selection list on 21 August 2026 and the selection process is under way. Watch the courses page for the next batch.",
-        "announced": "2026-07-10",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/coursesAvailable",
-        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
-    },
-    {
-        "id": "aiia_yoga_wellness",
-        "title": "Yoga Wellness Trainer Course",
-        "category": "Certificate Course",
-        "department": "Department of Swasthavritta",
-        "description": "Six-month trainer-level certification in yoga for wellness, an AYUSH Skill Development course under COEDAKSHYA. Applications for the 2026-27 intake closed on 5 July 2026 (the last date was extended once by notice). Watch the courses page for the next intake.",
-        "announced": "2026-05-14",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/coursesAvailable",
-        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
-    },
-    {
-        "id": "aiia_aesthetic_assistant",
-        "title": "Ayurvedic Aesthetic Assistant Course (Session 2026-27)",
-        "category": "Certificate Course",
-        "department": "All India Institute of Ayurveda",
-        "description": "Skill course training assistants in Ayurvedic aesthetic practice for the 2026-27 academic session.",
-        "announced": "2026-08-20",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/Flyer_20082026_merged.pdf",
-        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
-    },
-    {
-        "id": "aiia_garbhini_mitra",
-        "title": "Garbhini Mitra Course",
-        "category": "Certificate Course",
-        "department": "Department of Prasuti Tantra & Stri Roga",
-        "description": "Course on Ayurvedic maternal care. AIIA publishes the brochure together with the application form. Applications for this intake closed on 15 September 2026, the last date AIIA set by a separate notice; watch the notices for the next intake.",
-        "announced": "2026-08-10",
-        "deadline": "2026-09-15",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/Academic_Brochure_08082026.pdf",
-        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
-    },
-    {
-        "id": "aiia_hospital_management",
-        "title": "Certificate Course in Hospital Management 2026",
-        "category": "Certificate Course",
-        "department": "All India Institute of Ayurveda",
-        "description": "Hospital administration and management training for the 2026 session.",
-        "announced": "2026-07-24",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/CCHM_2026_Admission_Notification_AIIA.pdf",
-        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
-    },
-    {
-        "id": "aiia_ayurprabha",
-        "title": "AYURPRABHA-2K26 — Workshop on Ayurveda Dermatology & Cosmetology",
-        "category": "Workshop",
-        "department": "All India Institute of Ayurveda",
-        "duration": "6 days",
-        "description": "Six-day hands-on workshop in Ayurvedic dermatology and cosmetology.",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/AYURPRABHA.pdf",
-        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
-    },
-    {
-        "id": "aiia_molecular_biology",
-        "title": "Skill Development Training Programme in Molecular Biology Techniques",
-        "category": "Training Programme",
-        "department": "Integrated Translational Molecular Biology Unit (ITMBU), AIIA",
-        "description": "Hands-on laboratory training in molecular biology techniques at ITMBU for MD (Ayurveda) and M.Sc Life Sciences candidates. The most recent 30-day intake ran 25 June to 24 July 2026 and applications for it have closed. AIIA announces new intakes on its training and workshops page.",
-        "announced": "2026-05-15",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/trainingWorkshop",
-        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
-    },
-    {
-        "id": "aiia_qc_pharmacology",
-        "title": "Hands-on Training Programme in QC & Pharmacology Labs",
-        "category": "Training Programme",
-        "department": "Quality Control & Pharmacology Laboratories, AIIA",
-        "description": "Practical laboratory training in quality control and pharmacology methods.",
-        "announced": "2026-05-27",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/pdf/Hands_on_Training.pdf",
-        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
-    },
-    {
-        "id": "aiia_kaumaracon",
-        "title": "KAUMARACON-2026 — International Conference on Kaumarabhritya",
-        "category": "Conference",
-        "department": "Department of Kaumarabhritya",
-        "description": "International conference on Ayurvedic paediatrics. The first circular carries the call for participation.",
-        "mode": "Offline",
-        "certificate": False,
-        "url": f"{AIIA_SITE}/pdf/KAUMARACON-2026.jpeg",
-        "section_url": f"{AIIA_SITE}/#/eventsList",
-    },
-    {
-        "id": "aiia_saushrutam",
-        "title": "SAUSHRUTAM 2K26 — International Seminar on Shalya Tantra",
-        "category": "Seminar",
-        "department": "Department of Shalya Tantra",
-        "description": "International seminar on Ayurvedic surgery (Shalya Tantra).",
-        "announced": "2026-05-11",
-        "mode": "Offline",
-        "certificate": False,
-        "url": f"{AIIA_SITE}/pdf/Saushrutam_2026.pdf",
-        "section_url": f"{AIIA_SITE}/#/eventsList",
-    },
-    {
-        "id": "aiia_phd",
-        "title": "PhD in Ayurveda 2026-2027",
-        "category": "Research / Doctoral",
-        "department": "All India Institute of Ayurveda",
-        "description": "Doctoral admission in Ayurveda, through the AIIA PhD entrance examination. The 2026-27 entrance cycle is complete — AIIA declared the entrance result on 30 May 2026. The next cycle is announced on the academic admissions page, usually early in the year.",
-        "announced": "2026-03-16",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/phdprogram",
-        "section_url": f"{AIIA_SITE}/#/academicadmission",
-    },
-    {
-        "id": "aiia_aipr",
-        "title": "Advanced Certificate Course on Intellectual Property Rights (AIPR)",
-        "category": "Certificate Course",
-        "department": "All India Institute of Ayurveda",
-        "description": "Advanced certificate course covering intellectual property rights, announced by institute notice.",
-        "announced": "2026-03-20",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/noticesArchive",
-        "section_url": f"{AIIA_SITE}/#/noticesArchive",
-    },
-    {
-        "id": "aiia_dietician",
-        "title": "Ayurveda Dietician and Poshan Sahayak Course",
-        "category": "Certificate Course",
-        "department": "All India Institute of Ayurveda",
-        "description": "Course in Ayurvedic dietetics and nutrition support. AIIA invited applications by public notice with a last date of 28 February 2026; that intake has closed. Watch the courses page for the next session.",
-        "announced": "2026-02-06",
-        "mode": "Offline",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/noticesArchive",
-        "section_url": f"{AIIA_SITE}/#/coursesAvailable",
-    },
-    {
-        "id": "aiia_ecme_ayurvidya",
-        "title": "e-CME Courses on the Ayurvidya Portal",
-        "category": "Online Course",
-        "department": "All India Institute of Ayurveda",
-        "description": "Continuing medical education delivered online through the Ayurvidya portal, run in scheduled batches. AIIA published the schedule for the 2nd batch in July 2026; new batch schedules appear on the notice board.",
-        "announced": "2026-07-14",
-        "mode": "Online",
-        "certificate": True,
-        "url": f"{AIIA_SITE}/#/noticesArchive",
-        "section_url": f"{AIIA_SITE}/#/trainingWorkshop",
-    },
-]
-
-
-@app.get("/api/aiia")
-def aiia_hub(user: StudentModel = Depends(get_current_student)):
-    """The AIIA opportunity hub.
-
-    Read-only and entirely first-party: every link points at aiia.gov.in or
-    the Ministry of Ayush. Nothing here is stored in our database, because
-    none of it is ours — the institute owns it and we only help students
-    find it.
-    """
-    programmes = []
-    for item in AIIA_PROGRAMMES:
-        programmes.append({
-            "id": item["id"],
-            "title": item["title"],
-            "category": item["category"],
-            "department": item.get("department", AIIA_ORG),
-            "description": item.get("description", ""),
-            "eligibility": item.get("eligibility", "See the official brochure"),
-            "duration": item.get("duration", "See the official brochure"),
-            "fees": item.get("fees", "See the official brochure"),
-            "deadline": item.get("deadline", ""),
-            "announced": item.get("announced", ""),
-            "mode": item.get("mode", "Offline"),
-            "location": item.get("location", AIIA_LOCATION),
-            "certificate": bool(item.get("certificate")),
-            "official_url": clean_public_url(item["url"]),
-            "section_url": clean_public_url(item.get("section_url", AIIA_SITE)),
-        })
-
-    # Newest announcement first; undated items fall to the end.
-    programmes.sort(key=lambda p: p["announced"] or "", reverse=True)
-
-    by_category = {}
-    for p in programmes:
-        by_category[p["category"]] = by_category.get(p["category"], 0) + 1
-
-    return {
-        "organisation": AIIA_ORG,
-        "ministry": AIIA_MINISTRY,
-        "location": AIIA_LOCATION,
-        "website": AIIA_SITE,
-        "ministry_website": AYUSH_SITE,
-        "programmes": programmes,
-        "categories": [{"name": k, "count": v} for k, v in sorted(by_category.items())],
-        "sections": AIIA_SECTIONS,
-    }
 
 # =====================================================================
 # OFFICIAL FEED AUTOMATION
 # ---------------------------------------------------------------------
-# Instead of a hand-maintained list going stale, the platform pulls new
-# notices, vacancies and tenders straight from the institutions that
-# publish them, and keeps their real closing dates.
+# Instead of a hand-maintained list going stale, the platform pulls a real
+# labour-market signal straight from the institution that publishes it.
 #
-# AIIA's website is a React app backed by a public JSON API — the same
-# endpoints its own pages call. Each row carries a start_date, an
-# end_date and the file name of the official PDF, so we get an accurate
-# deadline and a first-party link without guessing at anything.
+# National Career Service (NCS) — ncs.gov.in, run by the Ministry of Labour
+# & Employment, Government of India — serves its "Top Hiring Companies"
+# widget from a public JSON endpoint (api.ncs.gov.in), the same one its own
+# homepage calls, unauthenticated. Verified by hand before wiring it in:
+# real company names, real live vacancy counts, changes between requests.
+# This is PS 26134's "job-posting signals" input at national scale.
 #
 # Rules this module holds to:
 #   * only official endpoints; no aggregators, no scraping of third
 #     parties
-#   * every item keeps the publisher's own deadline, never an invented one
+#   * every item keeps the publisher's own numbers, never an invented one
 #   * an item with no usable title or link is dropped rather than shown
 #     half-empty
 #   * a source that is unreachable is recorded as failed and retried; it
@@ -6254,59 +5820,21 @@ def aiia_hub(user: StudentModel = Depends(get_current_student)):
 import threading
 import urllib.error
 
-FEED_USER_AGENT = "CareerNexus/1.0 (SIH26044 student project; contact via aiia.gov.in)"
+FEED_USER_AGENT = "CareerNexus/1.0 (SIH 2026 PS 26134 student project)"
 FEED_TIMEOUT = 20          # seconds per request
 FEED_SYNC_INTERVAL = 6 * 60 * 60   # re-check every six hours
-
-# AIIA maps its document types to numeric ids in its own viewpdf route.
-AIIA_DOC_TYPE = {"vacancy": 1, "notice": 2, "tender": 3}
 
 # The sources we pull from. `parser` names the shape of the response so a
 # new source can be added without touching the sync loop.
 FEED_SOURCES = [
     {
-        "id": "aiia_notices",
-        "name": "AIIA — Notices",
-        "organisation": "All India Institute of Ayurveda",
-        "category": "Notice",
-        "url": "https://aiia.gov.in/getnoticedetail",
-        "parser": "aiia",
-        "list_key": "noticeList",
-        "doc_type": "notice",
-        "homepage": "https://aiia.gov.in/#/noticesArchive",
-    },
-    {
-        "id": "aiia_vacancies",
-        "name": "AIIA — Vacancies & Recruitment",
-        "organisation": "All India Institute of Ayurveda",
-        "category": "Vacancy",
-        "url": "https://aiia.gov.in/getvacancydetail",
-        "parser": "aiia",
-        "list_key": "vacancyList",
-        "doc_type": "vacancy",
-        "homepage": "https://aiia.gov.in/#/archivesVacancies",
-    },
-    {
-        "id": "aiia_tenders",
-        "name": "AIIA — Tenders",
-        "organisation": "All India Institute of Ayurveda",
-        "category": "Tender",
-        "url": "https://aiia.gov.in/gettenderdetail",
-        "parser": "aiia",
-        "list_key": "tenderList",
-        "doc_type": "tender",
-        "homepage": "https://aiia.gov.in/#/archiveTender",
-    },
-    {
-        "id": "aiia_news",
-        "name": "AIIA — News & Announcements",
-        "organisation": "All India Institute of Ayurveda",
-        "category": "News",
-        "url": "https://aiia.gov.in/getcurrentnewsnoticedetail",
-        "parser": "aiia",
-        "list_key": "newsList",
-        "doc_type": "notice",
-        "homepage": "https://aiia.gov.in/#/newsArchive",
+        "id": "ncs_top_hiring",
+        "name": "National Career Service — Top Hiring Companies",
+        "organisation": "National Career Service (Ministry of Labour & Employment, GoI)",
+        "category": "Hiring Signal",
+        "url": "https://api.ncs.gov.in/employer-service/api/v1/hiring/top-companies?limit=15",
+        "parser": "ncs_hiring",
+        "homepage": "https://www.ncs.gov.in",
     },
 ]
 
@@ -6367,9 +5895,35 @@ class CatalogueCheckModel(Base):
 create_missing_tables()
 
 
+def _purge_retired_feed_data() -> None:
+    """Rows from a feed source that no longer exists (AIIA, dropped entirely
+    when the team's problem statement changed: SIH26044 -> PS 26134) would
+    otherwise linger forever, un-refreshed, since FEED_SOURCES no longer
+    lists them. Safe to run on every startup — once purged, there is
+    nothing left to find, so later runs are a no-op.
+    """
+    db = SessionLocal()
+    try:
+        stale_sources = [r.source_id for r in db.query(FeedSyncModel).all() if r.source_id.startswith("aiia_")]
+        for sid in stale_sources:
+            db.query(FeedItemModel).filter(FeedItemModel.source_id == sid).delete()
+            db.query(FeedSyncModel).filter(FeedSyncModel.source_id == sid).delete()
+        stale_checks = db.query(CatalogueCheckModel).filter(CatalogueCheckModel.item_id.like("aiia_%")).delete(synchronize_session=False)
+        if stale_sources or stale_checks:
+            db.commit()
+            print(f"Official feeds: purged {len(stale_sources)} retired source(s) and {stale_checks} retired catalogue check(s)")
+        else:
+            db.rollback()
+    finally:
+        db.close()
+
+
+_purge_retired_feed_data()
+
+
 import ssl
 
-# aiia.gov.in chains to Let's Encrypt's new "Root YR", missing from many CA bundles (Render's included); this is its official cross-signature by ISRG Root X1.
+# Some official sites chain to a root missing from Render's default CA bundle; this cross-signature (ISRG Root X1 -> Let's Encrypt's "Root YR") covers that gap generically.
 _FEED_EXTRA_CA = pathlib.Path(__file__).resolve().parent / "certs" / "isrg-root-yr-by-x1.pem"
 
 
@@ -6405,33 +5959,33 @@ def _clean_date(value) -> str:
     return ""
 
 
-def _parse_aiia(source: dict, payload: dict) -> list:
-    """AIIA returns {listKey: [{id, title_english, start_date, end_date,
-    pdf_name, ...}]}. The PDF is served through its viewpdf route."""
-    rows = payload.get(source["list_key"]) or []
-    doc_type_id = AIIA_DOC_TYPE.get(source.get("doc_type", "notice"), 2)
+def _parse_ncs_hiring(source: dict, payload: dict) -> list:
+    """NCS returns {data: [{companyName, totalVacancies, ...}]}.
+
+    No per-company deadline or document exists — this is a live snapshot,
+    not a notice — so `deadline` is left blank and `published_on` is today,
+    which is what "as of" means for a number that is true right now and
+    could be different on the next sync.
+    """
+    rows = payload.get("data") or []
+    today = today_ist().isoformat()
     out = []
     for row in rows:
-        title = (row.get("title_english") or row.get("title_hindi") or "").strip()
-        pdf = (row.get("pdf_name") or "").strip()
-        if not title:
-            continue  # nothing useful to show
-        url = (
-            f"https://aiia.gov.in/viewpdf?docTypeId={doc_type_id}"
-            f"&pdfName={urllib.parse.quote(pdf)}"
-            if pdf else source["homepage"]
-        )
+        name = (row.get("companyName") or "").strip()
+        vacancies = row.get("totalVacancies")
+        if not name or not isinstance(vacancies, int) or vacancies <= 0:
+            continue  # nothing real to show
         out.append({
-            "external_id": str(row.get("id") or pdf or title[:60]),
-            "title": " ".join(title.split()),
-            "published_on": _clean_date(row.get("start_date")),
-            "deadline": _clean_date(row.get("end_date")),
-            "official_url": url,
+            "external_id": name.lower(),
+            "title": f"{name} — {vacancies:,} open vacancies (NCS)",
+            "published_on": today,
+            "deadline": "",
+            "official_url": source["homepage"],
         })
     return out
 
 
-FEED_PARSERS = {"aiia": _parse_aiia}
+FEED_PARSERS = {"ncs_hiring": _parse_ncs_hiring}
 
 
 def sync_one_source(source: dict, db: Session) -> dict:
@@ -6542,23 +6096,14 @@ def _probe_url(url: str) -> tuple:
         return "unverified", None, type(e).__name__
 
 
-def _is_vacancy_advertisement(title: str) -> bool:
-    """Feed rows titled 'Provisional Result...' or 'List of shortlisted...'
-    sit in the vacancy feed too, but they are not open posts."""
-    t = (title or "").strip().lower()
-    return t.startswith("advertisement") or "walk-in" in t or "walk in" in t
-
-
 def refresh_catalogue() -> dict:
     """Re-verify the curated catalogue against the real world. Never raises.
 
-    1. Every official page the catalogue points at is requested and its state
-       recorded.
-    2. The "AIIA Recruitment & Vacancies" entry takes its deadline and opening
-       count from the live AIIA vacancy feed instead of a hand-typed value.
+    Every official page the catalogue points at is requested and its state
+    recorded, so the admin panel can be honest about which links are alive,
+    which could not be verified from here, and which are gone.
     """
-    summary = {"checked": 0, "live": 0, "unverified": 0, "broken": 0,
-               "aiia_open_vacancies": 0, "nearest_vacancy_deadline": ""}
+    summary = {"checked": 0, "live": 0, "unverified": 0, "broken": 0}
     db = SessionLocal()
     try:
         now = now_ist().strftime("%Y-%m-%d %H:%M")
@@ -6567,8 +6112,6 @@ def refresh_catalogue() -> dict:
             entries.append((item["id"], "opportunity", item["title"], item["official_url"]))
         for item in EXTERNAL_LEARNING:
             entries.append((item["id"], "learning", item["title"], item["url"]))
-        for item in AIIA_PROGRAMMES:
-            entries.append((item["id"], "aiia", item["title"], item.get("url", "")))
 
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=16) as pool:
@@ -6584,27 +6127,6 @@ def refresh_catalogue() -> dict:
             row.state, row.http_status, row.note, row.checked_at = state, code, note, now
             summary["checked"] += 1
             summary[state] += 1
-
-        # Live AIIA vacancies -> the catalogue entry that represents them.
-        today = today_ist().isoformat()
-        open_ads = [
-            r for r in db.query(FeedItemModel).filter(FeedItemModel.source_id == "aiia_vacancies").all()
-            if _is_vacancy_advertisement(r.title) and r.deadline and r.deadline >= today
-        ]
-        summary["aiia_open_vacancies"] = len(open_ads)
-        nearest = min((r.deadline for r in open_ads), default="")
-        summary["nearest_vacancy_deadline"] = nearest
-        entry = next((x for x in EXTERNAL_OPPORTUNITIES if x["id"] == "ext_aiia_vacancies"), None)
-        row = db.query(InternshipModel).filter(InternshipModel.id == "ext_aiia_vacancies").first()
-        if entry and row:
-            row.deadline = nearest
-            row.openings = len(open_ads)
-            suffix = (
-                f" Right now {len(open_ads)} advertised post{'s are' if len(open_ads) != 1 else ' is'} open; "
-                f"the nearest closes on {nearest}."
-                if open_ads else " No advertised posts are open at the moment."
-            )
-            row.description = entry["description"] + suffix
         db.commit()
     except Exception as e:  # a bug here must not break the feed sync
         db.rollback()
@@ -6846,7 +6368,6 @@ def upcoming_deadlines(
 #   * internships table  - recruiter postings AND the verified official
 #                          catalogue (source_type == "external")
 #   * learning_programs  - official learning platforms and industry courses
-#   * AIIA_PROGRAMMES    - the institute's own announced programmes
 #   * feed_items         - whatever the official feeds have pulled in
 #
 # The scope is CareerNexus's own verified collection: every row traces
@@ -6865,20 +6386,18 @@ def upcoming_deadlines(
 
 SEARCH_INDEX_NOTE = (
     "Showing results from CareerNexus's verified collection of official "
-    "opportunities - government portals, company career pages, official "
-    "learning platforms and AIIA's own listings."
+    "opportunities - government portals, company career pages and official "
+    "learning platforms."
 )
 
-# Shown wherever the official source simply does not publish a field. The
-# frontend uses the identical string (js/aiia-data.js), so the two never
-# drift into "N/A" here and "Not specified" there.
+# Shown wherever the official source simply does not publish a field.
 SEARCH_UNSPECIFIED = "Not specified by the official source"
 
 # Which filter bucket each row belongs to. The UI's Category filter uses
 # exactly these strings.
 SEARCH_CATEGORIES = [
     "Courses", "Internships", "Certifications", "Jobs",
-    "Training", "Research", "Government", "AIIA",
+    "Training", "Research", "Government",
 ]
 
 _GOV_MARKERS = (
@@ -6886,7 +6405,7 @@ _GOV_MARKERS = (
     # but a student filtering by "University" is looking for exactly them.
     "ministry", "government of india", "govt", "aicte", "isro",
     "drdo", "national", "council", "commission", "department of",
-    "skill india", "mygov", "nsdc", "ayush",
+    "skill india", "mygov", "nsdc",
 )
 
 
@@ -6898,11 +6417,9 @@ def _is_government(org: str) -> bool:
 def _search_provider_kind(org: str, official: bool) -> str:
     """Provider bucket for the filter.
 
-    government | university | platform | aiia | company
+    government | university | platform | company
     """
     low = (org or "").lower()
-    if "all india institute of ayurveda" in low or "aiia" in low:
-        return "aiia"
     if _is_government(low):
         return "government"
     if any(m in low for m in ("iit", "iisc", "university", "college", "institute", "nptel", "swayam")):
@@ -7062,34 +6579,14 @@ def _build_search_index(db: Session, role: str = ROLE_STUDENT) -> List[dict]:
             verified=(prog.source_type or "industry") == "official",
         ))
 
-    # ---- AIIA's own announced programmes -------------------------------
-    for item in AIIA_PROGRAMMES:
-        rows.append(_search_row(
-            item["id"],
-            item["title"],
-            item.get("department") or AIIA_ORG,
-            "AIIA",
-            description=item.get("description", ""),
-            eligibility=item.get("eligibility", ""),
-            location=item.get("location", ""),
-            mode=item.get("mode", ""),
-            duration=item.get("duration", ""),
-            fee=item.get("fees", ""),
-            deadline=item.get("deadline", ""),
-            source_name=AIIA_ORG,
-            official_url=item.get("url", ""),
-            internal_url="aiia.html",
-            verified=True,
-        ))
-
     # ---- Whatever the official feeds have collected ---------------------
     for row in db.query(FeedItemModel).all():
-        org = row.organisation or AIIA_ORG
+        org = row.organisation or "Official source"
         rows.append(_search_row(
             row.id,
             row.title,
             org,
-            "AIIA" if "ayurveda" in org.lower() else "Government",
+            "Government",
             deadline=row.deadline or "",
             source_name=org,
             official_url=row.official_url or "",
@@ -7120,8 +6617,8 @@ def _score_row(row: dict, terms: List[str], raw_query: str = "") -> float:
     hits = 0
     for term in terms:
         # Short terms are matched as whole words only. As a substring "ai"
-        # hits "Trainer" and "Ayurveda", which is exactly how a Yoga course
-        # came to top the results for "AI course".
+        # hits "Trainer" and "Detailed", which would wrongly rank unrelated
+        # courses above real AI ones for a query like "AI course".
         word_only = len(term) <= 3
         pattern = re.compile(r"\b" + re.escape(term) + r"\b")
 

@@ -17,22 +17,18 @@
     "  * Every url below returned HTTP 200 when it was added.",
     "",
     "SCOPE: this register holds organisation-level destinations (portals,",
-    "platforms, career pages, AIIA sections). Deep links that belong to one",
-    "specific opportunity — a single notice PDF, one course page — stay",
-    "with that opportunity's own record, because they are that record's",
-    "data rather than shared configuration.",
-    "",
-    "NOTE ON AIIA LINKS: aiia.gov.in is a single-page application, so its",
-    "section links are hash routes (#/coursesAvailable and so on) served by",
-    "the same verified domain.",
+    "platforms, career pages). Deep links that belong to one specific",
+    "opportunity — a single notice PDF, one course page — stay with that",
+    "opportunity's own record, because they are that record's data rather",
+    "than shared configuration.",
     "",
     "CareerNexus searches this register and its own verified opportunity",
     "records. It does not search the live internet."
   ],
 
   "meta": {
-    "version": 1,
-    "last_verified": "2026-09-18",
+    "version": 2,
+    "last_verified": "2026-09-29",
     "verified_how": "Each url fetched with a browser user-agent and confirmed to resolve (HTTP 200) and not to land on an error page.",
     "categories": [
       "Government",
@@ -40,7 +36,6 @@
       "Internships",
       "Certifications",
       "Jobs",
-      "AIIA",
       "Universities",
       "Companies",
       "Learning Platforms",
@@ -50,117 +45,6 @@
   },
 
   "websites": [
-    {
-      "id": "aiia_delhi",
-      "name": "All India Institute of Ayurveda",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "Official website of AIIA New Delhi, the autonomous institute under the Ministry of Ayush that set problem statement SIH26044.",
-      "url": "https://aiia.gov.in",
-      "source": "Official",
-      "purpose": "AIIA courses, internships, training, research and official notices"
-    },
-    {
-      "id": "aiia_goa",
-      "name": "AIIA Goa",
-      "organization": "All India Institute of Ayurveda, Goa",
-      "category": "AIIA",
-      "description": "Official website of the AIIA Goa satellite campus. A separate campus with its own intake, so its listings are never presented as Delhi's.",
-      "url": "https://aiiagoa.org",
-      "source": "Official",
-      "purpose": "AIIA Goa courses, CME programmes, fellowships and faculty recruitment"
-    },
-    {
-      "id": "ministry_ayush",
-      "name": "Ministry of Ayush",
-      "organization": "Ministry of Ayush, Government of India",
-      "category": "Government",
-      "description": "The parent ministry for Ayurveda, Yoga, Unani, Siddha and Homoeopathy, and AIIA's administrative authority.",
-      "url": "https://ayush.gov.in",
-      "source": "Official",
-      "purpose": "Ayush policy, schemes and national-level notifications"
-    },
-    {
-      "id": "aiia_courses",
-      "name": "AIIA — Courses Available",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "AIIA's own listing of the courses it currently runs.",
-      "url": "https://aiia.gov.in/#/coursesAvailable",
-      "source": "Official",
-      "purpose": "AIIA certificate courses and skill training programmes"
-    },
-    {
-      "id": "aiia_admissions",
-      "name": "AIIA — Academic Admissions",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "Admission information for AIIA's academic programmes.",
-      "url": "https://aiia.gov.in/#/academicadmission",
-      "source": "Official",
-      "purpose": "AIIA admissions, PG and PhD programme intake"
-    },
-    {
-      "id": "aiia_notices",
-      "name": "AIIA — Notices Archive",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "Every notice AIIA publishes, including course announcements and internship notices.",
-      "url": "https://aiia.gov.in/#/noticesArchive",
-      "source": "Official",
-      "purpose": "AIIA notifications and announcements"
-    },
-    {
-      "id": "aiia_vacancies",
-      "name": "AIIA — Vacancies",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "AIIA's recruitment and vacancy notices, including contractual and project posts.",
-      "url": "https://aiia.gov.in/#/archivesVacancies",
-      "source": "Official",
-      "purpose": "AIIA jobs and recruitment"
-    },
-    {
-      "id": "aiia_research",
-      "name": "AIIA — Research Projects",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "Ongoing research projects at AIIA, the route to research and fellowship openings.",
-      "url": "https://aiia.gov.in/#/ongoingresearchprojects",
-      "source": "Official",
-      "purpose": "AIIA research projects and fellowships"
-    },
-    {
-      "id": "aiia_events",
-      "name": "AIIA — Events",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "AIIA conferences, CME programmes, seminars and workshops.",
-      "url": "https://aiia.gov.in/#/eventsList",
-      "source": "Official",
-      "purpose": "AIIA CME, conferences, seminars and workshops"
-    },
-    {
-      "id": "aiia_student_corner",
-      "name": "AIIA — Student Corner",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "AIIA's information hub for its own students.",
-      "url": "https://aiia.gov.in/#/studentCorner",
-      "source": "Official",
-      "purpose": "AIIA student programmes and resources"
-    },
-    {
-      "id": "aiia_placement",
-      "name": "AIIA — Placement Cell",
-      "organization": "All India Institute of Ayurveda, New Delhi",
-      "category": "AIIA",
-      "description": "AIIA's placement cell, the institute's own academia-industry interface.",
-      "url": "https://aiia.gov.in/#/placementcell",
-      "source": "Official",
-      "purpose": "AIIA placements and industry engagement"
-    },
-
     {
       "id": "pm_internship",
       "name": "PM Internship Scheme",
@@ -206,7 +90,7 @@
       "name": "Smart India Hackathon",
       "organization": "Ministry of Education Innovation Cell",
       "category": "Student Opportunities",
-      "description": "India's national innovation initiative, where problem statement SIH26044 is published.",
+      "description": "India's national innovation initiative, where problem statement 26134 is published.",
       "url": "https://sih.gov.in",
       "source": "Official",
       "purpose": "Hackathon participation and problem statements"

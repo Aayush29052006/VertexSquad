@@ -56,10 +56,8 @@ const NAV_ITEMS = [
   { href: 'opportunities.html', icon: '🚀', label: 'Jobs & Opportunities', roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ADMIN], group: 'Opportunities & Applications' },
   { href: 'applications.html', icon: '📋', label: 'Applications', roles: [ROLES.STUDENT, ROLES.ADMIN], group: 'Opportunities & Applications' },
 
-  // Auto-collected official notices, vacancies and tenders, with deadlines.
+  // Auto-collected official hiring signal, live-synced from source.
   { href: 'updates.html', icon: '🔔', label: 'Live Updates', roles: ALL_ROLES, group: 'Community & Updates' },
-  // A real case-study data source (institute-published data, live-synced). Everything on this page is AIIA's own.
-  { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES, group: 'Community & Updates' },
   // --- Shared across academia and industry.
   // --- Who built this, and how to reach them. Everyone sees it.
   { href: 'team.html', icon: '👥', label: 'Team & Contact', roles: ALL_ROLES, group: 'Community & Updates' },
@@ -442,7 +440,7 @@ function renderAppShell(activeHref, studentName) {
         <div class="global-search" id="globalSearch">
           <span class="global-search-icon" aria-hidden="true">🔍</span>
           <input class="global-search-input" id="globalSearchInput" type="search"
-                 placeholder="Search pages, courses, internships, AIIA…"
+                 placeholder="Search pages, courses, internships…"
                  autocomplete="off" role="combobox" aria-expanded="false"
                  aria-controls="globalSearchPanel" aria-label="Search CareerNexus" />
           <div class="global-search-panel" id="globalSearchPanel" role="listbox" hidden></div>
@@ -524,9 +522,9 @@ function mountAppShell(activeHref, studentName) {
      Pages       ranked locally from NAV_ITEMS + PAGE_KEYWORDS, so they
                  appear instantly with no round trip. This is what most
                  queries actually want ("where do I upload my resume").
-     Catalogue   courses, internships, government schemes and AIIA
-                 programmes, ranked by POST /api/search over the same
-                 rows the rest of the app renders.
+     Catalogue   courses, internships and government schemes, ranked by
+                 POST /api/search over the same rows the rest of the app
+                 renders.
 
    Intent, not exact text: the query is expanded through
    js/search-core.js first, so "make my cv" finds Resume and "AI course"
@@ -680,13 +678,12 @@ function initGlobalSearch() {
 
     const buckets = {};
     (data.results || []).forEach((row) => {
-      const key = row.category === 'AIIA' ? 'AIIA' :
-        (row.category === 'Courses' || row.category === 'Certifications') ? 'Courses' :
+      const key = (row.category === 'Courses' || row.category === 'Certifications') ? 'Courses' :
         (row.category === 'Internships' || row.category === 'Jobs') ? 'Internships & Jobs' : 'Other';
       (buckets[key] = buckets[key] || []).push(row);
     });
 
-    const order = ['Courses', 'Internships & Jobs', 'AIIA', 'Other'];
+    const order = ['Courses', 'Internships & Jobs', 'Other'];
     const html = order
       .filter((k) => buckets[k] && buckets[k].length)
       .map((k) => group(k, buckets[k].slice(0, 4).map(resultRow).join(''), buckets[k].length))

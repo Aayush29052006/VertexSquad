@@ -295,16 +295,10 @@ const api = {
     return apiRequest(`/deadlines?within_days=${encodeURIComponent(withinDays)}`);
   },
 
-  // ---------- AIIA opportunity hub ----------
-  // Read-only: everything it returns lives on aiia.gov.in.
-  getAiiaHub() {
-    return apiRequest('/aiia');
-  },
-
   // ---------- Unified search ----------
-  // One call covers courses, internships, jobs, government schemes and
-  // AIIA programmes: the backend searches the same rows those pages use,
-  // so there is no second catalogue to keep in step.
+  // One call covers courses, internships, jobs and government schemes:
+  // the backend searches the same rows those pages use, so there is no
+  // second catalogue to keep in step.
   // `terms` is the client-expanded vocabulary from js/search-core.js.
   search(params = {}) {
     return apiRequest('/search', {

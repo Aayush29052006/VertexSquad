@@ -2,10 +2,10 @@
  * CareerNexus — Opportunity Search
  *
  * Search across CareerNexus's verified opportunity collection: official
- * learning platforms, government schemes, company career pages, AIIA's
- * own programmes and anything a recruiter has posted here. All of it goes
- * through one backend endpoint (POST /api/search) over the same rows the
- * rest of the app renders, so there is no second catalogue.
+ * learning platforms, government schemes, company career pages and
+ * anything a recruiter has posted here. All of it goes through one
+ * backend endpoint (POST /api/search) over the same rows the rest of the
+ * app renders, so there is no second catalogue.
  *
  * Scope is stated plainly in the UI: this searches CareerNexus's verified
  * collection, not the live internet. Every external URL comes from a
@@ -15,7 +15,7 @@
 
 const SEARCH_CATEGORIES = [
   'Courses', 'Internships', 'Certifications', 'Jobs',
-  'Training', 'Research', 'Government', 'AIIA',
+  'Training', 'Research', 'Government',
 ];
 
 const SEARCH_PAGE_SIZE = 24;
@@ -66,16 +66,16 @@ function searchShell() {
       <h1 class="text-page-heading">Search Opportunities</h1>
       <p class="text-body mt-2">
         Search across CareerNexus's verified opportunity database — courses,
-        internships, certifications, jobs, training, research calls,
-        government schemes and AIIA programmes. Every one links back to the
-        organisation's own official page.
+        internships, certifications, jobs, training, research calls and
+        government schemes. Every one links back to the organisation's own
+        official page.
       </p>
 
       <div class="search-bar">
         <div class="search-bar-field">
           <span class="search-bar-icon" aria-hidden="true">🔍</span>
           <input class="search-bar-input" id="searchInput" type="search"
-                 placeholder="Try “Python internship”, “AI course”, “AIIA”…"
+                 placeholder="Try “Python internship”, “AI course”, “apprenticeship”…"
                  autocomplete="off" aria-label="Search opportunities" />
           <div class="search-suggest" id="searchSuggest" hidden></div>
         </div>
@@ -110,7 +110,6 @@ function searchShell() {
           { value: 'company', label: 'Company' },
           { value: 'university', label: 'University / Institute' },
           { value: 'platform', label: 'Learning platform' },
-          { value: 'aiia', label: 'AIIA' },
         ], searchState.provider)}
         ${selectField('statusFilter', 'Status', [
           { value: '', label: 'Any status' },

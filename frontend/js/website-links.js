@@ -9,9 +9,8 @@
  *
  *  1. The defaults below are not a second copy of the register — they are
  *     the handful of URLs the UI would otherwise render as dead links if
- *     the fetch failed. Everything else comes from the file. This is the
- *     lesson from the AIIA hub's "Failed to fetch": one network call with
- *     nothing behind it takes a whole page down.
+ *     the fetch failed. Everything else comes from the file: one network
+ *     call with nothing behind it should never take a whole page down.
  *
  *  2. `loadWebsiteLinks()` is fire-and-forget. Pages call `siteUrl(id)`
  *     synchronously and get the default until the file lands, so nothing
@@ -21,10 +20,8 @@
 /* Fallbacks for the destinations that appear in page chrome, where a
    missing href would be visible. Keys match "id" in website-links.json. */
 const WEBSITE_LINK_FALLBACKS = {
-  aiia_delhi: 'https://aiia.gov.in',
-  aiia_goa: 'https://aiiagoa.org',
-  ministry_ayush: 'https://ayush.gov.in',
   sih: 'https://sih.gov.in',
+  ncs: 'https://www.ncs.gov.in',
 };
 
 let WEBSITE_LINKS = [];

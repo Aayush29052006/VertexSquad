@@ -1,7 +1,7 @@
 /**
  * CareerNexus — AIIA verified opportunity catalogue
  *
- * SIH26044 is set by the All India Institute of Ayurveda, so this is the
+ * AIIA is one of CareerNexus's real case-study data sources, so this is the
  * data behind the AIIA Hub. It lives in the frontend on purpose: none of
  * it changes per user and none of it needs a database, so the Hub renders
  * even when the API is unreachable. The backend only ever *adds* to this

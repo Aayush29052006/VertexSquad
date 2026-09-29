@@ -126,30 +126,110 @@ function gapRow(g, maxImpact) {
         ${(a.curriculum_gaps || []).map((g) => gapRow(g, maxImpact)).join('') || '<p class="text-body">No gaps detected.</p>'}
       </section>
 
-      <section class="card">
-        <h2 class="text-section-heading mb-3">By Branch</h2>
+      <div class="split-2 mb-5">
+        <section class="card">
+          <h2 class="text-section-heading mb-3">By Branch</h2>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Branch</th><th class="col-num">Students</th>
+                <th class="col-num">Avg. Readiness</th><th class="col-num">Applied</th><th class="col-num">Participation</th>
+              </tr></thead>
+              <tbody>
+                ${(a.by_branch || [])
+                  .map(
+                    (b) => `
+                  <tr>
+                    <td><strong>${escapeHtml(b.branch)}</strong></td>
+                    <td class="col-num">${b.students}</td>
+                    <td class="col-num">${b.avg_readiness}%</td>
+                    <td class="col-num">${b.applied}</td>
+                    <td class="col-num">${b.participation_pct}%</td>
+                  </tr>`
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="text-section-heading mb-1">By District</h2>
+          <p class="text-caption mb-3">
+            Student-declared location — PS 26134's district axis for targeting training capacity.
+          </p>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr>
+                <th>District</th><th class="col-num">Students</th>
+                <th class="col-num">Avg. Readiness</th><th class="col-num">Participation</th>
+              </tr></thead>
+              <tbody>
+                ${(a.by_district || [])
+                  .map(
+                    (d) => `
+                  <tr>
+                    <td><strong>${escapeHtml(d.district)}</strong></td>
+                    <td class="col-num">${d.students}</td>
+                    <td class="col-num">${d.avg_readiness}%</td>
+                    <td class="col-num">${d.participation_pct}%</td>
+                  </tr>`
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="card mb-5">
+        <h2 class="text-section-heading mb-1">Course Health</h2>
+        <p class="text-caption mb-3">
+          Every published course's skills, checked against current open-role demand. A course whose
+          skills match nothing currently in demand is flagged for review — this reads only real
+          postings and real course data, nothing here is guessed.
+        </p>
         <div class="table-wrap">
           <table class="admin-table">
             <thead><tr>
-              <th>Branch</th><th class="col-num">Students</th>
-              <th class="col-num">Avg. Readiness</th><th class="col-num">Applied</th><th class="col-num">Participation</th>
+              <th>Course</th><th>Provider</th><th class="col-num">Demand alignment</th><th>Status</th>
             </tr></thead>
             <tbody>
-              ${(a.by_branch || [])
-                .map(
-                  (b) => `
+              ${
+                (a.course_health || []).length
+                  ? a.course_health
+                      .map(
+                        (c) => `
                 <tr>
-                  <td><strong>${escapeHtml(b.branch)}</strong></td>
-                  <td class="col-num">${b.students}</td>
-                  <td class="col-num">${b.avg_readiness}%</td>
-                  <td class="col-num">${b.applied}</td>
-                  <td class="col-num">${b.participation_pct}%</td>
+                  <td><strong>${escapeHtml(c.title)}</strong></td>
+                  <td>${escapeHtml(c.provider)}</td>
+                  <td class="col-num">${c.demand_alignment_pct}%</td>
+                  <td><span class="badge ${c.flag === 'aligned' ? 'badge-success' : c.flag === 'partial' ? 'badge-warning' : 'badge-danger'}">${
+                          c.flag === 'aligned' ? 'Aligned' : c.flag === 'partial' ? 'Partially aligned' : 'Low demand alignment'
+                        }</span></td>
                 </tr>`
-                )
-                .join('')}
+                      )
+                      .join('')
+                  : `<tr><td colspan="4">${emptyState('📚', 'No courses to check yet', '')}</td></tr>`
+              }
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section class="card">
+        <h2 class="text-section-heading mb-1">Employer Signals</h2>
+        <p class="text-caption mb-3">
+          Skills recruiters say will matter more in the next year, ranked by how many distinct
+          companies flagged them — PS 26134's "employer survey" input.
+        </p>
+        ${
+          (a.employer_signals || []).length
+            ? `<div class="chip-row">
+                 ${a.employer_signals.map((s) => `<span class="badge badge-neutral">${escapeHtml(s.skill)} · ${s.companies} ${s.companies === 1 ? 'company' : 'companies'}</span>`).join('')}
+               </div>`
+            : `<p class="text-body">No recruiter has submitted a signal yet.</p>`
+        }
       </section>
     `;
   } catch (err) {

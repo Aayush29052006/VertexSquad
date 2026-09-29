@@ -58,7 +58,7 @@ const NAV_ITEMS = [
 
   // Auto-collected official notices, vacancies and tenders, with deadlines.
   { href: 'updates.html', icon: '🔔', label: 'Live Updates', roles: ALL_ROLES, group: 'Community & Updates' },
-  // The institute behind SIH26044. Everything on this page is AIIA's own.
+  // A real case-study data source (institute-published data, live-synced). Everything on this page is AIIA's own.
   { href: 'aiia.html', icon: '🌿', label: 'AIIA Hub', roles: ALL_ROLES, group: 'Community & Updates' },
   // --- Shared across academia and industry.
   // --- Who built this, and how to reach them. Everyone sees it.

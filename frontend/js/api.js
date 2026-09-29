@@ -343,6 +343,14 @@ const api = {
     return apiRequest('/institution/analytics');
   },
 
+  // ---------- Employer skill signals (PS 26134: employer survey input) ----------
+  submitSkillSignal(payload) {
+    return apiRequest('/employer/skill-signals', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  getSkillSignals() {
+    return apiRequest('/employer/skill-signals');
+  },
+
   // ---------- Admin panel (role === 'admin' enforced server-side) ----------
   admin: {
     getStats() {

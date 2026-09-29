@@ -355,6 +355,24 @@ class LearningProgramModel(Base):
     source_type = Column(String, default="industry")
 
 
+class EmployerSkillSignalModel(Base):
+    """One recruiter's answer to 'which skills will matter more for you in the
+    next year'. PS 26134 asks for employer surveys as an input alongside job
+    postings; a posting says what a company needs *today*, this says what
+    they expect to need *next* -- the forward-looking half job-posting data
+    alone cannot give.
+    """
+    __tablename__ = "employer_skill_signals"
+
+    id = Column(String, primary_key=True, index=True)
+    recruiter_id = Column(String, nullable=False, index=True)
+    company = Column(String, nullable=False, default="")
+    skill = Column(String, nullable=False)
+    horizon_months = Column(Integer, nullable=False, default=12)
+    note = Column(String, default="")
+    created_at = Column(String, nullable=False)
+
+
 class ProgressLogModel(Base):
     """Weekly internship progress. The intern writes the entry; the mentor
     (whoever posted the role) adds feedback and a rating."""
@@ -1034,6 +1052,12 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
     }
 
     return {"token": token, "student": student_dict}
+
+
+class EmployerSkillSignalPayload(BaseModel):
+    skill: str
+    horizon_months: int = 12
+    note: Optional[str] = ""
 
 
 @app.post("/api/auth/register")
@@ -4119,6 +4143,77 @@ def _same_institution(a: str, b: str) -> bool:
     )
 
 
+@app.post("/api/employer/skill-signals", status_code=201)
+def submit_skill_signal(
+    payload: EmployerSkillSignalPayload,
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER)),
+    db: Session = Depends(get_db),
+):
+    """A recruiter flags a skill they expect to matter more soon.
+
+    This is PS 26134's "employer survey" input: forward-looking, and
+    explicitly the employer's own opinion, not something we infer or
+    generate. Stored as-is, one row per submission -- a recruiter can log
+    several skills over time and none overwrite each other.
+    """
+    skill = (payload.skill or "").strip()
+    if not skill:
+        raise HTTPException(status_code=400, detail="skill is required")
+    if not (1 <= payload.horizon_months <= 60):
+        raise HTTPException(status_code=400, detail="horizon_months must be between 1 and 60")
+    row = EmployerSkillSignalModel(
+        id=new_id("signal"),
+        recruiter_id=user.id,
+        company=user.org_name or user.full_name or "",
+        skill=skill[:80],
+        horizon_months=payload.horizon_months,
+        note=(payload.note or "").strip()[:300],
+        created_at=now_ist().strftime("%Y-%m-%d %H:%M"),
+    )
+    db.add(row)
+    db.commit()
+    return {"id": row.id, "skill": row.skill, "horizon_months": row.horizon_months}
+
+
+@app.get("/api/employer/skill-signals")
+def list_skill_signals(
+    user: StudentModel = Depends(require_roles(ROLE_RECRUITER, ROLE_INSTITUTION, ROLE_FACULTY, ROLE_ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Aggregated view of what employers say they'll need, ranked by how many
+    distinct companies flagged it -- one loud recruiter should not outweigh
+    five quieter ones. A recruiter also sees their own raw submissions."""
+    rows = db.query(EmployerSkillSignalModel).all()
+    tally = {}
+    for r in rows:
+        key = r.skill.lower()
+        entry = tally.setdefault(key, {"skill": r.skill, "companies": set(), "mentions": 0, "avg_horizon_sum": 0})
+        entry["companies"].add(r.company or r.recruiter_id)
+        entry["mentions"] += 1
+        entry["avg_horizon_sum"] += r.horizon_months
+    summary = sorted(
+        [
+            {
+                "skill": v["skill"],
+                "companies": len(v["companies"]),
+                "mentions": v["mentions"],
+                "avg_horizon_months": round(v["avg_horizon_sum"] / v["mentions"]),
+            }
+            for v in tally.values()
+        ],
+        key=lambda x: (x["companies"], x["mentions"]),
+        reverse=True,
+    )
+    out = {"total_submissions": len(rows), "by_skill": summary[:20]}
+    if user_role(user) == ROLE_RECRUITER:
+        mine = [r for r in rows if r.recruiter_id == user.id]
+        out["mine"] = [
+            {"id": r.id, "skill": r.skill, "horizon_months": r.horizon_months, "note": r.note, "created_at": r.created_at}
+            for r in sorted(mine, key=lambda r: r.created_at, reverse=True)
+        ]
+    return out
+
+
 @app.get("/api/institution/analytics")
 def institution_analytics(
     user: StudentModel = Depends(require_roles(ROLE_INSTITUTION, ROLE_FACULTY)),
@@ -4215,6 +4310,67 @@ def institution_analytics(
     ]
     branch_rows.sort(key=lambda r: r["avg_readiness"], reverse=True)
 
+    # Same grouping, by student-declared location instead of branch -- this
+    # is PS 26134's "district-level" axis. Location is free text like
+    # branch, so it gets the same case-insensitive grouping.
+    by_location = {}
+    for stu in students:
+        label = (stu.location or "").strip() or "Unspecified"
+        key = label.lower()
+        entry = by_location.setdefault(
+            key, {"students": 0, "readiness_sum": 0, "applied": 0, "labels": {}}
+        )
+        entry["students"] += 1
+        entry["readiness_sum"] += stu.placement_readiness or 0
+        entry["labels"][label] = entry["labels"].get(label, 0) + 1
+        if stu.id in applied_ids:
+            entry["applied"] += 1
+    district_rows = [
+        {
+            "district": max(e["labels"].items(), key=lambda kv: kv[1])[0],
+            "students": e["students"],
+            "avg_readiness": round(e["readiness_sum"] / e["students"]),
+            "applied": e["applied"],
+            "participation_pct": round(e["applied"] * 100 / e["students"]),
+        }
+        for e in by_location.values()
+    ]
+    district_rows.sort(key=lambda r: r["students"], reverse=True)
+
+    # Course health: PS 26134 asks to "flag obsolete or oversupplied
+    # courses". We do not track enrollment or completion counts, so
+    # "oversupplied" cannot be measured honestly -- what we CAN measure from
+    # data we actually have is demand alignment: does any current open role
+    # ask for the skills this course teaches? A course whose entire skill
+    # list has zero current demand is the evidence-backed half of that ask;
+    # we label it accordingly rather than guessing at enrollment.
+    demand_skills = {sk.lower() for sk in demand.keys()}
+    course_health = []
+    for prog in db.query(LearningProgramModel).all():
+        skills = [sk for sk in json.loads(prog.skills_covered or "[]") if sk]
+        if not skills:
+            continue
+        matched = [sk for sk in skills if sk.lower() in demand_skills]
+        course_health.append({
+            "id": prog.id,
+            "title": prog.title,
+            "provider": prog.provider,
+            "skills_covered": skills,
+            "skills_in_demand": matched,
+            "demand_alignment_pct": round(len(matched) * 100 / len(skills)),
+            "flag": "low demand alignment" if not matched else ("partial" if len(matched) < len(skills) else "aligned"),
+        })
+    course_health.sort(key=lambda c: c["demand_alignment_pct"])
+
+    signal_rows = db.query(EmployerSkillSignalModel).all()
+    employer_tally = {}
+    for r in signal_rows:
+        employer_tally.setdefault(r.skill.lower(), {"skill": r.skill, "companies": set()})["companies"].add(r.company or r.recruiter_id)
+    employer_signals = sorted(
+        [{"skill": v["skill"], "companies": len(v["companies"])} for v in employer_tally.values()],
+        key=lambda x: x["companies"], reverse=True,
+    )[:10]
+
     return {
         "scope": scope or "All institutions",
         "students_total": total,
@@ -4231,6 +4387,9 @@ def institution_analytics(
         "placement_pct": round(len(placed_ids) * 100 / total),
         "curriculum_gaps": curriculum_gaps[:12],
         "by_branch": branch_rows,
+        "by_district": district_rows,
+        "course_health": course_health[:20],
+        "employer_signals": employer_signals,
     }
 
 

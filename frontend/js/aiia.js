@@ -204,7 +204,7 @@ function drawHub(pageBody) {
         <h1 class="text-page-heading mb-1">AIIA Opportunity Hub</h1>
         <p class="text-body mb-3">
           Courses, internships, training, research, CME, conferences, admissions and careers at the
-          All India Institute of Ayurveda — the institute behind problem statement SIH26044.
+          All India Institute of Ayurveda — one of CareerNexus's real, live case-study data sources.
         </p>
         <p class="text-caption">
           🌐 Every opportunity here is published by AIIA or AIIA Goa. Applications are made on the

@@ -569,7 +569,7 @@ MIN_PASSWORD_LENGTH = 8
 
 ADMIN_EMAILS = [
     e.strip().lower()
-    for e in os.environ.get("ADMIN_EMAILS", "aayushswapnali@gmail.com").split(",")
+    for e in os.environ.get("ADMIN_EMAILS", "").split(",")
     if e.strip()
 ]
 
@@ -586,6 +586,17 @@ def bootstrap_admins():
         db.commit()
     finally:
         db.close()
+
+
+# The seeded admin's address. example.com is reserved (RFC 2606), so nobody can
+# own this inbox or sign in to it with Google.
+DEMO_ADMIN_EMAIL = "admin@careernexus.example.com"
+DEMO_PASSWORD = "demo1234"
+
+# The demo admin's password is published in the README, which is fine on a
+# laptop at a hackathon table and fatal on a public URL. Local demos opt in
+# with CN_DEMO_ADMIN=true; everywhere else login() refuses it for admins.
+DEMO_ADMIN_ENABLED = os.environ.get("CN_DEMO_ADMIN", "").strip().lower() in ("1", "true", "yes")
 
 
 # --- DB SEEDING (ON STARTUP) ---
@@ -656,15 +667,16 @@ def seed_database():
             db.commit()
 
         # Seed default mock student if empty
-        if db.query(StudentModel).filter(StudentModel.email == "aayushswapnali@gmail.com").first() is None:
+        if db.query(StudentModel).filter(StudentModel.email == DEMO_ADMIN_EMAIL).first() is None:
             # We seed the default student with Aayush's real profile details.
             # Projects/certifications/experience start empty rather than with
             # placeholder examples — those get added through the app itself
             # (GitHub import, Edit Profile), not invented at seed time.
             default_student = StudentModel(
                 id="stu_1001",
-                email="aayushswapnali@gmail.com",
-                # Demo account password: demo1234 (documented in the README)
+                email=DEMO_ADMIN_EMAIL,
+                # Demo account password: demo1234 (documented in the README).
+                # Only accepted where CN_DEMO_ADMIN is on - see login().
                 password_hash=hash_password("demo1234"),
                 full_name="Aayush Chaudhari",
                 role="admin",
@@ -1002,6 +1014,20 @@ def login(payload: LoginPayload, db: Session = Depends(get_db)):
     if not student or not verify_password(payload.password, student.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # The demo password is published in the README. On an admin account it is
+    # only good for a local demo; anywhere else it would hand the admin panel
+    # to anyone who read the README. Checked here rather than by rewriting the
+    # stored hash, so turning CN_DEMO_ADMIN back on restores the demo login.
+    if (
+        (student.role or "") == "admin"
+        and not DEMO_ADMIN_ENABLED
+        and _hmac.compare_digest((payload.password or "").encode("utf-8"), DEMO_PASSWORD.encode("utf-8"))
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="The demo admin login is turned off on this server. Sign in with Google or ask an admin to reset the password.",
+        )
+
     # Transparently upgrade legacy plaintext rows to a real hash on first
     # successful login, so old accounts keep working without a manual reset.
     if needs_rehash(student.password_hash):
@@ -1073,6 +1099,16 @@ def register(payload: RegisterPayload, db: Session = Depends(get_db)):
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    # ADMIN_EMAILS are promoted to admin on every startup, and this form never
+    # checks that the person typing an address owns it. Letting it create one
+    # would hand admin to whoever registers the address first, so those
+    # accounts must come through Google sign-in, which verifies the inbox.
+    if email in ADMIN_EMAILS:
+        raise HTTPException(
+            status_code=403,
+            detail="This address can only sign in with Google.",
+        )
 
     # A password short enough to guess protects nothing. Checked here rather
     # than in the model so the message says what to do about it.

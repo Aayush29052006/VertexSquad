@@ -77,7 +77,7 @@ echo ============================================================
 echo    Frontend : http://localhost:5500
 echo    Backend  : http://127.0.0.1:8000        ^(docs at /docs^)
 echo.
-echo    Demo login : aayushswapnali@gmail.com / demo1234
+echo    Demo login : demo.student@careernexus.example.com / demo1234
 echo.
 echo    Two server windows opened - keep them open while
 echo    presenting. Closing them stops the app.

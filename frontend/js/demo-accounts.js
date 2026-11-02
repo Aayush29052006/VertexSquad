@@ -52,7 +52,7 @@ const DEMO_ACCOUNTS = [
     role: 'admin',
     label: 'Admin',
     icon: '🛡️',
-    email: 'aayushswapnali@gmail.com',
+    email: 'admin@careernexus.example.com',
     password: 'demo1234',
     blurb: 'Full platform control across every role',
   },

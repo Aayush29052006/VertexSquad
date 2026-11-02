@@ -44,10 +44,15 @@ above the form switch to any other role in one click.
 | Recruiter | `recruiter@technova.example.com` | Recruiter portal |
 | Faculty | `faculty@sscoetjalgaon.example.com` | Faculty portal |
 | Institution | `tpo@sscoetjalgaon.example.com` | Institution analytics |
-| Admin | `aayushswapnali@gmail.com` | Everything |
+| Admin | `admin@careernexus.example.com` | Everything (local demos only, see below) |
 
 These five accounts are seeded on **every** database, so the sign-in shortcuts always
-work. The separate ten-student demo *cohort* — used to make the institution analytics
+work. The **admin** shortcut only works where `CN_DEMO_ADMIN=true` (set in
+`backend/.env.example` for local demos). Everywhere else the backend refuses `demo1234`
+for any admin account, so a public deployment can't be taken over with credentials
+from this README.
+
+The separate ten-student demo *cohort* — used to make the institution analytics
 look realistic — seeds **only into a local SQLite database**. Pointing `DATABASE_URL`
 at a shared Postgres instance leaves real data untouched, so ten fabricated students
 can never end up in the team's live analytics. Set `SEED_DEMO_COHORT=true` to override
@@ -527,7 +532,8 @@ Then open `backend/.env` and set:
 | `GOOGLE_CLIENT_ID` | OAuth Web client ID — **must match `GOOGLE_CLIENT_ID` in `frontend/js/config.js`** |
 | `JWT_SECRET_KEY` | Long random string that signs login tokens. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Falls back to an insecure dev key (with a startup warning) if unset. |
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. Default: `http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://127.0.0.1:3000` |
-| `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup (default: `aayushswapnali@gmail.com`) |
+| `ADMIN_EMAILS` | Comma-separated emails auto-promoted to `role = "admin"` on startup (default: none). These addresses must sign in with Google; the password signup form refuses them. |
+| `CN_DEMO_ADMIN` | `true` lets the seeded demo admin sign in with `demo1234`. **Local demos only. Leave it unset on any public deployment.** |
 | `CONTACT_TO` | Where contact-form messages are delivered (default: `aayushswapnali@gmail.com`) |
 | `SMTP_HOST` `SMTP_PORT` | Mail server. Gmail: `smtp.gmail.com` / `587` |
 | `SMTP_USER` `SMTP_PASSWORD` | **Gmail needs an [App Password](https://myaccount.google.com/apppasswords), not your account password** — turn on 2-Step Verification first. Leave blank and the form still stores every message; it just does not email, and the page says so instead of pretending. |
@@ -573,7 +579,8 @@ internships and a demo student — no manual database import needed.
 
 | Email | Password | Role |
 |---|---|---|
-| `aayushswapnali@gmail.com` | `demo1234` | admin |
+| `demo.student@careernexus.example.com` | `demo1234` | student |
+| `admin@careernexus.example.com` | `demo1234` | admin (only with `CN_DEMO_ADMIN=true`) |
 
 **Two front doors, one auth system:**
 
